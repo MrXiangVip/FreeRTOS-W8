@@ -1,0 +1,7 @@
+ExitOnError 1
+r
+h
+loadfile "/home/felixpan/share/work/mcu_face_secure_oasislite_vision/Debug/mcu_face_secure_oasislite_vision.hex" 0x60000000 
+qc
+
+qc
