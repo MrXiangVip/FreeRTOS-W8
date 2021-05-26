@@ -411,12 +411,13 @@ int cmdSysInitOKSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessa
 		//运行老化测试程序
 	}
 
+#if	0
 	if(stInitSyncInfo.LightVal == 2) {
 		OpenCameraPWM();
 	}else {
 		CloseCameraPWM();
 	}
-
+#endif
 #if	0
 	{		
 		char verbuf[4] = {0}; 
@@ -1062,6 +1063,8 @@ static void uart5_QMsg_task(void *pvParameters)
 					}
 					LOGD("\n"); */
 					cmdRegResultNotifyReq(g_uu_id, g_reging_flg);
+					vTaskDelay(pdMS_TO_TICKS(200));
+					cmdCloseFaceBoardReq();
 	            }
 				CloseLcdBackground();
 				break;
@@ -1262,6 +1265,7 @@ static void uart5_Loop_task(void *pvParameters)
 		{
 			uint32_t diff = g_reg_start - timeNow;				
 			//LOGD("===diff:%u,g_reg_start:%u,timeStop:%u.\n", diff, g_reg_start, timeNow); 
+#if	0
 			if (diff > (uint32_t)REG_ACTIVE_OUTTIME)
 			{
 				memset(username, 0, sizeof(username));
@@ -1279,6 +1283,7 @@ static void uart5_Loop_task(void *pvParameters)
 				
 				break;
 			}
+#endif			
 		}
 #endif
 #if 0
@@ -1407,17 +1412,17 @@ static void SwTimerCallback(TimerHandle_t xTimer)
 void OpenLcdBackground() {
 	LOGD("[%s]:\r\n", __FUNCTION__);
 	lcd_back_ground = true;
-	if(stInitSyncInfo.LightVal == 2) {
-		OpenCameraPWM();
-	}
+	//if(stInitSyncInfo.LightVal == 2) {
+	//	OpenCameraPWM();
+	//}
 	PJDisp_TurnOnBacklight();
 }
 
 void CloseLcdBackground() {
 	LOGD("[%s]:\r\n", __FUNCTION__);
 	lcd_back_ground = false;
-	if(stInitSyncInfo.LightVal == 2) {
+	//if(stInitSyncInfo.LightVal == 2) {
 		CloseCameraPWM();
-	}
+	//}
 	PJDisp_TurnOffBacklight();
 }

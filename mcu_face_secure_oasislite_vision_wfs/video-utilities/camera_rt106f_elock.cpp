@@ -299,7 +299,7 @@ static status_t Camera_SetPWM(uint8_t pwm_index, uint8_t pulse_width)
 	}
 	else if(pwm_index == LED_WHITE)
 	{
-	#if 0	//PWM2_SUPPORT != 0
+	#if PWM2_SUPPORT != 0
 	    QTMR_StopTimer(CAMERA_QTMR_BASEADDR2, CAMERA_QTMR_PWM_CHANNEL2);
 		status = QTMR_SetupPwm(CAMERA_QTMR_BASEADDR2, CAMERA_QTMR_PWM_CHANNEL2, CAMERA_QTMR_PWM_FREQ2, pulse_width, false, CAMERA_QTMR_SOURCE_CLOCK2 / 64);
 		QTMR_StartTimer(CAMERA_QTMR_BASEADDR2, CAMERA_QTMR_PWM_CHANNEL2, kQTMR_PriSrcRiseEdge);

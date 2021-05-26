@@ -350,7 +350,7 @@ static void EvtHandler(ImageFrame_t* frames[OASISLT_INT_FRAME_IDX_LAST], OASISLT
 			LOGD("username<len:%d>:%s.\n", strlen(face_info.name), face_info.name); 
 		}
 		Set_curFaceInfo(face_info.name, face_info.recognize, face_info.enrolment, recResult);
-		Uart5_GetFaceRecResult((uint8_t)face_info.recognize);
+		//Uart5_GetFaceRecResult((uint8_t)face_info.recognize);
     }
     break;
 
@@ -391,7 +391,7 @@ static void EvtHandler(ImageFrame_t* frames[OASISLT_INT_FRAME_IDX_LAST], OASISLT
         pQMsg->msg.info.newface = 0;
         pQMsg->msg.info.regstatus = 2;
         face_info.enrolment = false;
-        Oasis_SetState(OASIS_STATE_FACE_ADD_STOPPED);
+        //Oasis_SetState(OASIS_STATE_FACE_ADD_STOPPED);
         StopRegistrationTimers();
         if (regResult == OASIS_REG_RESULT_OK) {
             lockstatus = 0;
@@ -400,6 +400,7 @@ static void EvtHandler(ImageFrame_t* frames[OASISLT_INT_FRAME_IDX_LAST], OASISLT
             memcpy(pQMsg->msg.info.name, name.c_str(), name.size());
             memcpy(face_info.name, name.c_str(), name.size());
             face_info.enrolment = true;
+			Oasis_SetState(OASIS_STATE_FACE_ADD_STOPPED);
             LOGD("[OASIS]:new face id:%d,name:%s\r\n", id, pQMsg->msg.info.name);
 
             int count;
@@ -415,10 +416,12 @@ static void EvtHandler(ImageFrame_t* frames[OASISLT_INT_FRAME_IDX_LAST], OASISLT
             memcpy(pQMsg->msg.info.name, name.c_str(), name.size());
             memcpy(face_info.name, name.c_str(), name.size());
             face_info.enrolment = true;
+			Oasis_SetState(OASIS_STATE_FACE_ADD_STOPPED);
 
             LOGD("[OASIS]:dup face id:%d,name:%s\r\n", id, pQMsg->msg.info.name);
         } else {
             lockstatus = 0;
+			Oasis_SetState(OASIS_STATE_FACE_ADD_STOPPED);
             LOGD("[OASIS]:registration failed(%d)!\r\n", regResult);
         }
 
@@ -431,7 +434,7 @@ static void EvtHandler(ImageFrame_t* frames[OASISLT_INT_FRAME_IDX_LAST], OASISLT
 			LOGD("username<len:%d>:%s.\n", strlen(face_info.name), face_info.name); 			
 		}
 		Set_curFaceInfo(face_info.name, face_info.recognize, face_info.enrolment, regResult);
-		Uart5_GetFaceRegResult((uint8_t)face_info.enrolment);		
+		//Uart5_GetFaceRegResult((uint8_t)face_info.enrolment);		
 	    }
     break;
 
@@ -454,6 +457,12 @@ static void EvtHandler(ImageFrame_t* frames[OASISLT_INT_FRAME_IDX_LAST], OASISLT
             LOGD("[EVT]:Blur[%d][%d]\r\n", para->reserved[3], para->reserved[4]);
             LOGD("[EVT]:Liveness[%d][%d]\r\n", para->reserved[5], para->reserved[6]);
         }
+
+		if(evt == OASISLT_EVT_REC_COMPLETE) {
+			Uart5_GetFaceRecResult((uint8_t)face_info.recognize);
+		}else if(evt == OASISLT_EVT_REG_COMPLETE) {
+			Uart5_GetFaceRegResult((uint8_t)face_info.enrolment);	
+		}
     }
 }
 
