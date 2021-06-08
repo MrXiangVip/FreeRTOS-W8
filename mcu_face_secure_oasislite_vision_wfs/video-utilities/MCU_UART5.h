@@ -27,6 +27,13 @@ extern "C" {
 #define FAILED		1
 #define SUCCESS		0
 
+#define UUID_LEN				8	// uuid长度
+#define WIFI_SSID_LEN_MAX		31	// wifi ssid 最大长度
+#define WIFI_PWD_LEN_MAX		63	// wifi pwd 最大长度
+#define MQTT_USER_LEN 			6	// MQTT USER 最大长度
+#define MQTT_PWD_LEN 			8	// MQTT pwd 最大长度
+#define MQTT_SVR_URL_LEN_MAX	63	// mqtt server url 最大长度
+
 #define UART5_MSG_Q_COUNT 	5
 #define RT106F_MAX_WORKTIME		10
 
@@ -36,6 +43,7 @@ extern "C" {
 #define CRC16_LEN			2  
 #define Version_LEN			5   /*版本长度固定为5, e.g 1.0.1*/
 #define SYS_VERSION		"0.0.2"
+#define VERSION         "0.1"
 #define REG_ACTIVE_OUTTIME   6000 //6s
 
 #define CMD_INITOK_SYNC          				1		// 开机同步
@@ -52,6 +60,21 @@ extern "C" {
 #define CMD_UPGRADE_CTRL					12		// 升级控制
 #define CMD_UPGRADE_PACKAGE				13		// 升级单包传输
 #define CMD_FACE_RECOGNIZE				14		// MCU主动请求人脸识别
+#define CMD_WIFI_SSID						15		// 设置wifi的SSID
+#define CMD_WIFI_PWD						16		// 设置wifi的PWD
+#define CMD_WIFI_MQTT						17		// 设置MQTT参数
+#define CMD_WIFI_CONN_STATUS				18		// 上报wifi连接状态
+#define CMD_DEV_DEBUG						19		// 上报设备故障状态
+#define CMD_OPEN_LOCK_REC					20		// 上报开门记录
+#define CMD_ORDER_TIME_SYNC				21		// 远程订单时间同步
+#define CMD_BT_INFO						22		// 上报蓝牙模块信息
+#define CMD_WIFI_MQTTSER_URL				23		// 设置wifi的MQTT server登录URL（可能是IP+Port，可能是域名+Port）
+#define CMD_GETNETWORK_OPTVER			24		// 主控获取MCU中flash存储的网络参数设置版本号
+#define CMD_SETNETWORK_OPTVER			25		// 设置网络参数版本号,每次设置后都自加1，存入flash
+#define CMD_NETWORK_OPT					26		// 网络参数设置
+#define CMD_MQTT_UPLOAD					27		// 请求mqtt 上传记录
+#define CMD_WIFI_OPEN_DOOR				0x83	// 远程wifi开门
+#define CMD_WIFI_TIME_SYNC				0x8A	// 通过wifi设置系统时间
 #define CMD_IRLIGHT_PWM_Req				0xE0	// 设置IR补光灯
 
 /*注册消息时响应类型*/
@@ -151,8 +174,10 @@ int  Uart5_GetFaceRecResult(uint8_t result);
 //从oasis_rt106f_elcok.cpp中获取识别或者注册时的face_info
 void Set_curFaceInfo(char *name, bool recognize, bool enrolment, int rt);
 
+int SendMsgToMCU(uint8_t *MsgBuf, uint8_t MsgLen);
 int cmdSysInitOKSyncReq(const char *strVersion);
 
+int sendSysInit2MQTT(uint16_t version, uint8_t powerValue);//请求MQTT上传开机时的版本，电量，状态信息
 #ifdef __cplusplus
 }
 #endif

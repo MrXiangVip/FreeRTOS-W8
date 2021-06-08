@@ -8,11 +8,143 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include "mqtt_util.h"
+#include "cJSON.h"
+#include "fatfs_op.h"
 
 VERSIONCONFIG versionConfig;
 BTWIFICONFIG btWifiConfig;
 MQTTCONFIG mqttConfig;
 
+static char buf[1024] = {0};
+//char buf2[1024] = {0};
+
+#if SUPPORT_CONFIG_JSON != 0
+void init_config() {
+	cJSON *root = NULL;
+	root = cJSON_CreateObject();
+	if(root != NULL) {
+		cJSON_AddItemToObject(root, CONFIG_KEY_SYS_VERSION, cJSON_CreateString((const char *)""));
+		cJSON_AddItemToObject(root, CONFIG_KEY_MCU_VERSION, cJSON_CreateString((const char *)""));
+		cJSON_AddItemToObject(root, CONFIG_KEY_OASIS_VERSION, cJSON_CreateString((const char *)""));
+
+		cJSON_AddItemToObject(root, CONFIG_KEY_BT_VERSION, cJSON_CreateString((const char *)""));
+		cJSON_AddItemToObject(root, CONFIG_KEY_BT_MAC, cJSON_CreateString((const char *)""));
+
+		cJSON_AddItemToObject(root, CONFIG_KEY_WIFI_MAC, cJSON_CreateString((const char *)""));
+		cJSON_AddItemToObject(root, CONFIG_KEY_SSID, cJSON_CreateString((const char *)""));
+		cJSON_AddItemToObject(root, CONFIG_KEY_WIFI_PWD, cJSON_CreateString((const char *)""));
+
+		char* buf = NULL;
+
+		buf = cJSON_Print(root);
+		//LOGD("%s buf is %s\n", __FUNCTION__, buf);
+
+		fatfs_write(DEFAULT_CONFIG_FILE, buf, 0, strlen(buf));
+
+		cJSON_Delete(root);
+	}
+}
+
+void check_config() {
+	if(fatfs_read(DEFAULT_CONFIG_FILE, buf, 0, sizeof(buf)) == -1) {
+		LOGD("%s return \n", __FUNCTION__);
+		init_config();
+	}
+}
+
+int update_section_key(char *section, char *key) {
+	//LOGD("%s\n", __FUNCTION__);
+	cJSON *root = NULL;
+	char* buf2 = NULL;
+	memset(buf, 0, sizeof(buf));
+
+	if(fatfs_read(DEFAULT_CONFIG_FILE, buf, 0, sizeof(buf)) == -1) {
+		LOGD("%s return \n", __FUNCTION__);
+		init_config();
+		//return -1;
+	}
+	//LOGD("buf is %s\n", buf);
+
+
+	root = cJSON_Parse(buf);
+	//root = cJSON_CreateObject();
+	if(root != NULL) {
+		cJSON_ReplaceItemInObject(root, section, cJSON_CreateString((const char *)key));
+
+		buf2 = cJSON_Print(root);
+		//LOGD("%s buf2 is %s\n", __FUNCTION__, buf2);
+
+		fatfs_write(DEFAULT_CONFIG_FILE, buf2, 0, strlen(buf2));
+
+		cJSON_Delete(root);
+	}
+
+	return 0;
+}
+
+int update_mac(char *file, char *mac) {
+	//LOGD("%s\n", __FUNCTION__);
+	
+	//update_section_key(CONFIG_KEY_WIFI_MAC, mac);
+
+	return 0;
+}
+
+int update_wifi_ssid(char *file, char *ssid) {
+	//LOGD("%s\n", __FUNCTION__);
+	
+	update_section_key(CONFIG_KEY_SSID, ssid);
+
+	return 0;
+}
+
+int update_wifi_pwd(char *file, char *password) {
+	//LOGD("%s\n", __FUNCTION__);
+	
+	update_section_key(CONFIG_KEY_WIFI_PWD, password);
+
+	return 0;
+}
+
+int update_bt_info(char *version, char *mac)
+{
+	//LOGD("%s\n", __FUNCTION__);
+
+	update_section_key(CONFIG_KEY_BT_VERSION, version);
+	update_section_key(CONFIG_KEY_BT_MAC, mac);
+
+	return 0;
+}
+
+int update_mcu_info(char *version)
+{
+	//LOGD("%s\n", __FUNCTION__);
+
+	update_section_key(CONFIG_KEY_MCU_VERSION, version);
+
+	return 0;
+}
+
+int update_sys_info(char *version)
+{
+	//LOGD("%s\n", __FUNCTION__);
+
+	update_section_key(CONFIG_KEY_SYS_VERSION, version);
+
+    return 0;
+}
+
+
+int update_project_info(char *version)
+{
+	//LOGD("%s\n", __FUNCTION__);
+
+	update_section_key(CONFIG_KEY_OASIS_VERSION, version);
+
+	return 0;
+}
+
+#else
 int update_option_if_not_exist(Config *cnf, char *section, char *key, char *value) {
 	if (!cnf_has_option(cnf, section, key)) {
 		return cnf_add_option(cnf, section, key, value);
@@ -315,4 +447,4 @@ void print_project_config(void) {
 	printf("\tusername: \t%s\n", mqttConfig.username);
 	printf("\tpassword: \t%s\n", mqttConfig.password);
 }
-
+#endif

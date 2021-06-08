@@ -24,10 +24,15 @@ extern "C" {
 #define	MQTT_CWJAP_SIZE	(sizeof(MQTT_CWJAP) - 1)
 int WIFI_UART8_Start();
 
+extern void mqtt_task(void *pvParameters);
+extern void mqtt_init(void);
 
+extern int run_at_cmd(char const *cmd, int retry_times, int cmd_timeout_usec);
+extern int run_at_long_cmd(char const *cmd, int retry_times, int cmd_timeout_usec);
 
 #ifdef __cplusplus
 }
+
 #endif
 
 

@@ -101,6 +101,8 @@ static bool lcd_back_ground = true;
 static void uart5_task(void *pvParameters);
 static int Uart5_SendQMsg(void* msg);
 
+int SendMsgToMqtt(unsigned char *MsgBuf, unsigned char MsgLen);
+
 /*******************************************************************************
  * Code
  ******************************************************************************/
@@ -308,6 +310,40 @@ const unsigned char *MsgHead_Unpacket(
 	return pszBuffer + sizeof(MESSAGE_HEAD);
 }
 
+//106F->MCU:通用响应
+int cmdCommRsp2MCU(unsigned char CmdId, uint8_t ret)
+{
+	char szBuffer[128]={0};
+	int iBufferSize;
+	char *pop = NULL;
+	unsigned char MsgLen = 0;
+
+	memset(szBuffer, 0, sizeof(szBuffer));	
+	pop = szBuffer+sizeof(MESSAGE_HEAD);
+	
+	/* 填充消息体 */
+	StrSetUInt8((uint8_t*)pop, ret);
+	MsgLen += sizeof(uint8_t);
+	pop += sizeof(uint8_t);
+
+	/* 填充消息头 */
+	iBufferSize = MsgHead_Packet(
+		szBuffer,
+		HEAD_MARK,
+		CmdId,
+		MsgLen);
+	
+	/* 计算FCS */
+	unsigned short cal_crc16 = CRC16_X25((uint8_t*)szBuffer, MsgLen+sizeof(MESSAGE_HEAD));
+	memcpy((uint8_t*)pop, &cal_crc16, sizeof(cal_crc16));
+	
+	SendMsgToMCU((uint8_t*)szBuffer, iBufferSize+CRC16_LEN);
+	//usleep(10);
+	vTaskDelay(pdMS_TO_TICKS(1));
+
+	return 0;
+}
+
 int SendMsgToMCU(unsigned char *MsgBuf, unsigned char MsgLen)
 {
 	int ret = kStatus_Success; 
@@ -383,6 +419,9 @@ int cmdSysInitOKSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessa
 	if((nMessageLen < sizeof(szBuffer)) && nMessageLen == 4)
 	{
 		memcpy(szBuffer, pszMessage, nMessageLen);
+	}else {
+        LOGD("%s : error\n", __FUNCTION__);
+		return 0;
 	}
 
 	//解析设置参数
@@ -397,16 +436,16 @@ int cmdSysInitOKSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessa
 	
 	//MCU消息处理
 	//更新电量显示
-	//status中bit的处理
-	if(stInitSyncInfo.status & 0x01)// 防撬开关单次触发（MCU上传后置0）
+	//status中bit 的处理
+	if(stInitSyncInfo.status & 0x01) // 防撬开关单次出发(MCU上传后置0)
 	{
 		//通知UI做出反应
 	}
-	if(stInitSyncInfo.status & 0x02)//恢复出厂设置按钮单次触发（MCU上传后置0）
+	if(stInitSyncInfo.status & 0x02)// 恢复出厂设置按钮单次触发(MCU上传后置0)
 	{
-		//界面跳转到恢复出厂设置或者直接调用恢复出厂设置功能模块
+		// 界面跳转到恢复出厂设置或者直接调用恢复出厂设置功能模块
 	}
-	if(stInitSyncInfo.status & 0x04)//老化模式（MCU掉电后清0，由A5配置
+	if(stInitSyncInfo.status & 0x04)// 老化模式(MCU掉电后清0, 由A5配置)
 	{
 		//运行老化测试程序
 	}
@@ -427,11 +466,15 @@ int cmdSysInitOKSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessa
 		// 获取字符串格式的版本号
 		memset(verbuf, 0, sizeof(verbuf));
 		memset(ver_tmp, 0, sizeof(ver_tmp));
-		sprintf(ver_tmp, "W8_106F_C4L1A3_V%s", SYS_VERSION);
+		sprintf(ver_tmp, "%s", FIRMWARE_VERSION);
+        update_sys_info(ver_tmp);
+        //LOGD("SYS_VERSION :<%s>.\n", ver_tmp);
 
 		// 保存设置到系统配置文件
-		update_project_info("config.ini", ver_tmp);
-		LOGD("OASIS_VERSION :<%s>.\n", ver_tmp);
+        memset(ver_tmp, 0, sizeof(ver_tmp));
+        sprintf(ver_tmp, "%s", PROJECT_VERSION);
+		update_project_info(ver_tmp);
+		//LOGD("OASIS_VERSION :<%s>.\n", ver_tmp);
 	
 
 		/* 保存MCU 信息到系统配置文件 */
@@ -442,14 +485,29 @@ int cmdSysInitOKSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessa
 		sprintf(ver_tmp, "W8_HC130_106F_V%c.%c.%c", verbuf[0], verbuf[1], verbuf[2]);
 
 		// 保存设置到系统配置文件
-		update_mcu_info("config.ini", ver_tmp); 
+		update_mcu_info(ver_tmp);
 		//read_config("./config.ini");
-		LOGD("MCU_VERSION:<%s>.\n", ver_tmp);
+		//LOGD("MCU_VERSION:<%s>.\n", ver_tmp);
 	
 		//system("sync");
 	}
 #endif
+#if	0
+	// 通知MQTT 上传
+    char version[12]={0};
+	memcpy(version, VERSION, sizeof(VERSION));
+    char subVersion[4]={0};
+    subVersion[0]=version[0];
+    subVersion[1]=version[2];
+    subVersion[2]=version[4];
+    LOGD("%s , %s \n", version, subVersion);
 
+
+    uint16_t sVersion= atoi( subVersion );
+    LOGD("%d \n",sVersion);
+
+	sendSysInit2MQTT(sVersion, stInitSyncInfo.PowerVal);
+#endif
 	return 0;
 }
 
@@ -949,6 +1007,146 @@ int cmdSetSysTimeSynProc(unsigned char nMessageLen, const unsigned char *pszMess
 
 
 //串口接收消息处理
+// 主控接收指令: WIFI SSID 设置请求
+int cmdWifiSSIDProc(unsigned char nMessageLen, const unsigned char *pszMessage)
+{
+	uint8_t ret = FAILED;
+	char wifi_ssid[WIFI_SSID_LEN_MAX+1]={0};
+
+	// 解析指令
+	if((nMessageLen < sizeof(wifi_ssid)) && nMessageLen < WIFI_SSID_LEN_MAX)
+	{
+		memset(wifi_ssid, 0, sizeof(wifi_ssid));
+		memcpy(wifi_ssid, pszMessage, nMessageLen);
+		
+		// 保存设置到系统配置文件
+		LOGD("wifi ssid : <%s>.\n", wifi_ssid);
+		update_wifi_ssid("./config.ini", wifi_ssid);	
+		//read_config("./config.ini");
+		
+		ret = SUCCESS;
+	}	
+
+	cmdCommRsp2MCU(CMD_WIFI_SSID, ret);
+	return 0;
+}
+
+// 主控接收指令: WIFI SSID 设置请求
+int cmdWifiPwdProc(unsigned char nMessageLen, const unsigned char *pszMessage)
+{
+	uint8_t ret = FAILED;
+	char  wifi_pwd[WIFI_PWD_LEN_MAX+1]={0};
+
+	// 解析指令
+	if((nMessageLen < sizeof(wifi_pwd)) && nMessageLen < WIFI_SSID_LEN_MAX)
+	{
+		memset(wifi_pwd, 0, sizeof(wifi_pwd));
+		memcpy(wifi_pwd, pszMessage, nMessageLen);
+		
+		// 保存设置到系统配置文件
+		LOGD("wifi pwd : <%s>.\n", wifi_pwd);
+		update_wifi_pwd("./config.ini", wifi_pwd);	
+		//read_config("./config.ini");
+		ret = SUCCESS;
+	}
+
+	cmdCommRsp2MCU(CMD_WIFI_PWD, ret);
+	return 0;
+}
+
+
+// 主控接收指令: 蓝牙模块状态信息上报
+int cmdBTInfoRptProc(unsigned char nMessageLen, const unsigned char *pszMessage)
+{
+	uint8_t ret = FAILED;
+	uint8_t bt_ver = 0; 
+	uint8_t bt_mac[6] = {0};	
+	char bt_verbuf[4] = {0}; 
+	char bt_ver_tmp[32] = {0}; 
+	char bt_mac_tmp[16] = {0}; 
+	
+	//解析指令
+	if(nMessageLen == 1+6)
+	{
+		bt_ver = StrGetUInt8( pszMessage );
+		memset(bt_mac, 0, sizeof(bt_mac));
+		memcpy(bt_mac, pszMessage+1, 6);
+
+		// 获取字符串格式的版本号
+		memset(bt_verbuf, 0, sizeof(bt_verbuf));		
+		memset(bt_ver_tmp, 0, sizeof(bt_ver_tmp));
+		sprintf(bt_verbuf, "%03d", bt_ver);
+		sprintf(bt_ver_tmp, "W8_52832_V%c.%c.%c", bt_verbuf[0], bt_verbuf[1], bt_verbuf[2]);
+
+		// 转换为字符格式的BT mac
+		memset(bt_mac_tmp, 0, sizeof(bt_mac_tmp));
+		sprintf(bt_mac_tmp, "%02x%02x%02x%02x%02x%02x",	\
+			bt_mac[0],bt_mac[1],bt_mac[2],bt_mac[3],bt_mac[4],bt_mac[5]);
+
+		// 保存设置到系统配置文件
+		update_bt_info(bt_ver_tmp, bt_mac_tmp);
+		//read_config("./config.ini");
+		LOGD("bt_ver :<%s>, bt_mac:<%s>.\n", bt_ver_tmp, bt_mac_tmp);
+		
+		//system("sync");
+		ret = SUCCESS;
+	}
+
+	//cmdCommRsp2MCU(CMD_BT_INFO, ret);
+	return 0;
+}
+
+//======= 需要通过MQTT来转发的消息=====
+int SendMsgToMqtt(unsigned char *MsgBuf, unsigned char MsgLen)
+{
+	int ret; 
+#if 1
+	if(1/*stSysLogCfg.log_level < LOG_DEBUG*/)
+	{
+		int i = 0;
+		LOGD("\n<<<send to MQTT MsgQueue<len:%d>:", MsgLen);
+		for(i; i<MsgLen; i++)	
+		{		
+			LOGD("0x%02x   ", MsgBuf[i]);
+		}	
+		LOGD("\n");
+	}
+#endif
+	//ret = MqttQMsgSend(MsgBuf, MsgLen);
+
+	return ret;
+}
+//开机同步完成后, 请求MQTT上传版本号， 电量，状态
+int sendSysInit2MQTT(uint16_t version, uint8_t powerValue)
+{
+	//LOGD("请求MQTT上传版本号,电量,状态\n");
+    LOGD("%s\n", __FUNCTION__);
+#if	0
+    char szBuffer[32]={0};
+    int iBufferSize;
+    memset(szBuffer, 0, sizeof(szBuffer));
+    char *pop = NULL;
+    unsigned char MsgLen = 0;
+
+    pop = szBuffer+sizeof(MESSAGE_HEAD);
+    memcpy(pop, &version, 2);
+    pop+=2;
+    MsgLen+=2;
+    memcpy(pop, &powerValue, 1);
+    pop+=1;
+    MsgLen+=1;
+
+    /* 填充消息头 */
+    iBufferSize = MsgHead_Packet(
+            szBuffer,
+            HEAD_MARK,
+            CMD_INITOK_SYNC,
+            MsgLen);
+    unsigned short cal_crc16 = CRC16_X25((uint8_t*)szBuffer, MsgLen+sizeof(MESSAGE_HEAD));
+    memcpy((uint8_t*)pop, &cal_crc16, sizeof(cal_crc16));
+    SendMsgToMqtt((uint8_t*)szBuffer, iBufferSize+CRC16_LEN);
+#endif
+}
 int ProcMessage(
 	unsigned char nCommand,
 	unsigned char nMessageLen,
@@ -1005,6 +1203,24 @@ int ProcMessage(
 			cmdReqActiveByPhoneProc(nMessageLen, pszMessage);
 			break;
 		}		
+
+		case CMD_WIFI_SSID:	
+		{
+			cmdWifiSSIDProc(nMessageLen, pszMessage);
+			break;
+		}	
+		case CMD_WIFI_PWD:	
+		{
+			cmdWifiPwdProc(nMessageLen, pszMessage);
+			break;
+		}	
+
+		case CMD_BT_INFO:
+		{
+			cmdBTInfoRptProc(nMessageLen, pszMessage);
+			
+			break;
+		}
 		
 		default:
 			LOGD("No effective cmd from MCU!\n");
@@ -1014,7 +1230,7 @@ int ProcMessage(
 	return 0;
 }
 
-char buf[1024] = {0};
+static char buf[1024] = {0};
 
 static void uart5_QMsg_task(void *pvParameters)
 {
@@ -1138,6 +1354,7 @@ static void uart5_QMsg_task(void *pvParameters)
 static void uart5_sync_task(void *pvParameters)
 {
 	vTaskDelay(pdMS_TO_TICKS(1500));
+	check_config();
 	cmdSysInitOKSyncReq(SYS_VERSION);
 	vTaskDelete(NULL);
 }
@@ -1216,7 +1433,7 @@ static void uart5_task(void *pvParameters)
 			
 			memset(message_buffer, 0, sizeof(message_buffer));
 			HexToStr(message_buffer, recv_buffer, msglen);
-			LOGD("\n===send msg<len:%d %s>:", msglen, message_buffer);	
+			LOGD("\n===receive msg<len:%d %s>:", msglen, message_buffer);
 			/*for(i=0; i<msglen; i++)	
 			{		
 				LOGD("0x%02x	", recv_buffer[i]); 

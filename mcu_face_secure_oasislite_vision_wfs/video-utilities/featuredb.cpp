@@ -73,21 +73,6 @@ int unlink(db_context_handle_t *context_handle, db_op_link_t *op_link)
         return DB_SUCCESS;
 }
 
-int add_op_link(db_op_type_t op, db_content_t *p_content)
-{
-    db_op_link_t *op_link = (db_op_link_t *)pvPortMalloc(sizeof(db_op_link_t));
-
-    op_link->op = op;
-    op_link->content = p_content;
-
-    if(link(&s_feature_db_context_list, op_link) != DB_SUCCESS)
-    {
-        return DB_FAIL;
-    }
-
-    return DB_SUCCESS;
-}
-
 int add_sync(uint16_t id, const string name, float* feature)
 {
     if( remote_change_fs ) {
@@ -315,18 +300,6 @@ FeatureDB::~FeatureDB()
 int FeatureDB::add_feature(uint16_t id, const string name, float* feature)
 {
 	LOGD("%s", __FUNCTION__);
-    db_content_t *p_content = (db_content_t *)pvPortMalloc(sizeof(db_content_t));
-    memset(p_content, 0, sizeof(db_content_t));
-
-    p_content->id = id;
-    p_content->feature = (float*)pvPortMalloc(OASISLT_getFaceItemSize());
-
-    strcpy(p_content->name, name.c_str());
-    memcpy(p_content->feature, feature, OASISLT_getFaceItemSize());
-
-    add_op_link(DB_ADD, p_content);
-
-#if 1
     if( remote_change_fs ) {
         fatfs_mount_with_mkfs();
         remote_change_fs = 0;
@@ -335,25 +308,12 @@ int FeatureDB::add_feature(uint16_t id, const string name, float* feature)
     char file_name[FEATURE_FILE_LENNAME];
     sprintf(file_name, "%010d,%s", id, name.c_str());
     fatfs_write(file_name, (const char *)feature, 0, OASISLT_getFaceItemSize());
-#endif
     return 0;
 }
 
 int FeatureDB::update_feature(uint16_t id, const string name, float* feature)
 {
 	LOGD("%s", __FUNCTION__);
-
-    db_content_t *p_content = (db_content_t *)pvPortMalloc(sizeof(db_content_t));
-    memset(p_content, 0, sizeof(db_content_t));
-
-    p_content->id = id;
-    p_content->feature = (float*)pvPortMalloc(OASISLT_getFaceItemSize());
-
-    strcpy(p_content->name, name.c_str());
-    memcpy(p_content->feature, feature, OASISLT_getFaceItemSize());
-
-    add_op_link(DB_UPDATE, p_content);
-#if 1
     if( remote_change_fs ) {
         fatfs_mount_with_mkfs();
         remote_change_fs = 0;
@@ -362,7 +322,6 @@ int FeatureDB::update_feature(uint16_t id, const string name, float* feature)
     char file_name[FEATURE_FILE_LENNAME];
     sprintf(file_name, "%010d,%s", id, name.c_str());
     fatfs_write(file_name, (const char *)feature, 0, OASISLT_getFaceItemSize());
-#endif
 
     return 0;
 }
@@ -370,17 +329,6 @@ int FeatureDB::update_feature(uint16_t id, const string name, float* feature)
 int FeatureDB::del_feature(uint16_t id, string name)
 {
 	LOGD("%s", __FUNCTION__);
-    db_content_t *p_content = (db_content_t *)pvPortMalloc(sizeof(db_content_t));
-    memset(p_content, 0, sizeof(db_content_t));
-
-    p_content->id = id;
-    p_content->feature = NULL;
-
-    strcpy(p_content->name, name.c_str());
-
-    add_op_link(DB_DELETE, p_content);
-
-#if 1
     if( remote_change_fs ) {
         fatfs_mount_with_mkfs();
         remote_change_fs = 0;
@@ -389,24 +337,12 @@ int FeatureDB::del_feature(uint16_t id, string name)
     char file_name[FEATURE_FILE_LENNAME];
     sprintf(file_name, "%010d,%s", id, name.c_str());
     fatfs_delete(file_name);
-#endif
     return 0;
 }
 
 int FeatureDB::del_feature(const string name)
 {
 	LOGD("%s", __FUNCTION__);
-    db_content_t *p_content = (db_content_t *)pvPortMalloc(sizeof(db_content_t));
-    memset(p_content, 0, sizeof(db_content_t));
-
-    p_content->id = -1;
-    p_content->feature = NULL;
-
-    strcpy(p_content->name, name.c_str());
-
-    add_op_link(DB_DELETE, p_content);
-
-#if 1
     if( remote_change_fs ) {
         fatfs_mount_with_mkfs();
         remote_change_fs = 0;
@@ -433,22 +369,12 @@ int FeatureDB::del_feature(const string name)
     }
 
     fatfs_closedir();
-#endif
     return 0;
 }
 
 int FeatureDB::del_feature_all()
 {
 	LOGD("%s", __FUNCTION__);
-    db_content_t *p_content = (db_content_t *)pvPortMalloc(sizeof(db_content_t));
-    memset(p_content, 0, sizeof(db_content_t));
-
-    p_content->id = -1;
-    p_content->name[0] = '\0';
-    p_content->feature = NULL;
-
-    add_op_link(DB_DELETE, p_content);
-#if 1
     if( remote_change_fs ) {
         fatfs_mount_with_mkfs();
         remote_change_fs = 0;
@@ -478,23 +404,11 @@ int FeatureDB::del_feature_all()
     {
         fatfs_delete(file_list[i].c_str());
     }
-#endif
     return 0;
 }
 
 int FeatureDB::ren_name(const string oldname, const string newname)
 {
-    db_content_t *p_content = (db_content_t *)pvPortMalloc(sizeof(db_content_t));
-    memset(p_content, 0, sizeof(db_content_t));
-
-    p_content->id = -1;
-    p_content->feature = NULL;
-
-    strcpy(p_content->oldname, oldname.c_str());
-    strcpy(p_content->name, newname.c_str());
-
-    add_op_link(DB_RENAME, p_content);
-#if 1
     if( remote_change_fs ) {
         fatfs_mount_with_mkfs();
         remote_change_fs = 0;
@@ -521,7 +435,6 @@ int FeatureDB::ren_name(const string oldname, const string newname)
     }
 
     fatfs_closedir();
-#endif
     return 0;
 }
 

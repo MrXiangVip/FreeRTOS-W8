@@ -3,12 +3,22 @@
 
 #include "config-cnf.h"
 
-#ifdef HOST
-#define DEFAULT_CONFIG_FILE "config.ini.host"
+#define	SUPPORT_CONFIG_JSON		1
+#if SUPPORT_CONFIG_JSON != 0
+#define DEFAULT_CONFIG_FILE "config.json"
 #else
 //#define DEFAULT_CONFIG_FILE "/opt/smartlocker/config.ini"
 #define DEFAULT_CONFIG_FILE "config.ini"
 #endif
+
+#define CONFIG_KEY_SYS_VERSION		"SYS"
+#define CONFIG_KEY_MCU_VERSION		"MCU"
+#define CONFIG_KEY_OASIS_VERSION	"OASIS"
+#define CONFIG_KEY_BT_VERSION		"BT_VERSION"
+#define CONFIG_KEY_BT_MAC			"BT_MAC"
+#define CONFIG_KEY_WIFI_MAC			"WIFI_MAC"
+#define CONFIG_KEY_SSID				"SSID"
+#define CONFIG_KEY_WIFI_PWD			"PASSWORD"
 #define MAC_LEN 20
 #define CONFIG_ITEM_LEN 128
 #define DEFAULT_MAC "FFFFFFFFFFFF"
@@ -47,6 +57,8 @@ extern MQTTCONFIG mqttConfig;
 extern "C"  {
 #endif
 
+	void init_config();
+	void check_config();
 	int read_config(char *file);
 	int read_config_value(char *dst, Config* cnf, char *section, char *key);
 	int read_default_config_from_file(char *file, char *dst, char *section, char *key, char *default_value);
@@ -60,10 +72,11 @@ extern "C"  {
 	int update_wifi_ssid(char *file, char *ssid) ;
 	int update_wifi_pwd(char *file, char *password) ;
 	int update_mqtt_opt(char *file, char *username, char *password) ;
-	int update_bt_info(char *file, char *version, char *mac) ;
+	int update_bt_info(char *version, char *mac) ;
 	int update_MqttSvr_opt(char *file, char *MqttSvrUrl) ;
-	int update_mcu_info(char *file, char *version) ;
-	int update_project_info(char *file, char *version) ;
+	int update_mcu_info(char *version) ;
+	int update_project_info(char *version) ;
+    int update_sys_info(char *version);
 	int update_NetworkOptVer_info(char *file, char *version) ;//???????????????ð汾??
 
 #ifdef __cplusplus

@@ -264,6 +264,9 @@ typedef struct {
 #define OASISDETTASK_PRIORITY (configMAX_PRIORITIES - 3UL)
 #define OASISDETTASK_STACKSIZE 10 * 1024
 
+#define MQTTTASK_PRIORITY (configMAX_PRIORITIES - 2UL)      //(configMAX_PRIORITIES - 1)
+#define MQTTTASK_STACKSIZE 256  //(configMINIMAL_STACK_SIZE + 100)     //(configMINIMAL_STACK_SIZE + 100)
+
 #define host_task_PRIORITY                  ((configMAX_PRIORITIES) - 5UL)
 #define BLETASK_STACKSIZE                   1024
 
