@@ -26,5 +26,12 @@ void util_GRAY16ToRGB888(const uint16_t* gray16, int w, int h, uint8_t* rgb);
 void util_Raw16ToDepth12(const uint16_t* raw16, int w, int h, uint16_t* depth12);
 void util_Crop_C3(unsigned char* src, int srcw, int srch, unsigned char* dst, int dstw, int dsth, int top, int left, int elemsize);
 
-int FileExist(const char* filename);
+uint8_t StrGetUInt8( const uint8_t * i_pSrc );
+uint16_t StrGetUInt16( const uint8_t * i_pSrc );
+uint32_t StrGetUInt32( const uint8_t * i_pSrc );
+void StrSetUInt8( uint8_t * io_pDst, const uint8_t i_u8Src );
+void StrSetUInt16( uint8_t * io_pDst, const uint16_t i_u16Src );
+void StrSetUInt32( uint8_t * io_pDst, const uint32_t i_u32Src );
+void StrToHex(unsigned char *pbDest, char *pszSrc, int nLen);
+void HexToStr(char *pszDest, unsigned char *pbSrc, int nLen);
 #endif /* _FACEREC_UTIL_H_ */

@@ -84,7 +84,7 @@ void ws_localtime(ws_time_t time,struct ws_tm *t)
 	return;
 }
 
-static ws_time_t mon_yday[2][12] =
+static const ws_time_t mon_yday[2][12] =
 {
 	{0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334},
 	{0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335},
@@ -114,3 +114,9 @@ ws_time_t ws_mktime(struct ws_tm dt)
 	return (result);
 }
 
+void setTimestamp(int sec)
+{
+    struct ws_tm t;
+    ws_localtime(sec,&t);
+    ws_mktime(t);
+}

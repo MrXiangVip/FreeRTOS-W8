@@ -18,7 +18,7 @@ struct ws_tm {
 };
 void ws_localtime(ws_time_t time,struct ws_tm *t);
 ws_time_t ws_mktime(struct ws_tm dt);
-
+void setTimestamp(int sec);
 #ifdef __cplusplus
 }
 #endif
