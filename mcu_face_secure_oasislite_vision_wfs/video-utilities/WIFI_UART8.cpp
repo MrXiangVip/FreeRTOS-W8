@@ -314,7 +314,7 @@ static void mqttinit_task(void *pvParameters) {
     // 连接MQTT
     //result = quickConnectMQTT(mqttConfig.client_id, mqttConfig.username, mqttConfig.password, mqttConfig.server_ip,
     //                       mqttConfig.server_port, pub_topic_last_will, lwtMsg);
-    result = quickConnectMQTT("CECADED19DB9", "7CDFA102AB68", "0000000000000000", "10.0.14.61",
+    result = quickConnectMQTT(mqttConfig.client_id, "7CDFA102AB68", "0000000000000000", "10.0.14.61",
                               "9883", pub_topic_last_will, lwtMsg);
     //result = quickConnectMQTT("f3eb0aee1eb7", "7CDFA102AB68", "0000000000000000", "47.107.126.154",
     //                          "1883", pub_topic_last_will, lwtMsg);
@@ -1155,16 +1155,19 @@ static void msghandle_task(void *pvParameters)
                 //        msgId, btWifiConfig.bt_mac, wifi_rssi, w7_battery_level, g_heartbeat_index++,
                 //        getFirmwareVersion());
 
-                sprintf(pub_msg,
-                        "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"wifi_rssi\\\":%s\\,\\\"battery\\\":%d\\,\\\"index\\\":%d\\,\\\"version\\\":\\\"%s\\\"}",
-                        "0", "CECADED19DB9", "-55", 50, g_heartbeat_index++,
-                        "fw"/*getFirmwareVersion()*/);
+                //sprintf(pub_msg,
+                //        "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"wifi_rssi\\\":%s\\,\\\"battery\\\":%d\\,\\\"index\\\":%d\\,\\\"version\\\":\\\"%s\\\"}",
+                //        "0", btWifiConfig.bt_mac, "-55", 50, g_heartbeat_index++,
+                //        "fw"/*getFirmwareVersion()*/);
 
+                sprintf(pub_msg,
+                        "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"index\\\":%d\\\"}",
+                        "0", btWifiConfig.bt_mac,g_heartbeat_index++);
 
                 pub_topic = get_pub_topic_heart_beat();
                 //LOGD("%s pub_msg is %s\n", __FUNCTION__, pub_msg);
-                //int ret = quickPublishMQTTWithPriority(pub_topic, pub_msg, 1);
-                int ret = quickPublishMQTTWithPriority(pub_topic, "{\\\"msgId\\\":\\\"0\\\"\\,\\\"mac\\\":\\\"CECADED19DB9\\\"\\,\\\"index\\\":2\\}", 1);
+                int ret = quickPublishMQTTWithPriority(pub_topic, pub_msg, 1);
+                //int ret = quickPublishMQTTWithPriority(pub_topic, "{\\\"msgId\\\":\\\"0\\\"\\,\\\"mac\\\":\\\"CECADED19DB9\\\"\\,\\\"index\\\":2\\}", 1);
             }
         }
         count++;

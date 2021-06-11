@@ -974,7 +974,7 @@ int cmdBTInfoRptProc(unsigned char nMessageLen, const unsigned char *pszMessage)
 
 		// 转换为字符格式的BT mac
 		memset(bt_mac_tmp, 0, sizeof(bt_mac_tmp));
-		sprintf(bt_mac_tmp, "%02x%02x%02x%02x%02x%02x",	\
+		sprintf(bt_mac_tmp, "%02X%02X%02X%02X%02X%02X",	\
 			bt_mac[0],bt_mac[1],bt_mac[2],bt_mac[3],bt_mac[4],bt_mac[5]);
 
 		// 保存设置到系统配置文件
