@@ -36,6 +36,7 @@
 #include "camera_rt106f_elock.h"
 
 #include "../mqtt/config.h"
+#include "WIFI_UART8.h"
 
 // 20201120 wszgx added for display correct date/time information in the screen
 /*******************************************************************************
@@ -100,8 +101,6 @@ static bool lcd_back_ground = true;
  ******************************************************************************/
 static void uart5_task(void *pvParameters);
 static int Uart5_SendQMsg(void* msg);
-
-int SendMsgToMqtt(unsigned char *MsgBuf, unsigned char MsgLen);
 
 /*******************************************************************************
  * Code
@@ -620,6 +619,24 @@ int cmdOpenDoorReq(uUID uu_id)
 	return 0;
 }
 
+// 主控接收指令:远程wifi开门响应
+int cmdWifiOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage)
+{
+	uint8_t ret = SUCCESS;	
+
+	ret = StrGetUInt8( pszMessage );
+
+	if(1/*stSystemCfg.flag_wifi_enable*/)
+	{
+		// 转发响应给 Mqtt 模块
+		cmdCommRsp2Mqtt(CMD_WIFI_OPEN_DOOR, ret);
+		//usleep(200);
+	}
+	
+	return 0;
+}
+
+
 //主控发送: 关机请求
 int cmdCloseFaceBoardReq()
 {
@@ -973,26 +990,46 @@ int cmdBTInfoRptProc(unsigned char nMessageLen, const unsigned char *pszMessage)
 	return 0;
 }
 
-//======= 需要通过MQTT来转发的消息=====
-int SendMsgToMqtt(unsigned char *MsgBuf, unsigned char MsgLen)
-{
-	int ret; 
-#if 1
-	if(1/*stSysLogCfg.log_level < LOG_DEBUG*/)
-	{
-		int i = 0;
-		LOGD("\n<<<send to MQTT MsgQueue<len:%d>:", MsgLen);
-		for(i; i<MsgLen; i++)	
-		{		
-			LOGD("0x%02x   ", MsgBuf[i]);
-		}	
-		LOGD("\n");
-	}
-#endif
-	//ret = MqttQMsgSend(MsgBuf, MsgLen);
-
-	return ret;
+//106F->MQTT: 通用响应
+int cmdCommRsp2Mqtt(unsigned char CmdId, uint8_t ret) {
+    int result = 0;
+    result = cmdCommRsp2MqttByHead(HEAD_MARK, CmdId, ret);
+    return result;
 }
+
+int cmdCommRsp2MqttByHead(unsigned char nHead, unsigned char CmdId, uint8_t ret)
+{
+	char szBuffer[32]={0};
+	int iBufferSize;
+	char *pop = NULL;
+	unsigned char MsgLen = 0;
+
+	memset(szBuffer, 0, sizeof(szBuffer));	
+	pop = szBuffer+sizeof(MESSAGE_HEAD);
+	
+	/* 填充消息体 */
+	StrSetUInt8((uint8_t*)pop, ret);
+	MsgLen += sizeof(uint8_t);
+	pop += sizeof(uint8_t); 
+	
+	/* 填充消息头 */
+	iBufferSize = MsgHead_Packet(
+		szBuffer,
+		nHead,
+		CmdId,
+		MsgLen);
+	
+	/* 计算FCS */
+	unsigned short cal_crc16 = CRC16_X25((uint8_t*)szBuffer, MsgLen+sizeof(MESSAGE_HEAD));
+	memcpy((uint8_t*)pop, &cal_crc16, sizeof(cal_crc16));
+	
+	LOGD("%s send to 0x%02x cmd 0x%02x result %d\n", __FUNCTION__, nHead, CmdId, ret);
+	//���Ϳ�����Ӧ��wifi��ص�mqttģ��
+    SendMsgToMQTT(szBuffer, iBufferSize+CRC16_LEN);
+	
+	return 0;
+}
+
 //开机同步完成后, 请求MQTT上传版本号， 电量，状态
 int sendSysInit2MQTT(uint16_t version, uint8_t powerValue)
 {
@@ -1021,7 +1058,7 @@ int sendSysInit2MQTT(uint16_t version, uint8_t powerValue)
             MsgLen);
     unsigned short cal_crc16 = CRC16_X25((uint8_t*)szBuffer, MsgLen+sizeof(MESSAGE_HEAD));
     memcpy((uint8_t*)pop, &cal_crc16, sizeof(cal_crc16));
-    SendMsgToMqtt((uint8_t*)szBuffer, iBufferSize+CRC16_LEN);
+    SendMsgToMQTT((uint8_t*)szBuffer, iBufferSize+CRC16_LEN);
 #endif
 }
 int ProcMessage(
@@ -1091,6 +1128,12 @@ int ProcMessage(
 			cmdWifiPwdProc(nMessageLen, pszMessage);
 			break;
 		}	
+
+		case CMD_WIFI_OPEN_DOOR:
+		{
+			cmdWifiOpenDoorRsp(nMessageLen, pszMessage);
+			break;
+		}
 
 		case CMD_BT_INFO:
 		{

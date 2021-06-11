@@ -29,6 +29,7 @@
 #include "cJSON.h"
 #include "util.h"
 #include "../mqtt/base64.h"
+#include "../mqtt/mqtt-instruction-pool.h"
 
 /*******************************************************************************
  * Definitions
@@ -85,6 +86,7 @@ static int g_command_executed = 0;
 // 当前pub执行优先级，0为最低优先级，9为最高优先级
 int g_priority = 0;
 
+MqttInstructionPool mqtt_instruction_pool;
 int battery_level = -1;
 
 char wifi_rssi[MQTT_AT_LEN];
@@ -295,6 +297,11 @@ static void mqttinit_task(void *pvParameters) {
     result = run_at_cmd("ATE0", 1, 1200);
     //result = run_at_cmd("AT+CIPSTAMAC?", 1, 1200);
     result = run_at_cmd("AT+CWJAP=\"wireless_052E81\",\"12345678\"", 2, 5000);
+    if (result < 0) {
+        LOGD("--------- Failed to connect to WIFI\n");
+        return;
+    }
+    LOGD("--------- connect to WIFI\n");
 
     vTaskDelay(pdMS_TO_TICKS(3000));
 
@@ -529,8 +536,8 @@ int handlePayload(char *payload, char *msg_idStr) {
                 return -1;
             }
         }
-        //MqttInstruction instruction(x7_cmd, x7_cmd_code, timeout, msg_idStr);
-        int ret = 0;//mqtt_instruction_pool.insertMqttInstruction(instruction);
+        MqttInstruction instruction(x7_cmd, x7_cmd_code, timeout, msg_idStr);
+        int ret = mqtt_instruction_pool.insertMqttInstruction(instruction);
         if (ret == -1) {
             char pub_msg[80];
             memset(pub_msg, '\0', 80);
@@ -680,7 +687,7 @@ int SendMsgToMQTT(char *mqtt_payload, int len) {
     } else {
         char mqtt_msg_id[256];
         memset(mqtt_msg_id, '\0', 256);
-        //strcpy(mqtt_msg_id, mqtt_instruction_pool.getMsgId((char) (mqtt_payload[0]), (char) (mqtt_payload[1])));
+        strcpy(mqtt_msg_id, mqtt_instruction_pool.getMsgId((char) (mqtt_payload[0]), (char) (mqtt_payload[1])));
         LOGD("out mqtt_msg_id is %s", mqtt_msg_id);
         if ((int) (char) (mqtt_payload[0]) == 0x24) {
             //remove_mqtt_instruction_from_pool((char) (mqtt_payload[0]), (char) (mqtt_payload[1]));

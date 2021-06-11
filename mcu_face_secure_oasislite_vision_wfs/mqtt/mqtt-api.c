@@ -148,8 +148,12 @@ int publishMQTT2(int linkId, const char* topic, const char* data, int qos, int r
     sprintf(cmd, "AT+MQTTPUB=%d,\"%s\",\"%s\",%d,%d", linkId, topic, data, qos, retain);
 
     //LOGD("%s cmd is %s\n", __FUNCTION__, cmd);
-    int res = sendATLongCmd(cmd);
-    //int res = sendATCmd(cmd);
+    int res = 0;
+    if (strlen(cmd) > 128) {
+        res = sendATLongCmd(cmd);
+    } else {
+        res = sendATCmd(cmd);
+    }
     // free(cmd);
     return res;
 }
@@ -217,7 +221,7 @@ int quickPublishMQTT(const char* topic, const char* data) {
 extern int g_priority;
 int quickPublishMQTTWithPriority(const char* topic, const char* data, int priority) {
 	g_priority = priority;
-	int ret = publishMQTT(MQTT_LINK_ID_DEFAULT, topic, data, MQTT_QOS_AT_LEAST_ONCE, MQTT_RETAIN_OFF);
+	int ret = publishMQTT2(MQTT_LINK_ID_DEFAULT, topic, data, MQTT_QOS_AT_LEAST_ONCE, MQTT_RETAIN_OFF);
 	g_priority = 0;
 	return ret;
 }

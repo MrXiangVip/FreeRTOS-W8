@@ -30,6 +30,8 @@ extern void mqtt_init(void);
 extern int run_at_cmd(char const *cmd, int retry_times, int cmd_timeout_usec);
 extern int run_at_long_cmd(char const *cmd, int retry_times, int cmd_timeout_usec);
 
+extern int SendMsgToMQTT(char *mqtt_payload, int len);
+
 #ifdef __cplusplus
 }
 
