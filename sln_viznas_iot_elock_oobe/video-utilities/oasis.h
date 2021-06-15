@@ -46,6 +46,7 @@ typedef struct {
 
 int Oasis_Start();
 int Oasis_SendQMsg(void* msg);
+OasisState Oasis_GetState(void);
 
 #ifdef __cplusplus
 }

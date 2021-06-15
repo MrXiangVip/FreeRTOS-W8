@@ -177,6 +177,8 @@ void Set_curFaceInfo(char *name, bool recognize, bool enrolment, int rt);
 int SendMsgToMCU(uint8_t *MsgBuf, uint8_t MsgLen);
 int cmdSysInitOKSyncReq(const char *strVersion);
 
+int cmdCommRsp2MqttByHead(unsigned char nHead, unsigned char CmdId, uint8_t ret);//106F->MQTT: 通用响应
+int cmdCommRsp2Mqtt(unsigned char CmdId, uint8_t ret);//106F->MQTT: 通用响应
 int sendSysInit2MQTT(uint16_t version, uint8_t powerValue);//请求MQTT上传开机时的版本，电量，状态信息
 #ifdef __cplusplus
 }

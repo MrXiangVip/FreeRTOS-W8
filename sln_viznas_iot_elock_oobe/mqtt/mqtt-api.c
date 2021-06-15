@@ -10,6 +10,7 @@
 #define CMD_EXTRA_LEN 30
 //#define MQTT_MAX_LEN 256
 #define MQTT_MAX_LEN 128
+#define MQTT_MAX_LONG_LEN 256
 
 //extern int runATCmd(const char *at_cmd, int retry_times, int cmd_timeout_usec);
 //int run_at_cmd(char const *cmd, int retry_times, int cmd_timeout_usec);
@@ -25,6 +26,16 @@ static int sendATCmd(const char *cmd) {
 	return res;
 }
 
+static int sendATLongCmd(const char *cmd) {
+    LOGD("--- send AT Long CMD %s\n", cmd);
+    int res = run_at_long_cmd(cmd, 1, 8000000);
+    while (res == -5) {
+        //sleep(1);
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        res = run_at_long_cmd(cmd, 1, 8000000);
+    }
+    return res;
+}
 // --------------------------- 主要接口 start ------------------------
 // 连接WIFI
 int connectWifi(const char* ssid, const char* password) {
@@ -121,12 +132,31 @@ int publishMQTT(int linkId, const char* topic, const char* data, int qos, int re
 	sprintf(cmd, "AT+MQTTPUB=%d,\"%s\",\"%s\",%d,%d", linkId, topic, data, qos, retain);
 
 	//LOGD("%s cmd is %s\n", __FUNCTION__, cmd);
-	int res = sendATCmd(cmd);
+	//int res = sendATLongCmd(cmd);
+    int res = sendATCmd(cmd);
 	// free(cmd);
 	return res;
 }
 
+int publishMQTT2(int linkId, const char* topic, const char* data, int qos, int retain) {
+    // int cmd_len = CMD_EXTRA_LEN + strlen(topic) + strlen(data);
 
+    // printf("publishMQTT 1 %d\n", cmd_len);
+    // char *cmd = (char*)malloc(cmd_len);
+    char cmd[MQTT_MAX_LONG_LEN];
+    memset(cmd, 0, sizeof(cmd));
+    sprintf(cmd, "AT+MQTTPUB=%d,\"%s\",\"%s\",%d,%d", linkId, topic, data, qos, retain);
+
+    //LOGD("%s cmd is %s\n", __FUNCTION__, cmd);
+    int res = 0;
+    if (strlen(cmd) > 128) {
+        res = sendATLongCmd(cmd);
+    } else {
+        res = sendATCmd(cmd);
+    }
+    // free(cmd);
+    return res;
+}
 // 断开MQTT连接
 int disconnectMQTT(int linkId) {
 	// int cmd_len = CMD_EXTRA_LEN; 
@@ -191,7 +221,7 @@ int quickPublishMQTT(const char* topic, const char* data) {
 extern int g_priority;
 int quickPublishMQTTWithPriority(const char* topic, const char* data, int priority) {
 	g_priority = priority;
-	int ret = publishMQTT(MQTT_LINK_ID_DEFAULT, topic, data, MQTT_QOS_AT_LEAST_ONCE, MQTT_RETAIN_OFF);
+	int ret = publishMQTT2(MQTT_LINK_ID_DEFAULT, topic, data, MQTT_QOS_AT_LEAST_ONCE, MQTT_RETAIN_OFF);
 	g_priority = 0;
 	return ret;
 }

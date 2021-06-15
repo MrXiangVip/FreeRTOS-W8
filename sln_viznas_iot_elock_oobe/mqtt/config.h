@@ -72,7 +72,7 @@ extern "C"  {
 	int update_wifi_ssid(char *file, char *ssid) ;
 	int update_wifi_pwd(char *file, char *password) ;
 	int update_mqtt_opt(char *file, char *username, char *password) ;
-	int update_bt_info(char *file, char *version, char *mac) ;
+	int update_bt_info(char *version, char *mac) ;
 	int update_MqttSvr_opt(char *file, char *MqttSvrUrl) ;
 	int update_mcu_info(char *version) ;
 	int update_project_info(char *version) ;

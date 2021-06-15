@@ -106,12 +106,15 @@ int update_wifi_pwd(char *file, char *password) {
 	return 0;
 }
 
-int update_bt_info(char *file, char *version, char *mac)
+int update_bt_info(char *version, char *mac)
 {
 	//LOGD("%s\n", __FUNCTION__);
 
 	update_section_key(CONFIG_KEY_BT_VERSION, version);
 	update_section_key(CONFIG_KEY_BT_MAC, mac);
+    memcpy(mqttConfig.client_id, mac, strlen(mac));
+    memcpy(btWifiConfig.bt_mac, mac, strlen(mac));
+    memcpy(mqttConfig.username, mac, strlen(mac));
 
 	return 0;
 }

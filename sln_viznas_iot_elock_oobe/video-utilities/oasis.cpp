@@ -576,6 +576,11 @@ static void Oasis_SetState(OasisState state)
     //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[OASIS]:oasis_state = %d\r\n", state);
 }
 
+OasisState Oasis_GetState(void)
+{
+   return s_CurOasisState;
+}
+
 static void Oasis_Task(void *param)
 {
     BaseType_t ret;
