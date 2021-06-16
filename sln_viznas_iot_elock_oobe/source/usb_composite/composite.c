@@ -35,6 +35,13 @@
 static usb_status_t USB_DeviceCallback(usb_device_handle handle, uint32_t event, void *param);
 extern void USB_DeviceClockInit(void);
 extern usb_status_t USB_DeviceCdcVcomInit(usb_device_composite_struct_t *deviceComposite);
+extern usb_status_t USB_DeviceMscDiskInit(usb_device_composite_struct_t *deviceComposite);
+extern uint8_t USB_DeviceMscCardInit(void);
+#if (defined(USB_DEVICE_CONFIG_USE_TASK) && (USB_DEVICE_CONFIG_USE_TASK > 0)) && \
+    (defined(USB_DEVICE_MSC_USE_WRITE_TASK) && (USB_DEVICE_MSC_USE_WRITE_TASK > 0))
+extern void USB_DeviceMscInitQueue(void);
+extern void USB_DeviceMscWriteTask(void);
+#endif
 /*******************************************************************************
  * Variables
  ******************************************************************************/
@@ -43,7 +50,7 @@ extern usb_status_t USB_DeviceCdcVcomInit(usb_device_composite_struct_t *deviceC
 NonCached usb_device_composite_struct_t g_composite;
 extern usb_device_class_struct_t g_UsbDeviceCdcVcomConfig[USB_DEVICE_CONFIG_CDC_ACM];
 extern usb_device_class_struct_t g_UsbDeviceVideoCameraConfig[USB_DEVICE_CONFIG_VIDEO];
-
+extern usb_device_class_struct_t g_UsbDeviceMscDiskConfig;
 /* Application task handle. */
 
 /* USB device class information */
@@ -57,7 +64,13 @@ usb_device_class_config_struct_t g_CompositeClassConfig[USB_DEVICE_CONFIG_TOTAL]
         USB_DeviceVideoCallback,
         (class_handle_t)NULL,
         &g_UsbDeviceVideoCameraConfig[0],
-    }};
+    },
+	{
+        USB_DeviceMscCallback,
+        (class_handle_t)NULL,
+        &g_UsbDeviceMscDiskConfig,
+	}
+	};
 
 /* USB device class configuration information */
 usb_device_class_config_list_struct_t g_UsbDeviceCompositeConfigList = {
@@ -66,6 +79,8 @@ usb_device_class_config_list_struct_t g_UsbDeviceCompositeConfigList = {
     USB_DEVICE_CONFIG_TOTAL,
 };
 
+usb_device_configuration_descriptor_struct_t g_device_configuration;
+
 /*******************************************************************************
  * Code
  ******************************************************************************/
@@ -73,11 +88,17 @@ usb_device_class_config_list_struct_t g_UsbDeviceCompositeConfigList = {
 void USB_OTG1_IRQHandler(void)
 {
     USB_DeviceEhciIsrFunction(g_composite.deviceHandle);
+    /* Add for ARM errata 838869, affects Cortex-M4, Cortex-M4F Store immediate overlapping
+    exception return operation might vector to incorrect interrupt */
+    __DSB();
 }
 
 void USB_OTG2_IRQHandler(void)
 {
     USB_DeviceEhciIsrFunction(g_composite.deviceHandle);
+    /* Add for ARM errata 838869, affects Cortex-M4, Cortex-M4F Store immediate overlapping
+    exception return operation might vector to incorrect interrupt */
+    __DSB();
 }
 
 void USB_DeviceIsrEnable()
@@ -127,11 +148,10 @@ static usb_status_t USB_DeviceCallback(usb_device_handle handle, uint32_t event,
                 g_composite.cdcVcom[i].tx.length = 0;
                 g_composite.cdcVcom[i].attach    = 0;
             }
-            if (Cfg_AppDataGetOutputMode() == DISPLAY_USB)
+            if (g_device_configuration  == UVC_CDC_CONFIGURE_DESCRIPTOR)
             {
                 USB_DeviceVideoApplicationSetDefault();
             }
-
 #if (defined(USB_DEVICE_CONFIG_EHCI) && (USB_DEVICE_CONFIG_EHCI > 0U)) || \
     (defined(USB_DEVICE_CONFIG_LPCIP3511HS) && (USB_DEVICE_CONFIG_LPCIP3511HS > 0U))
             /* Get USB speed to configure the device, including max packet size and interval of the endpoints. */
@@ -140,7 +160,7 @@ static usb_status_t USB_DeviceCallback(usb_device_handle handle, uint32_t event,
                 USB_DeviceSetSpeed(handle, g_composite.speed);
             }
 
-            if (Cfg_AppDataGetOutputMode() == DISPLAY_USB)
+            if (g_device_configuration  == UVC_CDC_CONFIGURE_DESCRIPTOR)
             {
                 if (USB_SPEED_HIGH == g_composite.speed)
                 {
@@ -177,7 +197,7 @@ static usb_status_t USB_DeviceCallback(usb_device_handle handle, uint32_t event,
                     g_composite.cdcVcom[i].tx.length = 0;
                     g_composite.cdcVcom[i].attach    = 0;
                 }
-                if (Cfg_AppDataGetOutputMode() == DISPLAY_USB)
+                if (g_device_configuration  == UVC_CDC_CONFIGURE_DESCRIPTOR)
                     USB_DeviceVideoApplicationSetDefault();
             }
             else if (USB_COMPOSITE_CONFIGURE_INDEX == (*temp8))
@@ -187,8 +207,10 @@ static usb_status_t USB_DeviceCallback(usb_device_handle handle, uint32_t event,
                 USB_DeviceCdcVcomSetConfigure(g_composite.cdcVcom[0].cdcAcmHandle, *temp8);
                 g_composite.currentConfiguration = *temp8;
                 error                            = kStatus_USB_Success;
-                if (Cfg_AppDataGetOutputMode() == DISPLAY_USB)
+                if (g_device_configuration  == UVC_CDC_CONFIGURE_DESCRIPTOR)
                     g_composite.g_UsbDeviceVideoCamera.attach = 1;
+                else if (g_device_configuration  == MSC_CDC_CONFIGURE_DESCRIPTOR)
+                    USB_DeviceMscDiskSetConfigure(g_composite.mscDisk.mscHandle, *temp8);
             }
             else
             {
@@ -201,10 +223,9 @@ static usb_status_t USB_DeviceCallback(usb_device_handle handle, uint32_t event,
             {
                 uint8_t interface        = (uint8_t)((*temp16 & 0xFF00U) >> 0x08U);
                 uint8_t alternateSetting = (uint8_t)(*temp16 & 0x00FFU);
-                if (Cfg_AppDataGetOutputMode() == DISPLAY_USB &&
-                    g_composite.currentInterfaceAlternateSetting[interface] != alternateSetting)
+                if (interface < USB_INTERFACE_COUNT && g_composite.currentInterfaceAlternateSetting[interface] != alternateSetting)
                 {
-                    if (!g_composite.currentInterfaceAlternateSetting[interface])
+                    if ((g_device_configuration == UVC_CDC_CONFIGURE_DESCRIPTOR) && !g_composite.currentInterfaceAlternateSetting[interface])
                     {
                         if (USB_VIDEO_CAMERA_STREAM_INTERFACE_INDEX == interface)
                         {
@@ -216,6 +237,7 @@ static usb_status_t USB_DeviceCallback(usb_device_handle handle, uint32_t event,
                     }
 
                     g_composite.currentInterfaceAlternateSetting[interface] = alternateSetting;
+                    error = kStatus_USB_Success;
                 }
             }
             break;
@@ -280,8 +302,9 @@ static usb_status_t USB_DeviceCallback(usb_device_handle handle, uint32_t event,
 void USB_DeviceApplicationInit(void)
 {
     USB_DeviceClockInit();
-    USB_DeviceSetConfigurationDescriptor((Cfg_AppDataGetOutputMode() == DISPLAY_USB) ? UVC_CDC_CONFIGURE_DESCRIPTOR :
-                                                                                       CDC_CONFIGURE_DESCRIPTOR);
+    g_device_configuration = (Cfg_AppDataGetOutputMode() == DISPLAY_USB) ? UVC_CDC_CONFIGURE_DESCRIPTOR : 
+                                                                           MSC_CDC_CONFIGURE_DESCRIPTOR; //CDC_CONFIGURE_DESCRIPTOR); 
+    USB_DeviceSetConfigurationDescriptor(g_device_configuration);
 #if (defined(FSL_FEATURE_SOC_SYSMPU_COUNT) && (FSL_FEATURE_SOC_SYSMPU_COUNT > 0U))
     SYSMPU_Enable(SYSMPU, 0);
 #endif /* FSL_FEATURE_SOC_SYSMPU_COUNT */
@@ -291,6 +314,8 @@ void USB_DeviceApplicationInit(void)
     g_composite.attach                             = 0;
     g_composite.cdcVcom[0].cdcAcmHandle            = (class_handle_t)NULL;
     g_composite.g_UsbDeviceVideoCamera.videoHandle = (class_handle_t)NULL;
+    //add by felix for msc 2021/06/11
+    g_composite.mscDisk.mscHandle                  = (class_handle_t)NULL;
 
     g_composite.deviceHandle = NULL;
 
@@ -308,10 +333,17 @@ void USB_DeviceApplicationInit(void)
         g_composite.cdcVcom[0].deviceHandle = g_composite.deviceHandle;
         USB_DeviceCdcVcomInit(&g_composite);
 
-        if (Cfg_AppDataGetOutputMode() == DISPLAY_USB)
+        if (g_device_configuration  == UVC_CDC_CONFIGURE_DESCRIPTOR)
         {
             g_composite.g_UsbDeviceVideoCamera.videoHandle  = g_UsbDeviceCompositeConfigList.config[1].classHandle;
             g_composite.g_UsbDeviceVideoCamera.deviceHandle = g_composite.deviceHandle;
+        }
+        else if (g_device_configuration  == MSC_CDC_CONFIGURE_DESCRIPTOR)
+        {
+            // add by felix for msc disk 
+            g_composite.mscDisk.mscHandle    = g_UsbDeviceCompositeConfigList.config[2].classHandle;
+            g_composite.mscDisk.deviceHandle = g_composite.deviceHandle;
+			USB_DeviceMscDiskInit(&g_composite);
         }
     }
 

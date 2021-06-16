@@ -34,7 +34,7 @@
 #define USB_DEVICE_CONFIG_CDC_ACM (1U)
 
 /*! @brief MSC instance count */
-#define USB_DEVICE_CONFIG_MSC (0U)
+#define USB_DEVICE_CONFIG_MSC (1U)
 
 /*! @brief Audio instance count */
 #define USB_DEVICE_CONFIG_AUDIO (0U)
@@ -43,7 +43,6 @@
 #define USB_DEVICE_CONFIG_PHDC (0U)
 
 /*! @brief Video instance count */
-
 #define USB_DEVICE_CONFIG_VIDEO (1U)
 
 /*! @brief CCID instance count */

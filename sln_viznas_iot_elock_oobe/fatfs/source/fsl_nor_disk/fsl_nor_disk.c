@@ -7,7 +7,7 @@
  */
 #include "fsl_nor_disk.h"
 #include "sln_flash.h"
-#include "flexspi_hyper_flash_ops.h"
+#include "flexspi_qspi_flash_ops.h"
 #include "fsl_debug_console.h"
 
 static BYTE fatfs_cache[FATFS_BLOCK_SIZE_BYTES];
@@ -99,10 +99,10 @@ DRESULT nor_disk_write(BYTE pdrv, const BYTE *buff, DWORD sector, UINT count)
         uint32_t sector_offset = addr_begin - sector_addr_begin;
         if( !is_filed_used(addr_begin, addr_begin + write_size -1) ) //not need erase
         {
-            for(int i = 0; i < write_size; i += FATFS_SECTOR_SIZE)
+            for(int i = 0; i < write_size; i += FLASH_PAGE_SIZE)//FATFS_SECTOR_SIZE
             {
-                if( i + FATFS_SECTOR_SIZE < write_size)
-                    SLN_Write_Flash_Page(addr_begin + i, (uint8_t *)buff + i, FATFS_SECTOR_SIZE);
+                if( i + FLASH_PAGE_SIZE < write_size) //FATFS_SECTOR_SIZE
+                    SLN_Write_Flash_Page(addr_begin + i, (uint8_t *)buff + i, FLASH_PAGE_SIZE); //FATFS_SECTOR_SIZE
                 else
                     SLN_Write_Flash_Page(addr_begin + i, (uint8_t *)buff + i, write_size - i);
             }
@@ -112,9 +112,13 @@ DRESULT nor_disk_write(BYTE pdrv, const BYTE *buff, DWORD sector, UINT count)
             SLN_Read_Flash_At_Address(sector_addr_begin, fatfs_cache, FATFS_BLOCK_SIZE_BYTES);
             ram_memcpy(fatfs_cache+sector_offset, (uint8_t *)buff, write_size);
             SLN_Erase_Sector(sector_addr_begin);
-            for(int i = 0; i < FATFS_BLOCK_SIZE_BYTES; i+=FATFS_SECTOR_SIZE)
+            //for(int i = 0; i < FATFS_BLOCK_SIZE_BYTES; i+=FATFS_SECTOR_SIZE)
+            for(int i = 0; i < FATFS_BLOCK_SIZE_BYTES; i+=FLASH_PAGE_SIZE)
+
             {
-                SLN_Write_Flash_Page(sector_addr_begin + i, fatfs_cache + i, FATFS_SECTOR_SIZE);
+                //SLN_Write_Flash_Page(sector_addr_begin + i, fatfs_cache + i, FATFS_SECTOR_SIZE);
+                SLN_Write_Flash_Page(sector_addr_begin + i, fatfs_cache + i, FLASH_PAGE_SIZE);
+
             }
         }
     }

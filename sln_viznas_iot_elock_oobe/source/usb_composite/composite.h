@@ -19,7 +19,7 @@
 
 #include "virtual_com.h"
 #include "video_camera.h"
-
+#include "disk_card.h"
 /*******************************************************************************
  * Definitions
  ******************************************************************************/
@@ -41,14 +41,13 @@ typedef struct _usb_device_composite_struct
     usb_device_handle deviceHandle;                            /* USB device handle. */
     serial_usb_cdc_state_t cdcVcom[USB_DEVICE_CONFIG_CDC_ACM]; /* CDC virtual com device structure. */
     usb_video_camera_struct_t g_UsbDeviceVideoCamera;
-
+    usb_msc_struct_t mscDisk; /* MSC disk device structure. */
     TaskHandle_t applicationTaskHandle; /* Application task handle. */
     TaskHandle_t deviceTaskHandle;      /* USB device task handle. */
     uint8_t speed;  /* Speed of USB device. USB_SPEED_FULL/USB_SPEED_LOW/USB_SPEED_HIGH.                 */
     uint8_t attach; /* A flag to indicate whether a usb device is attached. 1: attached, 0: not attached */
     uint8_t currentConfiguration;                                      /* Current configuration value. */
-    uint8_t currentInterfaceAlternateSetting[USB_INTERFACE_COUNT_USB]; /* Current alternate setting value for each
-                                                                          interface. */
+    uint8_t currentInterfaceAlternateSetting[USB_INTERFACE_COUNT_USB]; /* Current alternate setting value for each interface. */
     uint8_t instance;                                                  /* The instance of the interface */
     uint8_t irqNumber;                                                 /* The IRQ number of the interface */
 } usb_device_composite_struct_t;
@@ -60,6 +59,8 @@ extern usb_device_composite_struct_t g_composite;
 
 void USB_DeviceApplicationInit(void);
 
+extern usb_status_t USB_DeviceVideoCallback(class_handle_t handle, uint32_t event, void *param);
 void USB_DeviceApplicationDeInit(void);
 
+extern usb_status_t USB_DeviceMscCallback(class_handle_t handle, uint32_t event, void *param);
 #endif /* _USB_DEVICE_COMPOSITE_H_ */
