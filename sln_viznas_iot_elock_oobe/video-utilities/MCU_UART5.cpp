@@ -189,7 +189,7 @@ const unsigned char *MsgHead_Unpacket(
 //106F->MCU:通用响应
 int cmdCommRsp2MCU(unsigned char CmdId, uint8_t ret)
 {
-	char szBuffer[128]={0};
+	char szBuffer[32]={0};
 	int iBufferSize;
 	char *pop = NULL;
 	unsigned char MsgLen = 0;
@@ -224,17 +224,11 @@ int SendMsgToMCU(unsigned char *MsgBuf, unsigned char MsgLen)
 {
 	int ret = kStatus_Success; 
 
-	int i = 0;
 	char message_buffer[64];
 
 	memset(message_buffer, 0, sizeof(message_buffer));
 	HexToStr(message_buffer, MsgBuf, MsgLen);
 	LOGD("\n===send msg<len:%d %s>:", MsgLen, message_buffer);	
-	/*for(i; i<MsgLen; i++)	
-	{		
-		LOGD("0x%02x	", MsgBuf[i]);	
-	}	
-	LOGD("\n");*/
 
 	/*
 	by tanqw 20200722
@@ -333,7 +327,7 @@ int cmdSysInitOKSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessa
 		CloseCameraPWM();
 	}
 #endif
-#if	1
+#if	0
 	{		
 		char verbuf[4] = {0}; 
 		char ver_tmp[32] = {0}; 
@@ -434,6 +428,9 @@ int cmdReqResumeFactoryProc(unsigned char nMessageLen, const unsigned char *pszM
 
 	//消息处理
 	SetSysToFactory();	
+
+	/*关机 */
+	cmdCloseFaceBoardReq();
 
 	return 0;
 }
@@ -702,7 +699,6 @@ int cmdReqActiveByPhoneRsp(uint8_t ret)
 int cmdReqActiveByPhoneProc(unsigned char nMessageLen, const unsigned char *pszMessage)
 {
 	uint8_t ret = SUCCESS;
-	int result = 0;
 
 	if(REG_STATUS_OK==g_reging_flg)
 	{
@@ -915,7 +911,7 @@ int cmdWifiSSIDProc(unsigned char nMessageLen, const unsigned char *pszMessage)
 		
 		// 保存设置到系统配置文件
 		LOGD("wifi ssid : <%s>.\n", wifi_ssid);
-		update_wifi_ssid("./config.ini", wifi_ssid);	
+		update_wifi_ssid(wifi_ssid);
 		//read_config("./config.ini");
 		
 		ret = SUCCESS;
@@ -939,7 +935,7 @@ int cmdWifiPwdProc(unsigned char nMessageLen, const unsigned char *pszMessage)
 		
 		// 保存设置到系统配置文件
 		LOGD("wifi pwd : <%s>.\n", wifi_pwd);
-		update_wifi_pwd("./config.ini", wifi_pwd);	
+		update_wifi_pwd(wifi_pwd);
 		//read_config("./config.ini");
 		ret = SUCCESS;
 	}
@@ -948,6 +944,46 @@ int cmdWifiPwdProc(unsigned char nMessageLen, const unsigned char *pszMessage)
 	return 0;
 }
 
+// 主控接收指令: 设置MQTT 参数
+int cmdMqttParamSetProc(unsigned char nMessageLen, const unsigned char *pszMessage)
+{
+	uint8_t ret = FAILED;
+	uint8_t mqtt_user[MQTT_USER_LEN+1] = {0}; 
+	uint8_t mqtt_pwd[MQTT_PWD_LEN+1] = {0};	
+	char mqtt_user_tmp[32] = {0}; 
+	char mqtt_pwd_tmp[32] = {0}; 
+	
+	// 解析指令
+	if(nMessageLen == MQTT_USER_LEN+MQTT_PWD_LEN)
+	{
+		memset(mqtt_user, 0, sizeof(mqtt_user));
+		memcpy(mqtt_user, pszMessage, MQTT_USER_LEN);
+		memset(mqtt_pwd, 0, sizeof(mqtt_pwd));
+		memcpy(mqtt_pwd, pszMessage+MQTT_USER_LEN, MQTT_PWD_LEN);
+		LOGD("mqtt_user<0x%02x%02x%02x%02x%02x%02x>,mqtt_pwd<0x%02x%02x%02x%02x%02x%02x%02x%02x>!\n", \
+		mqtt_user[0],mqtt_user[1],mqtt_user[2],mqtt_user[3],mqtt_user[4],mqtt_user[5],		\
+				mqtt_pwd[0],mqtt_pwd[1],mqtt_pwd[2],mqtt_pwd[3],mqtt_pwd[4],mqtt_pwd[5],mqtt_pwd[6],mqtt_pwd[7]);
+		
+		// 保存设置到系统配置文件
+		memset(mqtt_pwd_tmp, 0, sizeof(mqtt_user_tmp));
+		HexToStr(mqtt_user_tmp, mqtt_user, MQTT_USER_LEN);
+		memset(mqtt_pwd_tmp, 0, sizeof(mqtt_pwd_tmp));
+		HexToStr(mqtt_pwd_tmp, mqtt_pwd, MQTT_PWD_LEN);
+		update_mqtt_opt(mqtt_user_tmp, mqtt_pwd_tmp);
+		//read_config("./config.ini");
+		LOGD("mqtt user :<%s>, mqtt_pwd:<%s>.\n", mqtt_user_tmp, mqtt_pwd_tmp);
+		
+		//system("sync");
+		ret = SUCCESS;
+	}
+	
+	// 重启MQTT 以新的参数启动
+	//system("killall mqtt");
+	//system("/opt/smartlocker/mqtt &");
+
+	cmdCommRsp2MCU(CMD_WIFI_MQTT, ret);
+	return 0;
+}
 
 // 主控接收指令: 蓝牙模块状态信息上报
 int cmdBTInfoRptProc(unsigned char nMessageLen, const unsigned char *pszMessage)
@@ -987,6 +1023,30 @@ int cmdBTInfoRptProc(unsigned char nMessageLen, const unsigned char *pszMessage)
 	}
 
 	//cmdCommRsp2MCU(CMD_BT_INFO, ret);
+	return 0;
+}
+
+// 主控接收指令: 设置wifi的MQTT server 登录URL(可能是IP+PORT, 可能是域名+PORT)
+int cmdMqttSvrURLProc(unsigned char nMessageLen, const unsigned char *pszMessage)
+{
+	uint8_t ret = FAILED;
+	char MqttSvr_Url[MQTT_SVR_URL_LEN_MAX+1]={0};
+
+	//system("killall face_recgnize");
+	// 解析指令
+	if((nMessageLen < sizeof(MqttSvr_Url)) && nMessageLen < MQTT_SVR_URL_LEN_MAX)
+	{
+		memset(MqttSvr_Url, 0, sizeof(MqttSvr_Url));
+		memcpy(MqttSvr_Url, pszMessage, nMessageLen);
+		
+		// 保存设置到系统配置文件
+		LOGD("MqttSvr_Url : <%s>.\n", MqttSvr_Url);
+		update_MqttSvr_opt(MqttSvr_Url);
+		//read_config("./config.ini");
+		
+		ret = SUCCESS;
+	}
+	cmdCommRsp2MCU(CMD_WIFI_MQTTSER_URL, ret);
 	return 0;
 }
 
@@ -1128,6 +1188,11 @@ int ProcMessage(
 			cmdWifiPwdProc(nMessageLen, pszMessage);
 			break;
 		}	
+		case CMD_WIFI_MQTT:	
+		{
+			cmdMqttParamSetProc(nMessageLen, pszMessage);
+			break;
+		}	
 
 		case CMD_WIFI_OPEN_DOOR:
 		{
@@ -1141,6 +1206,11 @@ int ProcMessage(
 			
 			break;
 		}
+		case CMD_WIFI_MQTTSER_URL:
+		{
+			cmdMqttSvrURLProc(nMessageLen, pszMessage);
+			break;
+		}
 		
 		default:
 			LOGD("No effective cmd from MCU!\n");
@@ -1150,23 +1220,20 @@ int ProcMessage(
 	return 0;
 }
 
-static char buf[1024] = {0};
-
 static void uart5_QMsg_task(void *pvParameters)
 {
-	int i = 0;
     BaseType_t ret;
     QMsg* pQMsg;
     int recognize_times = 0;
 	cJSON *root ;
     while (1)
     {
-		LOGD("uart5_QMsg_task()  -> xQueueReceive()!\n");
+		//LOGD("uart5_QMsg_task()  -> xQueueReceive()!\n");
         // pick up message
         ret = xQueueReceive(Uart5MsgQ, (void*)&pQMsg, portMAX_DELAY);
         if (ret == pdTRUE) 
 		{
-        	LOGD("%s pQMsg->id is %d!\r\n", __FUNCTION__, pQMsg->id);
+        	//LOGD("%s pQMsg->id is %d!\r\n", __FUNCTION__, pQMsg->id);
             switch (pQMsg->id)
 			{
 	            case QMSG_FACEREC_ADDNEWFACE:
@@ -1207,7 +1274,7 @@ static void uart5_QMsg_task(void *pvParameters)
 				
 				case QMSG_FACEREC_RECFACE:
 				{//处理人脸识别结果
-					LOGD("%s g_reging_flg is %d lcd_back_ground is %d\r\n", __FUNCTION__, g_reging_flg, lcd_back_ground);
+					//LOGD("%s g_reging_flg is %d lcd_back_ground is %d\r\n", __FUNCTION__, g_reging_flg, lcd_back_ground);
 					if(REG_STATUS_WAIT != g_reging_flg)//如果正在注册流程，就过滤掉该识别结果
 					{
 						continue;
@@ -1215,26 +1282,7 @@ static void uart5_QMsg_task(void *pvParameters)
 					if(lcd_back_ground == false) {
 						continue;
 					}
-               #if 1 // XXXXXX
-					//char buf[1024] = {0};
-					memset(buf, 0, sizeof(buf));
-               
-					fatfs_read("user.json", buf, 0, sizeof(buf));
-					LOGD("buf is %s\n", buf);
 
-
-					root = cJSON_Parse(buf);
-					
-					if(root != NULL) {
-						cJSON *uuid = cJSON_GetObjectItem(root, "UUID");
-						if(uuid != NULL) {
-							char *uuid_string = cJSON_GetStringValue(uuid);
-					
-							LOGD("uuid_string is %s\r\n", uuid_string);
-						}
-						cJSON_Delete(root);
-					}
-                #endif
 					if(pQMsg->msg.val)
 					{//success
 						LOGD("User face recognize succuss!\r\n");
@@ -1256,7 +1304,7 @@ static void uart5_QMsg_task(void *pvParameters)
 						LOGD("User face recognize failed!\r\n");
 						recognize_times ++;
 						LOGD("recognize_times is %d\r\n", recognize_times);
-						if(recognize_times > 30) {
+						if(recognize_times > 100) {
 							recognize_times = 0;
 							cmdCloseFaceBoardReq();//关主控电源
 							CloseLcdBackground();
@@ -1447,7 +1495,7 @@ int MCU_UART5_Start()
 	NVIC_SetPriority(LPUART5_IRQn, 5);
 	
 	//创建uart5串口数据通信task
-	if (xTaskCreate(uart5_task, "Uart5_task", configMINIMAL_STACK_SIZE + 200, NULL, uart5_task_PRIORITY, NULL) != pdPASS)
+	if (xTaskCreate(uart5_task, "Uart5_task", 1024/*configMINIMAL_STACK_SIZE + 200*/, NULL, uart5_task_PRIORITY, NULL) != pdPASS)
     {
         PRINTF("Task creation failed!.\r\n");
         while (1);

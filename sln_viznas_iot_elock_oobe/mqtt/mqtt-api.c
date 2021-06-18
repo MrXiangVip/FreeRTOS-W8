@@ -12,6 +12,8 @@
 #define MQTT_MAX_LEN 128
 #define MQTT_MAX_LONG_LEN 256
 
+static char cmd[MQTT_MAX_LEN];
+
 //extern int runATCmd(const char *at_cmd, int retry_times, int cmd_timeout_usec);
 //int run_at_cmd(char const *cmd, int retry_times, int cmd_timeout_usec);
 
@@ -42,7 +44,7 @@ int connectWifi(const char* ssid, const char* password) {
 	// int cmd_len = CMD_EXTRA_LEN + strlen(ssid) + strlen(password);
 
 	// char *cmd = (char*)malloc(cmd_len);
-	char cmd[MQTT_MAX_LEN];
+	//char cmd[MQTT_MAX_LEN];
 	sprintf(cmd, "AT+CWJAP=\"%s\",\"%s\"", ssid, password);
 
 	LOGD("--- send AT CMD %s\n", cmd);
@@ -56,7 +58,7 @@ int setupMQTTUserConfig(int linkId, int scheme, const char* clientId, const char
 	// int cmd_len = CMD_EXTRA_LEN + strlen(clientId) + strlen(username) + strlen(password) + strlen(path);
 
 	// char *cmd = (char*)malloc(cmd_len);
-	char cmd[MQTT_MAX_LEN];
+	//char cmd[MQTT_MAX_LEN];
     memset(cmd, 0, sizeof(cmd));
 	sprintf(cmd, "AT+MQTTUSERCFG=%d,%d,\"%s\",\"%s\",\"%s\",%d,%d,\"%s\"", linkId, scheme, clientId, username, password, certKeyId, caId, path);
 
@@ -70,7 +72,7 @@ int setupMQTTConnConfig(int linkId, int keepAlive, int disableCleanSession, cons
 	// int cmd_len = CMD_EXTRA_LEN + strlen(lwtTopic) + strlen(lwtMsg);
 
 	// char *cmd = (char*)malloc(cmd_len);
-	char cmd[MQTT_MAX_LEN];
+	// char cmd[MQTT_MAX_LEN];
     memset(cmd, 0, sizeof(cmd));
 	sprintf(cmd, "AT+MQTTCONNCFG=%d,%d,%d,\"%s\",\"%s\",%d,%d", linkId, keepAlive, disableCleanSession, lwtTopic, lwtMsg, lwtQos, lwtRetain);
 
@@ -84,7 +86,7 @@ int connectMQTT(int linkId, const char* hostIp, const char* port, int reconnect)
 	// int cmd_len = CMD_EXTRA_LEN + strlen(hostIp);
 
 	// char *cmd = (char*)malloc(cmd_len);
-	char cmd[MQTT_MAX_LEN];
+	// char cmd[MQTT_MAX_LEN];
     memset(cmd, 0, sizeof(cmd));
 	sprintf(cmd, "AT+MQTTCONN=%d,\"%s\",%s,%d", linkId, hostIp, port, reconnect);
 
@@ -98,11 +100,12 @@ int subscribeMQTT(int linkId, const char* topic, int qos) {
 	// int cmd_len = CMD_EXTRA_LEN + strlen(topic);
 
 	// char *cmd = (char*)malloc(cmd_len);
-	char cmd[MQTT_MAX_LEN];
+	// char cmd[MQTT_MAX_LEN];
     memset(cmd, 0, sizeof(cmd));
 	sprintf(cmd, "AT+MQTTSUB=%d,\"%s\",%d", linkId, topic, qos);
 
 	int res = sendATCmd(cmd);
+    vPortFree(topic);
 	// free(cmd);
 	return res;
 }
@@ -112,11 +115,12 @@ int unsubscribeMQTT(int linkId, const char* topic) {
 	// int cmd_len = CMD_EXTRA_LEN + strlen(topic);
 
 	// char *cmd = (char*)malloc(cmd_len);
-	char cmd[MQTT_MAX_LEN];
+	// char cmd[MQTT_MAX_LEN];
     memset(cmd, 0, sizeof(cmd));
 	sprintf(cmd, "AT+MQTTUNSUB=%d,\"%s\"", linkId, topic);
 
 	int res = sendATCmd(cmd);
+    vPortFree(topic);
 	// free(cmd);
 	return res;
 }
@@ -127,13 +131,14 @@ int publishMQTT(int linkId, const char* topic, const char* data, int qos, int re
 
 	// printf("publishMQTT 1 %d\n", cmd_len);
 	// char *cmd = (char*)malloc(cmd_len);
-	char cmd[MQTT_MAX_LEN];
+	// char cmd[MQTT_MAX_LEN];
     memset(cmd, 0, sizeof(cmd));
 	sprintf(cmd, "AT+MQTTPUB=%d,\"%s\",\"%s\",%d,%d", linkId, topic, data, qos, retain);
 
 	//LOGD("%s cmd is %s\n", __FUNCTION__, cmd);
 	//int res = sendATLongCmd(cmd);
     int res = sendATCmd(cmd);
+    vPortFree(topic);
 	// free(cmd);
 	return res;
 }
@@ -143,18 +148,19 @@ int publishMQTT2(int linkId, const char* topic, const char* data, int qos, int r
 
     // printf("publishMQTT 1 %d\n", cmd_len);
     // char *cmd = (char*)malloc(cmd_len);
-    char cmd[MQTT_MAX_LONG_LEN];
-    memset(cmd, 0, sizeof(cmd));
-    sprintf(cmd, "AT+MQTTPUB=%d,\"%s\",\"%s\",%d,%d", linkId, topic, data, qos, retain);
+    char long_cmd[MQTT_MAX_LONG_LEN];
+    memset(long_cmd, 0, sizeof(long_cmd));
+    sprintf(long_cmd, "AT+MQTTPUB=%d,\"%s\",\"%s\",%d,%d", linkId, topic, data, qos, retain);
 
     //LOGD("%s cmd is %s\n", __FUNCTION__, cmd);
     int res = 0;
-    if (strlen(cmd) > 128) {
-        res = sendATLongCmd(cmd);
+    if (strlen(long_cmd) > 128) {
+        res = sendATLongCmd(long_cmd);
     } else {
-        res = sendATCmd(cmd);
+        res = sendATCmd(long_cmd);
     }
     // free(cmd);
+    vPortFree(topic);
     return res;
 }
 // 断开MQTT连接
@@ -162,7 +168,7 @@ int disconnectMQTT(int linkId) {
 	// int cmd_len = CMD_EXTRA_LEN; 
 
 	// char *cmd = (char*)malloc(cmd_len);
-	char cmd[MQTT_MAX_LEN];
+	// char cmd[MQTT_MAX_LEN];
     memset(cmd, 0, sizeof(cmd));
 	sprintf(cmd, "AT+MQTTCLEAN=%d", linkId);
 

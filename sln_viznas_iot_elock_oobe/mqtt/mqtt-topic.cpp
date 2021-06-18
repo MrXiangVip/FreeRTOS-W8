@@ -13,7 +13,7 @@
 #include <ctype.h>
 
 char *generate_topic(char *cmd) {
-	char *topic = (char*)malloc(MQTT_AT_LEN);
+	char *topic = (char*)pvPortMalloc(MQTT_AT_LEN);
 	memset(topic, '\0', MQTT_AT_LEN);
 	sprintf(topic, cmd, mqttConfig.username);
     //sprintf(topic, cmd, "CECADED19DB9");

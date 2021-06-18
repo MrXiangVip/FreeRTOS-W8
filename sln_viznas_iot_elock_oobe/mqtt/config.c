@@ -34,10 +34,17 @@ void init_config() {
 		cJSON_AddItemToObject(root, CONFIG_KEY_SSID, cJSON_CreateString((const char *)""));
 		cJSON_AddItemToObject(root, CONFIG_KEY_WIFI_PWD, cJSON_CreateString((const char *)""));
 
-		char* buf = NULL;
+        cJSON_AddItemToObject(root, CONFIG_KEY_MQTT_SERVER_IP, cJSON_CreateString((const char *)"10.0.14.61"));
+        cJSON_AddItemToObject(root, CONFIG_KEY_MQTT_SERVER_PORT, cJSON_CreateString((const char *)"9883"));
+        cJSON_AddItemToObject(root, CONFIG_KEY_MQTT_SERVER_URL, cJSON_CreateString((const char *)"10.0.14.61:9883"));
+
+        cJSON_AddItemToObject(root, CONFIG_KEY_MQTT_USER, cJSON_CreateString((const char *)""));
+        cJSON_AddItemToObject(root, CONFIG_KEY_MQTT_PASSWORD, cJSON_CreateString((const char *)""));
+
+        char* buf = NULL;
 
 		buf = cJSON_Print(root);
-		//LOGD("%s buf is %s\n", __FUNCTION__, buf);
+		LOGD("%s buf is %s\n", __FUNCTION__, buf);
 
 		fatfs_write(DEFAULT_CONFIG_FILE, buf, 0, strlen(buf));
 
@@ -50,6 +57,8 @@ void check_config() {
 		LOGD("%s return \n", __FUNCTION__);
 		init_config();
 	}
+
+	read_config();
 }
 
 int update_section_key(char *section, char *key) {
@@ -82,7 +91,7 @@ int update_section_key(char *section, char *key) {
 	return 0;
 }
 
-int update_mac(char *file, char *mac) {
+int update_mac(char *mac) {
 	//LOGD("%s\n", __FUNCTION__);
 	
 	//update_section_key(CONFIG_KEY_WIFI_MAC, mac);
@@ -90,7 +99,7 @@ int update_mac(char *file, char *mac) {
 	return 0;
 }
 
-int update_wifi_ssid(char *file, char *ssid) {
+int update_wifi_ssid(char *ssid) {
 	//LOGD("%s\n", __FUNCTION__);
 	
 	update_section_key(CONFIG_KEY_SSID, ssid);
@@ -98,12 +107,41 @@ int update_wifi_ssid(char *file, char *ssid) {
 	return 0;
 }
 
-int update_wifi_pwd(char *file, char *password) {
+int update_wifi_pwd(char *password) {
 	//LOGD("%s\n", __FUNCTION__);
 	
 	update_section_key(CONFIG_KEY_WIFI_PWD, password);
 
 	return 0;
+}
+
+int update_mqtt_opt(char *username, char *password)
+{
+    //LOGD("%s\n", __FUNCTION__);
+
+    update_section_key(CONFIG_KEY_MQTT_USER, username);
+    update_section_key(CONFIG_KEY_MQTT_PASSWORD, password);
+    memcpy(mqttConfig.username, username, strlen(username));
+    memcpy(mqttConfig.password, password, strlen(password));
+
+    return 0;
+}
+
+int update_MqttSvr_opt(char *MqttSvrUrl)
+{
+    if (MqttSvrUrl == NULL || strchr(MqttSvrUrl, ':') == NULL) {
+        LOGD("Failed to save MqttSvrUrl %s\n", MqttSvrUrl);
+        return -1;
+    }
+
+    update_section_key(CONFIG_KEY_MQTT_SERVER_URL, MqttSvrUrl);
+
+    mysplit(MqttSvrUrl, mqttConfig.server_ip, mqttConfig.server_port, ":");
+    LOGD("%s server_ip is %s, server_port is %s\r\n", __FUNCTION__, mqttConfig.server_ip, mqttConfig.server_port);
+    update_section_key(CONFIG_KEY_MQTT_SERVER_IP, mqttConfig.server_ip);
+    update_section_key(CONFIG_KEY_MQTT_SERVER_PORT, mqttConfig.server_port);
+
+    return 0;
 }
 
 int update_bt_info(char *version, char *mac)
@@ -147,6 +185,81 @@ int update_project_info(char *version)
 	return 0;
 }
 
+int read_config_value(char *dst, char *key) {
+	cJSON *root = NULL;
+    memset(buf, 0, sizeof(buf));
+
+    fatfs_read(DEFAULT_CONFIG_FILE, buf, 0, sizeof(buf));
+    //LOGD("buf is %s\n", buf);
+    root = cJSON_Parse(buf);
+
+    if(root != NULL) {
+        cJSON *item = cJSON_GetObjectItem(root, key);
+        char *item_string;
+        if(item != NULL) {
+            item_string = cJSON_GetStringValue(item);
+
+            //LOGD("key is %s, item_string is %s\r\n", key, item_string);
+            memcpy(dst, item_string, strlen(item_string));
+        }
+
+        cJSON_Delete(root);
+    }
+    return 0;
+}
+
+int read_config() {
+    memset(&versionConfig, '\0', sizeof(VERSIONCONFIG));
+    memset(&btWifiConfig, '\0', sizeof(BTWIFICONFIG));
+    memset(&mqttConfig, '\0', sizeof(MQTTCONFIG));
+
+
+    LOGD("========= reading config =========\n");
+
+    read_config_value(versionConfig.sys_ver, CONFIG_KEY_SYS_VERSION);
+    read_config_value(versionConfig.bt_ver, CONFIG_KEY_BT_VERSION);
+    read_config_value(versionConfig.oasis_ver, CONFIG_KEY_OASIS_VERSION);
+    read_config_value(versionConfig.mcu_ver, CONFIG_KEY_MCU_VERSION);
+
+    read_config_value(btWifiConfig.bt_mac, CONFIG_KEY_BT_MAC);
+    read_config_value(btWifiConfig.wifi_mac, CONFIG_KEY_WIFI_MAC);
+    read_config_value(btWifiConfig.ssid, CONFIG_KEY_SSID);
+    read_config_value(btWifiConfig.password, CONFIG_KEY_WIFI_PWD);
+
+    char server_url[CONFIG_ITEM_LEN];
+    memset(server_url, '\0', CONFIG_ITEM_LEN);
+    read_config_value(server_url, CONFIG_KEY_MQTT_SERVER_URL);
+    mysplit(server_url, mqttConfig.server_ip, mqttConfig.server_port, ":");
+
+    read_config_value(mqttConfig.client_id, CONFIG_KEY_BT_MAC);
+    read_config_value(mqttConfig.username, CONFIG_KEY_MQTT_USER);
+    read_config_value(mqttConfig.password, CONFIG_KEY_MQTT_PASSWORD);
+
+    print_project_config();
+
+    return 0;
+}
+
+void print_project_config(void) {
+    LOGD("version config:\n");
+    LOGD("\tsys_ver: \t%s\n", versionConfig.sys_ver);
+    LOGD("\tbt_ver: \t%s\n", versionConfig.bt_ver);
+    LOGD("\toasis_ver: \t%s\n", versionConfig.oasis_ver);
+    LOGD("\tmcu_ver: \t%s\n", versionConfig.mcu_ver);
+
+    LOGD("bt wifi config:\n");
+    LOGD("\tbt_mac: \t%s\n", btWifiConfig.bt_mac);
+    LOGD("\twifi_mac: \t%s\n", btWifiConfig.wifi_mac);
+    LOGD("\tssid: \t\t%s\n", btWifiConfig.ssid);
+    LOGD("\twifi password: \t%s\n", btWifiConfig.password);
+
+    LOGD("mqtt config:\n");
+    LOGD("\tserver_ip: \t%s\n", mqttConfig.server_ip);
+    LOGD("\tserver_port: \t%s\n", mqttConfig.server_port);
+    LOGD("\tclient_id: \t%s\n", mqttConfig.client_id);
+    LOGD("\tusername: \t%s\n", mqttConfig.username);
+    LOGD("\tmqtt password: \t%s\n", mqttConfig.password);
+}
 #else
 int update_option_if_not_exist(Config *cnf, char *section, char *key, char *value) {
 	if (!cnf_has_option(cnf, section, key)) {

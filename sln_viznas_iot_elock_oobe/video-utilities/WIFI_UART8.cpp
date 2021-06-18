@@ -28,8 +28,11 @@
 #include "MCU_UART5.h"
 #include "cJSON.h"
 #include "util.h"
+#include "util_crc16.h"
 #include "../mqtt/base64.h"
 #include "../mqtt/mqtt-instruction-pool.h"
+#include "../mqtt/mqtt-mcu.h"
+
 
 /*******************************************************************************
  * Definitions
@@ -147,6 +150,11 @@ char *gen_msgId() {
     return msgId;
 }
 
+void remove_mqtt_instruction_from_pool(char instruction_dest, char cmd_code) {
+    int cmd_index = MqttInstruction::getCmdIndex(instruction_dest, cmd_code);
+    mqtt_instruction_pool.removeMqttInstruction(cmd_index);
+}
+
 int run_at_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
 {
 //	if (AT_CMD_MODE_ACTIVE == at_cmd_mode) {
@@ -163,6 +171,7 @@ int run_at_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
 		} else {
 			LOGD("Succeed to run command %s\r\n", cmd);
 			at_cmd_mode = AT_CMD_MODE_ACTIVE;
+			at_cmd_result = AT_CMD_RESULT_UNDEF;
 		}
 		int timeout_usec = 0;
 		int delay_usec = 1000;
@@ -199,6 +208,7 @@ int run_at_long_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
         } else {
             LOGD("Succeed to run long command %s\r\n", cmd);
             at_cmd_mode = AT_CMD_MODE_ACTIVE;
+            at_cmd_result = AT_CMD_RESULT_UNDEF;
         }
         int timeout_usec = 0;
         int delay_usec = 1000;
@@ -246,6 +256,7 @@ static void mqttinit_task(void *pvParameters) {
 
     result = run_at_cmd("AT+RST", 2, 1200);
     LOGD("run AT+RST result %d\r\n", result);
+    notifyWifiInitialized(result);
     if (AT_CMD_RESULT_OK != result) {
         LOGD("%sFailed to reset WiFi module\r\n", logTag);
         // TODO: try to notify MCU
@@ -268,9 +279,14 @@ static void mqttinit_task(void *pvParameters) {
     result = run_at_cmd("AT+CWMODE=3", 1, 1200);
     result = run_at_cmd("ATE0", 1, 1200);
     //result = run_at_cmd("AT+CIPSTAMAC?", 1, 1200);
-    result = run_at_cmd("AT+CWJAP=\"wireless_052E81\",\"12345678\"", 2, 5000);
+    //result = run_at_cmd("AT+CWJAP=\"wireless_052E81\",\"12345678\"", 2, 5000);
+    //result = run_at_cmd("AT+CWJAP=\"TP-LINK_RD\",\"rd.123456\"", 2, 5000);
+    result = connectWifi(btWifiConfig.ssid, btWifiConfig.password);
+
+    notifyWifiConnected(result);
     if (result < 0) {
         LOGD("--------- Failed to connect to WIFI\n");
+        vTaskDelete(NULL);
         return;
     }
     LOGD("--------- connect to WIFI\n");
@@ -286,37 +302,42 @@ static void mqttinit_task(void *pvParameters) {
     // 连接MQTT
     //result = quickConnectMQTT(mqttConfig.client_id, mqttConfig.username, mqttConfig.password, mqttConfig.server_ip,
     //                       mqttConfig.server_port, pub_topic_last_will, lwtMsg);
-    result = quickConnectMQTT(mqttConfig.client_id, "7CDFA102AB68", "0000000000000000", "10.0.14.61",
-                              "9883", pub_topic_last_will, lwtMsg);
-    //notifyMqttConnected(result);
+    //result = quickConnectMQTT(mqttConfig.client_id, "7CDFA102AB68", "0000000000000000", "10.0.14.61",
+    //                          "9883", pub_topic_last_will, lwtMsg);
+
+
+    result = quickConnectMQTT(mqttConfig.client_id, "7CDFA102AB68", "0000000000000000", mqttConfig.server_ip,
+                              mqttConfig.server_port, pub_topic_last_will, lwtMsg);
+    notifyMqttConnected(result);
     if (result < 0) {
         LOGD("--------- Failed to connect to MQTT\n");
+        vTaskDelete(NULL);
         return;
     }
     LOGD("--------- connect to mqtt done\n");
 
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    vTaskDelay(pdMS_TO_TICKS(2000));
 
     result = quickPublishMQTT(pub_topic_last_will, "{}");
 
-    freePointer(&pub_topic_last_will);
+    //freePointer(&pub_topic_last_will);
 
 
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    vTaskDelay(pdMS_TO_TICKS(2000));
     char *sub_topic_cmd = get_sub_topic_cmd();
     result = quickSubscribeMQTT(sub_topic_cmd);
     if (result < 0) {
-        //notifyHeartBeat(CODE_FAILURE);
-        freePointer(&sub_topic_cmd);
+        notifyHeartBeat(CODE_FAILURE);
+        //freePointer(&sub_topic_cmd);
         LOGD("--------- Failed to subscribe topic\n");
         //return;
     }else {
-        freePointer(&sub_topic_cmd);
+        //freePointer(&sub_topic_cmd);
         LOGD("--------- subscribe topic done\n");
     }
 #endif
 
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    vTaskDelay(pdMS_TO_TICKS(2000));
     mqtt_init_done = 1;
 //    run_at_cmd("AT\r\n", 2, 3000);
 
@@ -567,8 +588,8 @@ int sendImage(const char *filename, char *uuidStr, int needSendMCU) {
             // notifyCommandExecuted(ret);
             g_command_executed = 1;
         }
-        freePointer(&pub_topic);
-        freePointer(&pub_topic_tmp);
+        //freePointer(&pub_topic);
+        //freePointer(&pub_topic_tmp);
         freePointer(&msgId);
         return ret;
     }
@@ -609,7 +630,7 @@ int SendMsgToMQTT(char *mqtt_payload, int len) {
             freePointer(&msgId);
             pub_topic = get_pub_topic_heart_beat();
             int ret = quickPublishMQTTWithPriority(pub_topic, pub_msg, 1);
-            freePointer(&pub_topic);
+            //freePointer(&pub_topic);
             return 0;
         } else if (msg != NULL && strncmp(msg, "sf:nodata", 9) == 0) {
             // 来源于pool，超时
@@ -628,9 +649,9 @@ int SendMsgToMQTT(char *mqtt_payload, int len) {
             char *pub_topic_last_will = get_pub_topic_last_will();
             int ret = quickConnectMQTT(mqttConfig.client_id, mqttConfig.username, mqttConfig.password,
                                        mqttConfig.server_ip, mqttConfig.server_port, pub_topic_last_will, lwtMsg);
-            freePointer(&pub_topic_last_will);
+            //freePointer(&pub_topic_last_will);
 
-            //notifyMqttConnected(ret);
+            notifyMqttConnected(ret);
             if (ret < 0) {
             	LOGD("--------- Failed to reconnect to MQTT\n");
                 return -1;
@@ -639,11 +660,11 @@ int SendMsgToMQTT(char *mqtt_payload, int len) {
             // 订阅Topic
             char *sub_topic_cmd = get_sub_topic_cmd();
             ret = quickSubscribeMQTT(sub_topic_cmd);
-            freePointer(&sub_topic_cmd);
+            //freePointer(&sub_topic_cmd);
             // 订阅失败需要通知MCU
             if (ret < 0) {
             	LOGD("--------- Failed to resubscribe topic\n");
-                //notifyHeartBeat(CODE_FAILURE);
+                notifyHeartBeat(CODE_FAILURE);
                 return -1;
             }
             LOGD("--------- resubscribe to mqtt done\n");
@@ -651,7 +672,7 @@ int SendMsgToMQTT(char *mqtt_payload, int len) {
         } else {
             pub_topic = get_pub_topic_cmd_res();
             int ret = quickPublishMQTTWithPriority(pub_topic, msg, 1);
-            freePointer(&pub_topic);
+            //freePointer(&pub_topic);
             return 0;
         }
     } else {
@@ -660,7 +681,7 @@ int SendMsgToMQTT(char *mqtt_payload, int len) {
         strcpy(mqtt_msg_id, mqtt_instruction_pool.getMsgId((char) (mqtt_payload[0]), (char) (mqtt_payload[1])));
         LOGD("out mqtt_msg_id is %s", mqtt_msg_id);
         if ((int) (char) (mqtt_payload[0]) == 0x24) {
-            //remove_mqtt_instruction_from_pool((char) (mqtt_payload[0]), (char) (mqtt_payload[1]));
+            remove_mqtt_instruction_from_pool((char) (mqtt_payload[0]), (char) (mqtt_payload[1]));
             LOGD("in mqtt_msg_id is %s", mqtt_msg_id);
             pub_topic = get_pub_topic_cmd_res();
             LOGD("-------- pub_topic is %s\n", pub_topic);
@@ -681,13 +702,13 @@ int SendMsgToMQTT(char *mqtt_payload, int len) {
                             mqtt_msg_id, btWifiConfig.bt_mac, 1);
                 }
                 int ret = quickPublishMQTTWithPriority(pub_topic, pub_msg, 1);
-                freePointer(&pub_topic);
+                //freePointer(&pub_topic);
                 return 0;
             } else {
             	LOGD("mqtt_payload unidentified");
             }
         } else if ((int) (char) (mqtt_payload[0]) == 0x23) {
-            //remove_mqtt_instruction_from_pool((char) (mqtt_payload[0]), (char) (mqtt_payload[1]));
+            remove_mqtt_instruction_from_pool((char) (mqtt_payload[0]), (char) (mqtt_payload[1]));
             LOGD("in mqtt_msg_id is %s", mqtt_msg_id);
             pub_topic = get_pub_topic_cmd_res();
             LOGD("-------- pub_topic is %s\n", pub_topic);
@@ -710,7 +731,7 @@ int SendMsgToMQTT(char *mqtt_payload, int len) {
                 int ret = quickPublishMQTTWithPriority(pub_topic, pub_msg, 1);
                 // notifyCommandExecuted(ret);
                 g_command_executed = 1;
-                freePointer(&pub_topic);
+                //freePointer(&pub_topic);
                 return 0;
             } else if ((int) (char) (mqtt_payload[1]) == 0x15 && (int) (char) (mqtt_payload[2]) == 0x01) {
                 // 远程设置合同时间指令反馈
@@ -731,7 +752,7 @@ int SendMsgToMQTT(char *mqtt_payload, int len) {
                 LOGD("------- before sendStatus ToMCU ret %d\n", ret);
                 // 远程设置合同时间成功，并不能立即要求下电，有可能要等待其他指令，比如远程开锁
                 // sendStatusToMCU(0x04, ret);
-                freePointer(&pub_topic);
+                //freePointer(&pub_topic);
                 return 0;
             } else if ((int) (char) (mqtt_payload[1]) == 0x1b) {
                 // 注册/开门记录
@@ -781,7 +802,7 @@ int SendMsgToMQTT(char *mqtt_payload, int len) {
                     int ret = quickPublishMQTTWithPriority(pub_topic, pub_msg, 1);
                     // notifyCommandExecuted(ret);
                     g_command_executed = 1;
-                    freePointer(&pub_topic);
+                    //freePointer(&pub_topic);
                     return ret;
                 } else {
                     LOGD("unlock record length is %d instead of 15\n", (int) (char) (mqtt_payload[2]));
@@ -876,10 +897,11 @@ int handleJsonMsg(char *jsonMsg) {
 			payload_bin[2] = 0x0a;
 			int len = strlen(tsStr);
 			strncpy(&payload_bin[3], tsStr, len);
-			//unsigned short cal_crc16 = CRC16_X25(reinterpret_cast<unsigned char*>(payload_bin), 3 + len);
-			//payload_bin[len + 3] = (char)cal_crc16;
-			//payload_bin[len + 4] = (char)(cal_crc16 >> 8);
+			unsigned short cal_crc16 = CRC16_X25(reinterpret_cast<unsigned char*>(payload_bin), 3 + len);
+			payload_bin[len + 3] = (char)cal_crc16;
+			payload_bin[len + 4] = (char)(cal_crc16 >> 8);
 			//result = MessageSend(1234, payload_bin, 5 + len);
+        	result = SendMsgToMCU((unsigned char *)payload_bin, 5 + len);
 		}
 	}
 	if (mqtt != NULL) {
@@ -1018,7 +1040,7 @@ static int handle_line()
                         mysplit(field41, field42, field5, ",");
                         //LOGD("field42 is %s\n", field42);
                         if (field42 != NULL && strlen(field42) > 0) {
-                            LOGD("RSSI is %s\n", field42);
+                            LOGD("RSSI is %s\r\n", field42);
                             //strcpy(wifi_rssi, field42);
                             //at_state = AT_CMD_OK;
                             rx_len = 0;
@@ -1055,7 +1077,7 @@ static int handle_line()
                             strcpy(device_mac_from_module, mac_atmac);
 							LOGD("\r\n***** device_mac_from_module is %s\r\n", device_mac_from_module);
                             //if (strncmp(device_mac_from_module, btWifiConfig.wifi_mac, 12) != 0) {
-                                update_mac(DEFAULT_CONFIG_FILE, device_mac_from_module);
+                                update_mac(device_mac_from_module);
                             //}
                         }
 					}
