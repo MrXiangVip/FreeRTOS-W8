@@ -29,6 +29,9 @@ int fatfs_mount_with_mkfs(void)
     if (f_mount(&g_fileSystem, driverNumberBuffer, 1U) != FR_OK)
     {
         isNeedMkfs = 1;
+    }else
+    {
+        FATFS_PRINTF(("f_mount OK!!!.\r\n"));
     }
 
 #if (FF_FS_RPATH >= 2U)
@@ -83,7 +86,7 @@ int fatfs_write(const char *file_name, const char *buf, int offset, int bytes)
         FATFS_PRINTF(("Move file point failed: %d.\r\n", error));
     }
 
-    FATFS_PRINTF(("\r\nWrite to above created file.\r\n"));
+    FATFS_PRINTF(("\r\nWrite to above created file:%s.\r\n", file_name));
     error = f_write(&g_fileObject, buf, bytes, &num);
     if (error || (bytes != num))
     {

@@ -20,6 +20,8 @@
 #include "fatfs_op.h"
 
 static FeatureMap s_FeatureMap;
+static FeatureMap s_FeatureMap_bak;
+
 #define SDRAM_DB 1
 #if SDRAM_DB
 static FeatureItem s_FeatureItem[FEATUREDATA_MAX_COUNT];
@@ -28,7 +30,10 @@ static FeatureItem s_FeatureItem[FEATUREDATA_MAX_COUNT];
 
 #define FEATURE_FILE_INDEX_LENGTH  10
 #define FEATURE_FILE_SUFFIX ".db"
-#define FEATURE_FILE_NAME_LEN (FEATURE_FILE_INDEX_LENGTH + strlen(FEATURE_FILE_SUFFIX)+1)
+#define FEATURE_FILE_NAME_LEN (FEATURE_FILE_INDEX_LENGTH + 4)
+
+static char file_name[FEATURE_FILE_NAME_LEN];
+static bool auto_save_mode = false;
 
 extern uint8_t remote_change_fs;
 
@@ -40,9 +45,7 @@ static int File_FacerecFsReadMap(FeatureMap *pMap)
         fatfs_mount_with_mkfs();
         remote_change_fs = 0;
     }
-    fatfs_opendir("/");
-    ret = fatfs_read(MAP_FILE_NAME, (char *)pMap, 0,sizeof(FeatureMap));
-    fatfs_closedir();
+    ret = fatfs_read(MAP_FILE_NAME, (char *)pMap, 0, FEATUREDATA_MAX_COUNT);
     return ret;
 }
 
@@ -54,19 +57,8 @@ static int File_FacerecFsUpdateMap(FeatureMap *pMap)
         fatfs_mount_with_mkfs();
         remote_change_fs = 0;
     }
-
-    fatfs_opendir("/");
-    ret = fatfs_write(MAP_FILE_NAME, (char *)pMap, 0,sizeof(FeatureMap));
-    fatfs_closedir();
+    ret = fatfs_write(MAP_FILE_NAME, (char *)pMap, 0, FEATUREDATA_MAX_COUNT);
     return ret;
-}
-
-static int File_FacerecFsEraseMap(void)
-{
-    FeatureMap map;
-    memset(&map, FEATUREDATA_MAGIC_UNUSE, sizeof(FeatureMap));
-    File_FacerecFsUpdateMap(&map);
-    return 0;
 }
 
 static int File_FacerecFsUpdateMapMagic(int index, FeatureMap *pMap)
@@ -77,10 +69,7 @@ static int File_FacerecFsUpdateMapMagic(int index, FeatureMap *pMap)
         fatfs_mount_with_mkfs();
         remote_change_fs = 0;
     }
-
-    fatfs_opendir("/");
     ret = fatfs_write(MAP_FILE_NAME, &pMap->magic[index], index ,sizeof(char));
-    fatfs_closedir();
     return ret;
 }
 
@@ -88,16 +77,13 @@ static int File_FacerecFsReadItem(int index, FeatureItem *pItem)
 {
     int ret;
     int offset = offsetof(FeatureItem,feature);
-    char file_name[FEATURE_FILE_NAME_LEN];
     if (remote_change_fs)
     {
         fatfs_mount_with_mkfs();
         remote_change_fs = 0;
     }
-    fatfs_opendir("/");
     sprintf(file_name, "%010d%s", index, FEATURE_FILE_SUFFIX);
     ret = fatfs_read(file_name, (char *)pItem, 0, offset + OASISLT_getFaceItemSize());
-    fatfs_closedir();
     return ret;
 }
 
@@ -105,16 +91,13 @@ static int File_FacerecFsUpdateItem(int index, FeatureItem *pItem)
 {
     int ret;
     int offset = offsetof(FeatureItem,feature);
-    char file_name[FEATURE_FILE_NAME_LEN];
     if (remote_change_fs)
     {
         fatfs_mount_with_mkfs();
         remote_change_fs = 0;
     }
-    fatfs_opendir("/");
     sprintf(file_name, "%010d%s", index, FEATURE_FILE_SUFFIX);
     ret = fatfs_write(file_name, (char *)pItem, 0, offset + OASISLT_getFaceItemSize());
-    fatfs_closedir();
     return ret;
 }
 
@@ -122,21 +105,20 @@ static int File_FacerecFsReadItemHeader(int index, FeatureItem *pItem)
 {
     int ret;
     int offset = offsetof(FeatureItem,feature);
-    char file_name[FEATURE_FILE_NAME_LEN];
     if (remote_change_fs)
     {
         fatfs_mount_with_mkfs();
         remote_change_fs = 0;
     }
-    fatfs_opendir("/");
     sprintf(file_name, "%010d%s", index, FEATURE_FILE_SUFFIX);
     ret = fatfs_read(file_name, (char *)pItem, 0, offset);
-    fatfs_closedir();
     return ret;
 }
 
 FeatureDB::FeatureDB()
 {
+    this->auto_save = auto_save_mode;
+
     fatfs_mount_with_mkfs();
     load_feature();
     reassign_feature();
@@ -149,6 +131,7 @@ FeatureDB::~FeatureDB()
 int FeatureDB::add_feature(uint16_t id, const std::string name, float *feature)
 {
     reassign_feature();
+
     int index = get_free_mapmagic();
     if( index == -1)
     {
@@ -165,8 +148,11 @@ int FeatureDB::add_feature(uint16_t id, const std::string name, float *feature)
 #if SDRAM_DB
     memcpy(&s_FeatureItem[index], &item_t, sizeof(item_t));
 #endif
-    File_FacerecFsUpdateItem(index,&item_t);
-    File_FacerecFsUpdateMapMagic(index, &s_FeatureMap);
+    if (get_autosave())
+    {
+        File_FacerecFsUpdateItem(index,&item_t);
+        File_FacerecFsUpdateMapMagic(index, &s_FeatureMap);
+    }
     return 0;
 }
 
@@ -208,7 +194,10 @@ int FeatureDB::del_feature(uint16_t id, std::string name)
         return -1;
 
     s_FeatureMap.magic[index] = FEATUREDATA_MAGIC_DELET;
-    File_FacerecFsUpdateMapMagic(index, &s_FeatureMap);
+    if (get_autosave())
+    {
+        File_FacerecFsUpdateMapMagic(index, &s_FeatureMap);
+    }
     return 0;
 }
 
@@ -237,7 +226,10 @@ int FeatureDB::del_feature(const std::string name)
         return -1;
 
     s_FeatureMap.magic[index] = FEATUREDATA_MAGIC_DELET;
-    File_FacerecFsUpdateMapMagic(index, &s_FeatureMap);
+    if (get_autosave())
+    {
+       File_FacerecFsUpdateMapMagic(index, &s_FeatureMap);
+    }
     return 0;
 }
 
@@ -248,7 +240,10 @@ int FeatureDB::del_feature_all()
         if (s_FeatureMap.magic[i] == FEATUREDATA_MAGIC_VALID)
         {
             s_FeatureMap.magic[i] = FEATUREDATA_MAGIC_DELET;
-            File_FacerecFsUpdateMapMagic(i, &s_FeatureMap);
+            if (get_autosave())
+            {
+                File_FacerecFsUpdateMapMagic(i, &s_FeatureMap);
+            }
         }
     }
     return 0;
@@ -431,7 +426,14 @@ int FeatureDB::get_free(int &index)
 
 int FeatureDB::database_save(int count)
 {
-    // discard
+    // ingore count input
+    if (!get_autosave())
+    {
+        for (int i = 0; i < FEATUREDATA_MAX_COUNT; i++)
+        {
+            save_feature(i);
+        }
+    }
     return 0;
 }
 
@@ -471,7 +473,7 @@ int FeatureDB::get_feature(uint16_t id, float *feature)
 
 int FeatureDB::load_feature()
 {
-    memset(&s_FeatureMap, FEATUREDATA_MAGIC_UNUSE, sizeof(s_FeatureMap));
+    memset(&s_FeatureMap, FEATUREDATA_MAGIC_UNUSE, FEATUREDATA_MAX_COUNT);
     int ret = File_FacerecFsReadMap(&s_FeatureMap);
     if (ret == 0)
     {
@@ -495,6 +497,7 @@ int FeatureDB::load_feature()
     {
         File_FacerecFsUpdateMap(&s_FeatureMap);
     }
+    memcpy(&s_FeatureMap_bak, &s_FeatureMap, FEATUREDATA_MAX_COUNT);
     return 0;
 }
 
@@ -506,7 +509,22 @@ int FeatureDB::erase_feature(int index)
 
 int FeatureDB::save_feature(int index)
 {
-    // discard
+    if (!get_autosave())
+    {
+       if (s_FeatureMap_bak.magic[index] != s_FeatureMap.magic[index])
+       {
+           if (s_FeatureMap.magic[index] == FEATUREDATA_MAGIC_VALID)
+           {
+                File_FacerecFsUpdateItem(index, &s_FeatureItem[index]);
+                File_FacerecFsUpdateMapMagic(index, &s_FeatureMap);
+           }
+           else if(s_FeatureMap.magic[index] == FEATUREDATA_MAGIC_DELET)
+           {
+                File_FacerecFsUpdateMapMagic(index, &s_FeatureMap);
+           }
+           s_FeatureMap_bak.magic[index] = s_FeatureMap.magic[index];
+       } 
+    }
     return 0;
 }
 
@@ -567,8 +585,11 @@ int FeatureDB::reassign_feature()
 #if SDRAM_DB
             memset(&s_FeatureItem[i], FEATUREDATA_MAGIC_UNUSE, sizeof(item_t));
 #endif
-            File_FacerecFsUpdateItem(i, &item_t);
-            File_FacerecFsUpdateMapMagic(i, &s_FeatureMap);
+            if (get_autosave())
+            {
+                //File_FacerecFsUpdateItem(i, &item_t);
+                File_FacerecFsUpdateMapMagic(i, &s_FeatureMap);
+            }
         }
     }
     return 0;
@@ -599,14 +620,15 @@ int FeatureDB::get_remain_map()
     }
     return remain_size;
 }
+
 void FeatureDB::set_autosave(bool auto_save)
 {
-  return;
+    this->auto_save = auto_save;
 }
 
 bool FeatureDB::get_autosave()
 {
-    return 1;
+    return this->auto_save;
 }
 
 #else
