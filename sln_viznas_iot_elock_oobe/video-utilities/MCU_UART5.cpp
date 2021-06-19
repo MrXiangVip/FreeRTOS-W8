@@ -95,6 +95,7 @@ static face_info_t gFaceInfo; //记录从oasis_rt106f_elcok.cpp中获取当前�
 static char username[17] = {0}; //用于存放传入NXP提供的人脸注册于识别相关的API的username
 
 static bool lcd_back_ground = true;
+extern int battery_level;
 #if (configSUPPORT_STATIC_ALLOCATION == 1)
 DTC_BSS static StackType_t Uart5TaskStack[UART5TASK_STACKSIZE];
 DTC_BSS static StaticTask_t s_Uart5TaskTCB;
@@ -242,7 +243,7 @@ int SendMsgToMCU(unsigned char *MsgBuf, unsigned char MsgLen)
 
 	memset(message_buffer, 0, sizeof(message_buffer));
 	HexToStr(message_buffer, MsgBuf, MsgLen);
-	LOGD("\n===send msg<len:%d %s>:", MsgLen, message_buffer);	
+	LOGD("\n===send msg<len:%d %s>: \r\n", MsgLen, message_buffer);	
 
 	/*
 	by tanqw 20200722
@@ -255,7 +256,7 @@ int SendMsgToMCU(unsigned char *MsgBuf, unsigned char MsgLen)
 	ret = LPUART_RTOS_Send(&handle5, (uint8_t *)MsgBuf, MsgLen);
 	if (kStatus_Success != ret)
 	{ 
-		LOGD("LPUART_RTOS_Send() error,errno<%d>!\n", ret);
+		LOGD("LPUART_RTOS_Send() error,errno<%d>!\r\n", ret);
 		//vTaskSuspend(NULL);
 	}
 
@@ -313,6 +314,7 @@ int cmdSysInitOKSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessa
 	pt_InitSyncInfo = (pInitSyncInfo)pszMessage;
 	stInitSyncInfo.Mcu_Ver = pt_InitSyncInfo->Mcu_Ver;
 	stInitSyncInfo.PowerVal = (pt_InitSyncInfo->PowerVal>100) ? 100 : pt_InitSyncInfo->PowerVal;
+	battery_level = stInitSyncInfo.PowerVal;
 	stInitSyncInfo.status = pt_InitSyncInfo->status;	
 	stInitSyncInfo.LightVal = pt_InitSyncInfo->LightVal;
 	bInitSyncInfo = true;

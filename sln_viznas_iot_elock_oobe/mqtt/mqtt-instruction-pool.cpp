@@ -9,6 +9,7 @@
 #include <string.h>
 //#include "log.h"
 #include "fsl_log.h"
+#include "WIFI_UART8.h"
 
 int MqttInstructionPool::insertMqttInstruction(MqttInstruction mqtt_instruction) {
     int cmd_index = mqtt_instruction.getCmdIndex();
@@ -94,6 +95,7 @@ int MqttInstructionPool::tick() {
 			LOGD("send pub_msg %s to 1883", pub_msg);
 #else
             //MessageSend(1883, pub_msg, strlen(pub_msg));
+            SendMsgToMQTT(pub_msg, strlen(pub_msg));
 			LOGD("mqtt_instruction_pool key %d timeout\n", mqttInstruction.getCmdIndex());
 #endif
             m_mqtt_instructions.erase(it++);
