@@ -45,7 +45,6 @@
 /*******************************************************************************
  * Prototypes
  ******************************************************************************/
-static void uart_task(void *pvParameters);
 
 /*******************************************************************************
  * Code
@@ -108,6 +107,18 @@ char wifi_rssi[MQTT_AT_LEN];
 #define MQTT_AT_LONG_LEN 256
 #define MQTT_MAC_LEN 32
 #define MQTT_RSSI_LEN 32
+
+#if (configSUPPORT_STATIC_ALLOCATION == 1)
+DTC_BSS static StackType_t Uart8RecvStack[UART8RECVTASK_STACKSIZE];
+DTC_BSS static StaticTask_t s_Uart8RecvTaskTCB;
+
+DTC_BSS static StackType_t MqttTaskStack[MQTTTASK_STACKSIZE];
+DTC_BSS static StaticTask_t s_MqttTaskTCB;
+
+DTC_BSS static StackType_t Uart8MsgHandleTaskStack[UART8MSGHANDLETASK_STACKSIZE];
+DTC_BSS static StaticTask_t s_Uart8MsgHandleTaskTCB;
+#endif
+
 
 static int at_cmd_mode = AT_CMD_MODE_INACTIVE;
 static int at_cmd_result = AT_CMD_RESULT_UNDEF;
@@ -234,8 +245,7 @@ int run_at_long_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
 static void mqttinit_task(void *pvParameters) {
     char const *logTag = "[UART8_WIFI]:mqttinit_task-";
     LOGD("%s start...\r\n", logTag);
-    int error;
-    size_t n = 0;
+
 #ifdef TIMEOUT_TEST
     int result = run_at_cmd("AT", 1, 3000);
     vTaskDelay(pdMS_TO_TICKS(1000));
@@ -354,6 +364,7 @@ static void mqttinit_task(void *pvParameters) {
     vTaskDelete(NULL);
 }
 
+#ifdef TIMEOUT_TEST
 static void uartrecv_timeout_task(void *pvParameters)
 {
 	char const *logTag = "[UART8_WIFI]:uartrecv_timeout_task-";
@@ -390,6 +401,7 @@ static void uartrecv_timeout_task(void *pvParameters)
 
     LOGD("\r\n%s end...\r\n", logTag);
 }
+#endif
 
 static void uartrecv_task(void *pvParameters)
 {
@@ -402,47 +414,50 @@ static void uartrecv_task(void *pvParameters)
     {
 //        error = LPUART_RTOS_Receive(&handle8, recv_buffer8, sizeof(recv_buffer8), &n);
         error = LPUART_RTOS_Receive(&handle8, recv_buffer8, 1, &n);
-        if (current_recv_line_len >= MAX_MSG_LEN_OF_LINE) {
-        	LOGD("\r\n--- receive line length is %d greater than 255, discard---\r\n", current_recv_line_len);
-        } else {
-        	char lastest_char = recv_buffer8[0];
-        	recv_msg_lines[current_recv_line][current_recv_line_len++] = lastest_char;
-        	if (lastest_char == 0x0a) {
-        		if (current_recv_line_len > 1) {
-        			char lastest_char2 = recv_msg_lines[current_recv_line][current_recv_line_len-2];
-        			if (lastest_char2 == 0x0d) {
-        				recv_msg_lines[current_recv_line][current_recv_line_len - 2] = '\0';
-        				if (current_recv_line_len == 2) {
-        					// 当只有0x0d0x0a的时候，忽略此行，并且重置current_recv_len为0
-        					current_recv_line_len = 0;
-        					recv_msg_lines[current_recv_line][1] = '\0';
-        					continue;
-        				}
-        			}
-        			recv_msg_lines[current_recv_line][current_recv_line_len - 1] = '\0';
-        			LOGD("--- recv_msg_line is %s\r\n", recv_msg_lines[current_recv_line]);
-        			current_recv_line++;
-        			current_recv_line_len = 0;
-        			if (current_recv_line >= MAX_MSG_LINES) {
-        				current_recv_line = 0;
-        			}
-        			handle_line();
-        		} else {
-        			// 当只有一个0x0a的时候，忽略此行，并且重置current_recv_len为0
-        			current_recv_line_len = 0;
-        			recv_msg_lines[current_recv_line][current_recv_line_len] = '\0';
-        		}
-        	}else {
-                //LOGD("%s receive %d bytes and message is %s\r\n",logTag, n, recv_buffer8);
-        	}
-        }
-//        LOGD("%s receive %d bytes and message is %s\r\n",logTag, n, recv_buffer8);
-//        PRINTF("\r\n--- receive bytes ---\r\n");
-//        for (int i = 0; i < sizeof(recv_buffer8); i ++) {
-//        	PRINTF("0x%02x ", recv_buffer8[i]);
-//        }
-//        PRINTF("\r\n--- receive end ---\r\n");
-
+        if ( error == kStatus_Success)
+        {
+            if (current_recv_line_len >= MAX_MSG_LEN_OF_LINE) {
+            	LOGD("\r\n--- receive line length is %d greater than 255, discard---\r\n", current_recv_line_len);
+            } else {
+            	char lastest_char = recv_buffer8[0];
+            	recv_msg_lines[current_recv_line][current_recv_line_len++] = lastest_char;
+            	if (lastest_char == 0x0a) {
+            		if (current_recv_line_len > 1) {
+            			char lastest_char2 = recv_msg_lines[current_recv_line][current_recv_line_len-2];
+            			if (lastest_char2 == 0x0d) {
+            				recv_msg_lines[current_recv_line][current_recv_line_len - 2] = '\0';
+            				if (current_recv_line_len == 2) {
+            					// 当只有0x0d0x0a的时候，忽略此行，并且重置current_recv_len为0
+            					current_recv_line_len = 0;
+            					recv_msg_lines[current_recv_line][1] = '\0';
+            					continue;
+            				}
+            			}
+            			recv_msg_lines[current_recv_line][current_recv_line_len - 1] = '\0';
+            			LOGD("--- recv_msg_line is %s\r\n", recv_msg_lines[current_recv_line]);
+            			current_recv_line++;
+            			current_recv_line_len = 0;
+            			if (current_recv_line >= MAX_MSG_LINES) {
+            				current_recv_line = 0;
+            			}
+            			handle_line();
+            		} else {
+            			// 当只有一个0x0a的时候，忽略此行，并且重置current_recv_len为0
+            			current_recv_line_len = 0;
+            			recv_msg_lines[current_recv_line][current_recv_line_len] = '\0';
+            		}
+            	}else {
+                    //LOGD("%s receive %d bytes and message is %s\r\n",logTag, n, recv_buffer8);
+            	}
+            }
+         }
+    //        LOGD("%s receive %d bytes and message is %s\r\n",logTag, n, recv_buffer8);
+    //        PRINTF("\r\n--- receive bytes ---\r\n");
+    //        for (int i = 0; i < sizeof(recv_buffer8); i ++) {
+    //        	PRINTF("0x%02x ", recv_buffer8[i]);
+    //        }
+    //        PRINTF("\r\n--- receive end ---\r\n");
+         
         if (error == kStatus_LPUART_RxHardwareOverrun)
         {
             /* Notify about hardware buffer overrun */
@@ -453,7 +468,7 @@ static void uartrecv_task(void *pvParameters)
             /* Notify about ring buffer overrun */
         	LOGD("%s RX ring buffer overrun\r\n", logTag);
         }
-    } while (kStatus_Success == error);
+    } while (1); //(kStatus_Success == error);
     LPUART_RTOS_Deinit(&handle8);
     vTaskSuspend(NULL);
 
@@ -1217,24 +1232,43 @@ int WIFI_UART8_Start()
     for (int i = 0; i < MAX_MSG_LINES; i++) {
     	memset(recv_msg_lines[i], '\0', MAX_MSG_LEN_OF_LINE);
     }
-
+#if (configSUPPORT_STATIC_ALLOCATION == 1)
+    if (NULL == xTaskCreateStatic(mqttinit_task, "mqttinit_task", MQTTTASK_STACKSIZE, NULL, MQTTTASK_PRIORITY,
+                                        MqttTaskStack, &s_MqttTaskTCB))
+#else
     if (xTaskCreate(mqttinit_task, "mqttinit_task", MQTTTASK_STACKSIZE, NULL, MQTTTASK_PRIORITY, NULL) != pdPASS)
+#endif
     {
 //        PRINTF("Task mqttinit_task creation failed!.\r\n");
         LOGD("%s failed to create mqttinit_task\r\n", logTag);
         while (1);
     }
 #ifndef TIMEOUT_TEST
-    if (xTaskCreate(uartrecv_task, "uartrecv_task", MQTTTASK_STACKSIZE, NULL, MQTTTASK_PRIORITY, NULL) != pdPASS)
+#if (configSUPPORT_STATIC_ALLOCATION == 1)
+    if (NULL == xTaskCreateStatic(uartrecv_task, "uartrecv_task", UART8RECVTASK_STACKSIZE, NULL, UART8RECVTASK_PRIORITY,
+                                            Uart8RecvStack, &s_Uart8RecvTaskTCB))
 #else
-    if (xTaskCreate(uartrecv_timeout_task, "uartrecv_timeout_task", configMINIMAL_STACK_SIZE + 100, NULL, uart8_task_PRIORITY, NULL) != pdPASS)
+    if (xTaskCreate(uartrecv_task, "uartrecv_task", UART8RECVTASK_STACKSIZE, NULL, UART8RECVTASK_PRIORITY, NULL) != pdPASS)
+#endif
+#else
+#if (configSUPPORT_STATIC_ALLOCATION == 1)
+    if (NULL == xTaskCreateStatic(uartrecv_timeout_task, "uartrecv_timeout_task", UART8RECVTASK_STACKSIZE, NULL, UART8RECVTASK_PRIORITY,
+                                            Uart8RecvStack, &s_Uart8RecvTaskTCB))
+#else
+    if (xTaskCreate(uartrecv_timeout_task, "uartrecv_timeout_task", UART8RECVTASK_STACKSIZE, NULL, UART8RECVTASK_PRIORITY, NULL) != pdPASS)
+#endif
 #endif
     {
         LOGD("%s failed to create uartrecv_task\r\n", logTag);
         while (1);
     }
 #ifndef TIMEOUT_TEST
-    if (xTaskCreate(msghandle_task, "msghandle_task", MQTTTASK_STACKSIZE, NULL, MQTTTASK_PRIORITY - 2, NULL) != pdPASS)
+#if (configSUPPORT_STATIC_ALLOCATION == 1)
+    if (NULL == xTaskCreateStatic(msghandle_task, "msghandle_task", UART8MSGHANDLETASK_STACKSIZE, NULL, UART8MSGHANDLETASK_PRIORITY,
+                                            Uart8MsgHandleTaskStack, &s_Uart8MsgHandleTaskTCB))
+#else
+    if (xTaskCreate(msghandle_task, "msghandle_task", UART8RECVTASK_STACKSIZE, NULL, UART8MSGHANDLETASK_PRIORITY, NULL) != pdPASS)
+#endif
     {
     	LOGD("%s failed to create msghandle_task\r\n", logTag);
     	while (1);

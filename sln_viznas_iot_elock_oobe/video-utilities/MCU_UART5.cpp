@@ -95,6 +95,20 @@ static face_info_t gFaceInfo; //记录从oasis_rt106f_elcok.cpp中获取当前�
 static char username[17] = {0}; //用于存放传入NXP提供的人脸注册于识别相关的API的username
 
 static bool lcd_back_ground = true;
+#if (configSUPPORT_STATIC_ALLOCATION == 1)
+DTC_BSS static StackType_t Uart5TaskStack[UART5TASK_STACKSIZE];
+DTC_BSS static StaticTask_t s_Uart5TaskTCB;
+
+DTC_BSS static StackType_t Uart5SyncTaskStack[UART5SYNCTASK_STACKSIZE];
+DTC_BSS static StaticTask_t s_Uart5SyncTaskTCB;
+
+DTC_BSS static StackType_t Uart5QmsgTaskStack[UART5QMSGTASK_STACKSIZE];
+DTC_BSS static StaticTask_t s_Uart5QmsgTaskTCB;
+
+DTC_BSS static StackType_t Uart5LoopTaskStack[UART5LOOPTASK_STACKSIZE];
+DTC_BSS static StaticTask_t s_Uart5LoopTaskTCB;
+#endif
+
 
 /*******************************************************************************
  * Prototypes
@@ -495,22 +509,8 @@ int cmdUserRegReqProc(unsigned char nMessageLen, const unsigned char *pszMessage
 	memset(username, 0, sizeof(username));
 	HexToStr(username,g_uu_id.UID,sizeof(g_uu_id.UID));
 	username[16] = '\0';//NXP的人脸注册API的username最大只能16byte
-	LOGD("=====UUID<len:%d>:%s.\n", sizeof(username), username); 
+	LOGD("=====UUID<len:%d>:%s.\r\n", sizeof(username), username); 
 
-	root = cJSON_CreateObject();
-	if(root != NULL) {
-		cJSON_AddItemToObject(root, "UUID", cJSON_CreateString((const char *)username));
-
-		char* buf = NULL;
-
-		buf = cJSON_Print(root);
-		LOGD("%s buf is %s\n", __FUNCTION__, buf);
-
-		fatfs_write("user.json", buf, 0, strlen(buf));
-
-		cJSON_Delete(root);
-	}
-		
 	vizn_api_status_t status;	
 	status = VIZN_AddUser(NULL, username);
 	switch (status)
@@ -1372,29 +1372,33 @@ static void uart5_task(void *pvParameters)
 	        	LOGD("[uart5_task]:Hardware buffer overrun!\r\n");
 				//vTaskSuspend(NULL);
 	        }
-	        if (error == kStatus_LPUART_RxRingBufferOverrun)
+	        else if (error == kStatus_LPUART_RxRingBufferOverrun)
 	        {
 	            /* Notify about ring buffer overrun */
 			    LOGD("[uart5_task]:Ring buffer overrun!\r\n");
 				//vTaskSuspend(NULL);
 	        }
-			//LOGD("[uart5_task]:<0x%02x>	", data_tmp);
-			recv_buffer[msglen] = data_tmp;
-			msglen++;
+            else if (error == kStatus_Success)
+            {
+    			//LOGD("[uart5_task]:<0x%02x>	", data_tmp);
+    			recv_buffer[msglen] = data_tmp;
+    			msglen++;
 
-			if(HEAD_MARK == recv_buffer[0])
-			{
-				if((msglen>=5) && (msglen==recv_buffer[2]+5))
-				{
-					break;
-				}
-			}
-			else
-			{//如果不是以HEAD_MARK开头的消息则自动丢弃
-				memset(recv_buffer, 0, sizeof(recv_buffer));
-				msglen=0;
-			}
+    			if(HEAD_MARK == recv_buffer[0])
+    			{
+    				if((msglen>=5) && (msglen==recv_buffer[2]+5))
+    				{
+    					break;
+    				}
+    			}
+    			else
+    			{//如果不是以HEAD_MARK开头的消息则自动丢弃
+    				memset(recv_buffer, 0, sizeof(recv_buffer));
+    				msglen=0;
+    			}
+            }
 		}
+
 #if 1		
         if (msglen > 0)
         {
@@ -1433,8 +1437,7 @@ static void uart5_task(void *pvParameters)
 					datalen,
 					pszMsgInfo);
 
-
-    } while (kStatus_Success == error);
+    } while(1);// (kStatus_Success == error);
     LPUART_RTOS_Deinit(&handle5);
     vTaskSuspend(NULL);
 }
@@ -1491,18 +1494,29 @@ static void uart5_Loop_task(void *pvParameters)
 
 int MCU_UART5_Start()
 {
-    LOGD("[MCU_UART5_Start]:starting...\r\n");	
+    LOGD("[MCU_UART5_Start]:starting...\r\n");
+
 	NVIC_SetPriority(LPUART5_IRQn, 5);
 	
 	//创建uart5串口数据通信task
-	if (xTaskCreate(uart5_task, "Uart5_task", 1024/*configMINIMAL_STACK_SIZE + 200*/, NULL, uart5_task_PRIORITY, NULL) != pdPASS)
+#if (configSUPPORT_STATIC_ALLOCATION == 1)
+    if (NULL == xTaskCreateStatic(uart5_task, "Uart5_task", UART5TASK_STACKSIZE, NULL, UART5TASK_PRIORITY,
+                                        Uart5TaskStack, &s_Uart5TaskTCB))
+#else
+    if (xTaskCreate(uart5_task, "Uart5_task", UART5TASK_STACKSIZE, NULL,UART5TASK_PRIORITY, NULL) != pdPASS)
+#endif
     {
         PRINTF("Task creation failed!.\r\n");
         while (1);
     }    
 
 	//创建uart5 开机同步task
-	if (xTaskCreate(uart5_sync_task, "Uart5_sync_task", configMINIMAL_STACK_SIZE + 100, NULL, uart5_task_PRIORITY, NULL) != pdPASS)
+#if (configSUPPORT_STATIC_ALLOCATION == 1)
+    if (NULL == xTaskCreateStatic(uart5_sync_task, "Uart5_sync_task", UART5SYNCTASK_STACKSIZE, NULL, UART5SYNCTASK_PRIORITY,
+                                        Uart5SyncTaskStack, &s_Uart5SyncTaskTCB))
+#else
+	if (xTaskCreate(uart5_sync_task, "Uart5_sync_task", UART5SYNCTASK_STACKSIZE, NULL, UART5SYNCTASK_PRIORITY, NULL) != pdPASS)
+#endif
     {
         PRINTF("Task uart5_sync_task creation failed!.\r\n");
         while (1);
@@ -1516,15 +1530,25 @@ int MCU_UART5_Start()
     }
 
 	//创建uart5的QMsg接收task
-    if (xTaskCreate(uart5_QMsg_task, "Uart5_QMsg_task", configMINIMAL_STACK_SIZE + 100, NULL, uart5_task_PRIORITY, NULL) != pdPASS)
+#if (configSUPPORT_STATIC_ALLOCATION == 1)
+    if (NULL == xTaskCreateStatic(uart5_QMsg_task, "Uart5_QMsg_task", UART5QMSGTASK_STACKSIZE, NULL, UART5QMSGTASK_PRIORITY,
+                                        Uart5QmsgTaskStack, &s_Uart5QmsgTaskTCB))
+#else
+    if (xTaskCreate(uart5_QMsg_task, "Uart5_QMsg_task", UART5QMSGTASK_STACKSIZE, NULL, UART5QMSGTASK_PRIORITY, NULL) != pdPASS)
+#endif
     {
         PRINTF("Task creation failed!.\r\n");
         while (1);
     }  
 
 	//创建循环定时处理的task
-#if	0
-    if (xTaskCreate(uart5_Loop_task, "Uart5_Loop_task", configMINIMAL_STACK_SIZE + 100, NULL, uart5_task_PRIORITY-2, NULL) != pdPASS)
+#if	0	
+#if (configSUPPORT_STATIC_ALLOCATION == 1)
+    if (NULL == xTaskCreateStatic(uart5_Loop_task, "Uart5_Loop_task", UART5LOOPTASK_STACKSIZE, NULL, UART5LOOPTASK_PRIORITY,
+                                        Uart5LoopTaskStack, &s_Uart5LoopTaskTCB))
+#else
+    if (xTaskCreate(uart5_Loop_task, "Uart5_Loop_task", UART5LOOPTASK_STACKSIZE, NULL, UART5LOOPTASK_PRIORITY, NULL) != pdPASS)
+#endif
     {
         PRINTF("Task creation failed!.\r\n");
         while (1);
