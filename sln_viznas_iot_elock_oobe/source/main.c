@@ -92,7 +92,7 @@ int main(void)
     USB_CompositeInit();
 
     DB_Init();
-
+    init_config();
     MCU_UART5_Start();
 #if WIFI_SUPPORT != 0
     WIFI_UART8_Start();

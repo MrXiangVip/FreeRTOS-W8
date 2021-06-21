@@ -87,6 +87,7 @@ extern "C"  {
 	int update_project_info(char *version) ;
     int update_sys_info(char *version);
 	int update_NetworkOptVer_info(char *file, char *version) ;//???????????????ð汾??
+    int save_json_config_file();
 
 #ifdef __cplusplus
 }

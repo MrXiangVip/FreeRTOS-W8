@@ -18,7 +18,7 @@ static char cmd[MQTT_MAX_LEN];
 //int run_at_cmd(char const *cmd, int retry_times, int cmd_timeout_usec);
 
 static int sendATCmd(const char *cmd) {
-	LOGD("--- send AT CMD %s\n", cmd);
+	//LOGD("--- send AT CMD %s\n", cmd);
 	int res = run_at_cmd(cmd, 2, 8000000);
 	while (res == -5) {
 		//sleep(1);
@@ -29,7 +29,7 @@ static int sendATCmd(const char *cmd) {
 }
 
 static int sendATLongCmd(const char *cmd) {
-    LOGD("--- send AT Long CMD %s\n", cmd);
+    //LOGD("--- send AT Long CMD %s\n", cmd);
     int res = run_at_long_cmd(cmd, 1, 8000000);
     while (res == -5) {
         //sleep(1);

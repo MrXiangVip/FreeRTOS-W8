@@ -17,75 +17,73 @@ MQTTCONFIG mqttConfig;
 
 static char buf[1024] = {0};
 //char buf2[1024] = {0};
+static bool config_json_changed = false;
 
 #if SUPPORT_CONFIG_JSON != 0
 void init_config() {
-	cJSON *root = NULL;
-	root = cJSON_CreateObject();
-	if(root != NULL) {
-		cJSON_AddItemToObject(root, CONFIG_KEY_SYS_VERSION, cJSON_CreateString((const char *)""));
-		cJSON_AddItemToObject(root, CONFIG_KEY_MCU_VERSION, cJSON_CreateString((const char *)""));
-		cJSON_AddItemToObject(root, CONFIG_KEY_OASIS_VERSION, cJSON_CreateString((const char *)""));
+    if(fatfs_read(DEFAULT_CONFIG_FILE, buf, 0, sizeof(buf)) !=0) 
+    {
+        cJSON *root = NULL;
+        root = cJSON_CreateObject();
+        if(root != NULL) {
+            cJSON_AddItemToObject(root, CONFIG_KEY_SYS_VERSION, cJSON_CreateString((const char *)""));
+            cJSON_AddItemToObject(root, CONFIG_KEY_MCU_VERSION, cJSON_CreateString((const char *)""));
+            cJSON_AddItemToObject(root, CONFIG_KEY_OASIS_VERSION, cJSON_CreateString((const char *)""));
 
-		cJSON_AddItemToObject(root, CONFIG_KEY_BT_VERSION, cJSON_CreateString((const char *)""));
-		cJSON_AddItemToObject(root, CONFIG_KEY_BT_MAC, cJSON_CreateString((const char *)""));
+            cJSON_AddItemToObject(root, CONFIG_KEY_BT_VERSION, cJSON_CreateString((const char *)""));
+            cJSON_AddItemToObject(root, CONFIG_KEY_BT_MAC, cJSON_CreateString((const char *)""));
 
-		cJSON_AddItemToObject(root, CONFIG_KEY_WIFI_MAC, cJSON_CreateString((const char *)""));
-		cJSON_AddItemToObject(root, CONFIG_KEY_SSID, cJSON_CreateString((const char *)""));
-		cJSON_AddItemToObject(root, CONFIG_KEY_WIFI_PWD, cJSON_CreateString((const char *)""));
+            cJSON_AddItemToObject(root, CONFIG_KEY_WIFI_MAC, cJSON_CreateString((const char *)""));
+            cJSON_AddItemToObject(root, CONFIG_KEY_SSID, cJSON_CreateString((const char *)""));
+            cJSON_AddItemToObject(root, CONFIG_KEY_WIFI_PWD, cJSON_CreateString((const char *)""));
 
-        cJSON_AddItemToObject(root, CONFIG_KEY_MQTT_SERVER_IP, cJSON_CreateString((const char *)"10.0.14.61"));
-        cJSON_AddItemToObject(root, CONFIG_KEY_MQTT_SERVER_PORT, cJSON_CreateString((const char *)"9883"));
-        cJSON_AddItemToObject(root, CONFIG_KEY_MQTT_SERVER_URL, cJSON_CreateString((const char *)"10.0.14.61:9883"));
+            cJSON_AddItemToObject(root, CONFIG_KEY_MQTT_SERVER_IP, cJSON_CreateString((const char *)"10.0.14.61"));
+            cJSON_AddItemToObject(root, CONFIG_KEY_MQTT_SERVER_PORT, cJSON_CreateString((const char *)"9883"));
+            cJSON_AddItemToObject(root, CONFIG_KEY_MQTT_SERVER_URL, cJSON_CreateString((const char *)"10.0.14.61:9883"));
 
-        cJSON_AddItemToObject(root, CONFIG_KEY_MQTT_USER, cJSON_CreateString((const char *)""));
-        cJSON_AddItemToObject(root, CONFIG_KEY_MQTT_PASSWORD, cJSON_CreateString((const char *)""));
+            cJSON_AddItemToObject(root, CONFIG_KEY_MQTT_USER, cJSON_CreateString((const char *)""));
+            cJSON_AddItemToObject(root, CONFIG_KEY_MQTT_PASSWORD, cJSON_CreateString((const char *)""));
 
-        char* buf = NULL;
+            char* tmp = NULL;
 
-		buf = cJSON_Print(root);
-		LOGD("%s buf is %s\n", __FUNCTION__, buf);
+            tmp = cJSON_Print(root);
+            memcpy(buf, tmp, strlen(tmp));
+            LOGD("%s tmp is %s\n", __FUNCTION__, tmp);
 
-		fatfs_write(DEFAULT_CONFIG_FILE, buf, 0, strlen(buf));
-
-		cJSON_Delete(root);
-	}
+            cJSON_Delete(root);
+            fatfs_write(DEFAULT_CONFIG_FILE, buf, 0, sizeof(buf));
+        }
+    }
 }
 
 void check_config() {
+#if	0
 	if(fatfs_read(DEFAULT_CONFIG_FILE, buf, 0, sizeof(buf)) == -1) {
 		LOGD("%s return \n", __FUNCTION__);
 		init_config();
 	}
-
+#endif
 	read_config();
 }
 
 int update_section_key(char *section, char *key) {
 	//LOGD("%s\n", __FUNCTION__);
 	cJSON *root = NULL;
-	char* buf2 = NULL;
-	memset(buf, 0, sizeof(buf));
-
-	if(fatfs_read(DEFAULT_CONFIG_FILE, buf, 0, sizeof(buf)) == -1) {
-		LOGD("%s return \n", __FUNCTION__);
-		init_config();
-		//return -1;
-	}
 	//LOGD("buf is %s\n", buf);
 
 
 	root = cJSON_Parse(buf);
-	//root = cJSON_CreateObject();
 	if(root != NULL) {
 		cJSON_ReplaceItemInObject(root, section, cJSON_CreateString((const char *)key));
+        char *tmp = NULL;
+        tmp = cJSON_Print(root);
+		memset(buf, 0, sizeof(buf));
+        memcpy(buf, tmp, strlen(tmp));
 
-		buf2 = cJSON_Print(root);
-		//LOGD("%s buf2 is %s\n", __FUNCTION__, buf2);
-
-		fatfs_write(DEFAULT_CONFIG_FILE, buf2, 0, strlen(buf2));
+		//fatfs_write(DEFAULT_CONFIG_FILE, buf2, 0, strlen(buf2));
 
 		cJSON_Delete(root);
+        config_json_changed = true;
 	}
 
 	return 0;
@@ -260,6 +258,15 @@ void print_project_config(void) {
     LOGD("\tusername: \t%s\n", mqttConfig.username);
     LOGD("\tmqtt password: \t%s\n", mqttConfig.password);
 }
+
+int save_json_config_file() {
+    if (config_json_changed) {
+        fatfs_write(DEFAULT_CONFIG_FILE, buf, 0, sizeof(buf));
+        config_json_changed = false;
+    }
+    return 0;
+}
+
 #else
 int update_option_if_not_exist(Config *cnf, char *section, char *key, char *value) {
 	if (!cnf_has_option(cnf, section, key)) {

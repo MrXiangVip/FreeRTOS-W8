@@ -127,6 +127,7 @@ static int at_cmd_result = AT_CMD_RESULT_UNDEF;
 static int wifi_ready = 0;
 int g_uploading_id = -1;
 
+extern bool  shut_down;
 lpuart_rtos_handle_t handle8;
 struct _lpuart_handle t_handle8;
 
@@ -174,6 +175,10 @@ int run_at_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
 //	if (AT_CMD_MODE_ACTIVE == at_cmd_mode) {
 //		return AT_CMD_RESULT_BUSY;
 //	}
+    if(shut_down) {
+        at_cmd_mode = AT_CMD_MODE_INACTIVE;
+        return -1;
+    }
 	char at_cmd[MQTT_AT_LEN];
 	memset(at_cmd, '\0', MQTT_AT_LEN);
 	sprintf(at_cmd, "%s\r\n", cmd);
@@ -210,6 +215,10 @@ int run_at_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
 
 int run_at_long_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
 {
+    if(shut_down) {
+        at_cmd_mode = AT_CMD_MODE_INACTIVE;
+        return -1;
+    }
     char at_cmd[MQTT_AT_LONG_LEN];
     memset(at_cmd, '\0', MQTT_AT_LONG_LEN);
     sprintf(at_cmd, "%s\r\n", cmd);

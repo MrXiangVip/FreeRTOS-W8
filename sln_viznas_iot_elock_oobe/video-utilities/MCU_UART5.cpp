@@ -37,6 +37,7 @@
 
 #include "../mqtt/config.h"
 #include "WIFI_UART8.h"
+#include "database.h"
 
 // 20201120 wszgx added for display correct date/time information in the screen
 /*******************************************************************************
@@ -96,6 +97,9 @@ static char username[17] = {0}; //用于存放传入NXP提供的人脸注册于�
 
 static bool lcd_back_ground = true;
 extern int battery_level;
+static bool  saving_file = false;
+bool  shut_down = false;
+
 #if (configSUPPORT_STATIC_ALLOCATION == 1)
 DTC_BSS static StackType_t Uart5TaskStack[UART5TASK_STACKSIZE];
 DTC_BSS static StaticTask_t s_Uart5TaskTCB;
@@ -237,6 +241,9 @@ int cmdCommRsp2MCU(unsigned char CmdId, uint8_t ret)
 
 int SendMsgToMCU(unsigned char *MsgBuf, unsigned char MsgLen)
 {
+    if(shut_down) {
+        return 0;
+    }
 	int ret = kStatus_Success; 
 
 	char message_buffer[64];
@@ -635,6 +642,14 @@ int cmdWifiOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessag
 	return 0;
 }
 
+int save_files_before_pwd()
+{
+    if(saving_file == false) {
+        DB_Save(0);
+        save_json_config_file();
+        saving_file = true;
+    }
+}
 
 //主控发送: 关机请求
 int cmdCloseFaceBoardReq()
@@ -661,6 +676,9 @@ int cmdCloseFaceBoardReq()
 	memcpy((uint8_t*)pop, &cal_crc16, sizeof(cal_crc16));
 	
 	SendMsgToMCU((uint8_t*)szBuffer, iBufferSize+CRC16_LEN);
+    shut_down = true;
+    vTaskDelay(pdMS_TO_TICKS(100));
+    save_files_before_pwd();
 
 	return 0;
 }
@@ -1308,8 +1326,9 @@ static void uart5_QMsg_task(void *pvParameters)
 						LOGD("recognize_times is %d\r\n", recognize_times);
 						if(recognize_times > 100) {
 							recognize_times = 0;
-							cmdCloseFaceBoardReq();//关主控电源
-							CloseLcdBackground();
+ 							cmdCloseFaceBoardReq();//关主控电源
+                            CloseLcdBackground();
+                            break;
 						}
 					}
 				}
@@ -1597,6 +1616,9 @@ int  Uart5_GetFaceRecResult(uint8_t result)
 
 static int Uart5_SendQMsg(void* msg)
 {
+    if(shut_down) {
+        return 0;
+    }
     BaseType_t ret;
 
     ret = xQueueSend(Uart5MsgQ, msg, (TickType_t)0);
