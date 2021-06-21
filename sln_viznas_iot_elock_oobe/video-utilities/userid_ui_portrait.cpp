@@ -347,8 +347,8 @@ static void UIInfo_UpdateBottomInfoBarV2(uint16_t *pBufferAddr, QUIInfoMsg* info
     if(bSysTimeSynProc) {
         struct ws_tm current;
         memset((void*)&current,0x00,sizeof(current));
-        ws_localtime(ws_systime, &current);
-        char idxstring[64];
+        ws_localtime(ws_systime + 8*60*60, &current);
+        char idxstring[32];
         memset(idxstring, 0x0, 64);
         sprintf(idxstring, "%04d-%02d-%02d", current.tm_year, current.tm_mon + 1, current.tm_mday);
         put_string(2, 0, idxstring, RGB565_WHITE, -1, OPENSANS8,
