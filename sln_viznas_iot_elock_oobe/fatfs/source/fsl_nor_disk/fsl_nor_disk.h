@@ -24,6 +24,10 @@
 
 #define FATFS_SECTOR_OFFSET (FATFS_FLASH_REGION_OFFSET/FATFS_SECTOR_SIZE)
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 DRESULT nor_disk_status(BYTE pdrv);
 
 
@@ -37,6 +41,9 @@ DRESULT nor_disk_write(BYTE pdrv, const BYTE *buff, DWORD sector, UINT count);
 
 
 DRESULT nor_disk_ioctl(BYTE pdrv, BYTE cmd, void *buff);
+#if defined(__cplusplus)
+}
+#endif
 
 
 #endif /* FATFS_DRIVER_FSL_NOR_DISK_H_ */

@@ -26,6 +26,9 @@
 
 #include "composite.h"
 #include "fsl_nor_disk.h"
+#include "fsl_shell.h"
+#include "sln_cli.h"
+extern QueueHandle_t g_UsbShellQueue;
 /*******************************************************************************
 * Definitions
 ******************************************************************************/
@@ -33,7 +36,7 @@
 /*******************************************************************************
 * Variables
 ******************************************************************************/
-uint8_t remote_change_fs = 0;
+uint8_t remote_change_fs;
 static usb_device_composite_struct_t *g_deviceComposite;
 USB_DMA_INIT_DATA_ALIGN(USB_DATA_ALIGN_SIZE)
 usb_device_inquiry_data_fromat_struct_t g_InquiryInfo = {
@@ -296,9 +299,32 @@ usb_status_t USB_DeviceMscCallback(class_handle_t handle, uint32_t event, void *
             /*write the data to disk*/
             if (0 != lba->size)
             {
+#if !EXCLUSIVE_FLASH_BY_FILE_SYSTEM
+            	{
                 // need lock with database operate
-                errorCode = nor_disk_write(NORDISK, lba->buffer, lba->offset, lba->size >> USB_DEVICE_SDCARD_BLOCK_SIZE_POWER);
-                remote_change_fs = 1;
+					errorCode = nor_disk_write(NORDISK, lba->buffer, lba->offset, lba->size >> USB_DEVICE_SDCARD_BLOCK_SIZE_POWER);
+					remote_change_fs = 1;
+            	}
+#else
+                {
+
+					BaseType_t HigherPriorityTaskWoken = pdFALSE;
+					UsbShellCmdQueue_t queueMsg;
+				    queueMsg.argc               = 3;
+				    queueMsg.shellContextHandle = NULL;
+				    queueMsg.shellCommand       = SHELL_EV_FFI_CLI_DISK_WRITE;
+				    sprintf(queueMsg.argv[0],"%u",(uint32_t)lba->buffer);
+				    sprintf(queueMsg.argv[1],"%u",(uint32_t)lba->offset);
+				    sprintf(queueMsg.argv[2],"%u",(uint32_t)lba->size);
+
+					xQueueSendToBackFromISR(g_UsbShellQueue, (void *)&queueMsg, &HigherPriorityTaskWoken);
+					portYIELD_FROM_ISR(HigherPriorityTaskWoken);
+
+					remote_change_fs = 1;
+					errorCode = kStatus_Success;
+
+                }
+#endif
 
                 if (kStatus_Success != errorCode)
                 {

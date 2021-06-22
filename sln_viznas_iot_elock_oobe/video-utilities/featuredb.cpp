@@ -33,7 +33,8 @@ static FeatureItem s_FeatureItem[FEATUREDATA_MAX_COUNT];
 #define FEATURE_FILE_NAME_LEN (FEATURE_FILE_INDEX_LENGTH + 4)
 
 static char file_name[FEATURE_FILE_NAME_LEN];
-static bool auto_save_mode = false;
+
+static bool auto_save_mode = EXCLUSIVE_FLASH_BY_FILE_SYSTEM;
 
 extern uint8_t remote_change_fs;
 

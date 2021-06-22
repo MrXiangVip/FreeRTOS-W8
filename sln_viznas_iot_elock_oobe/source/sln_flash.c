@@ -16,7 +16,17 @@
 #endif
 #include "fsl_flexspi.h"
 
+#include "FreeRTOS.h"
+#include "semphr.h"
+#include "task.h"
+
+
+static uint8_t SDK_L1DCACHE_ALIGN(s_tempPage[FLASH_PAGE_SIZE]);
 extern const uint32_t customLUT[];
+
+#if EXCLUSIVE_FLASH_BY_FILE_SYSTEM
+static SemaphoreHandle_t s_fileLock = NULL;
+#endif
 
 #ifdef __REDLIB__
 size_t safe_strlen(const char *ptr, size_t max)
@@ -60,22 +70,46 @@ uint32_t SLN_ram_disable_irq(void)
 {
     uint32_t regPrimask = 0;
 
+#if !EXCLUSIVE_FLASH_BY_FILE_SYSTEM
     // Get primask
     __ASM volatile("MRS %0, primask" : "=r"(regPrimask)::"memory");
 
     // Disable irq
     __ASM volatile("cpsid i" : : : "memory");
+#else
+
+    if (xTaskGetSchedulerState() == taskSCHEDULER_NOT_STARTED || s_fileLock == NULL)
+    {
+
+    }else
+    {
+    	xSemaphoreTake(s_fileLock, portMAX_DELAY);
+    }
+#endif
 
     return regPrimask;
 }
 
 void SLN_ram_enable_irq(uint32_t priMask)
 {
+#if !EXCLUSIVE_FLASH_BY_FILE_SYSTEM
     __ASM volatile("MSR primask, %0" : : "r"(priMask) : "memory");
+#else
+    if (xTaskGetSchedulerState() == taskSCHEDULER_NOT_STARTED || s_fileLock == NULL)
+    {
+
+    }
+    else
+    {
+    	xSemaphoreGive(s_fileLock);
+    }
+#endif
+
 }
 
 void SLN_ram_disable_d_cache(void)
 {
+#if !EXCLUSIVE_FLASH_BY_FILE_SYSTEM
 #if defined(__DCACHE_PRESENT) && (__DCACHE_PRESENT == 1U)
     register uint32_t ccsidr;
     register uint32_t sets;
@@ -107,10 +141,12 @@ void SLN_ram_disable_d_cache(void)
     __ASM volatile("dsb 0xF" ::: "memory");
     __ASM volatile("isb 0xF" ::: "memory");
 #endif
+#endif
 }
 
 void SLN_ram_enable_d_cache(void)
 {
+#if !EXCLUSIVE_FLASH_BY_FILE_SYSTEM
 #if defined(__DCACHE_PRESENT) && (__DCACHE_PRESENT == 1U)
     uint32_t ccsidr;
     uint32_t sets;
@@ -142,11 +178,25 @@ void SLN_ram_enable_d_cache(void)
     __ASM volatile("dsb 0xF" ::: "memory");
     __ASM volatile("isb 0xF" ::: "memory");
 #endif
+#endif
 }
 
 void SLN_Flash_Init(void)
 {
     uint32_t irqState;
+
+#if EXCLUSIVE_FLASH_BY_FILE_SYSTEM
+    // Create a lock with priority inheritance
+    if (s_fileLock == NULL)
+    {
+		s_fileLock = xSemaphoreCreateMutex();
+		assert(s_fileLock != NULL);
+    }
+    else
+    {
+    	return;
+    }
+#endif
 
     irqState = SLN_ram_disable_irq();
 
@@ -179,14 +229,18 @@ status_t SLN_Write_Flash_Page(uint32_t address, uint8_t *data, uint32_t len)
     SLN_ram_disable_d_cache();
 
     /* Setup page size write buffer */
-    uint8_t tempPage[FLASH_PAGE_SIZE];
+    //uint8_t tempPage[FLASH_PAGE_SIZE];
 
-    SLN_ram_memset(tempPage, 0xFF, FLASH_PAGE_SIZE);
+    SLN_ram_memset(s_tempPage, 0xFF, FLASH_PAGE_SIZE);
 
-    SLN_ram_memcpy(tempPage, data, len);
+    SLN_ram_memcpy(s_tempPage, data, len);
+
+    //DCACHE_CleanByRange(s_tempPage,sizeof(s_tempPage));
 
     /* Program page. */
-    status = flexspi_nor_flash_page_program_with_buffer(FLEXSPI, address, (void *)tempPage);
+    status = flexspi_nor_flash_page_program_with_buffer(FLEXSPI, address, (void *)s_tempPage);
+
+    //DCACHE_InvalidateByRange(SLN_Flash_Get_Read_Address(address),FLASH_PAGE_SIZE);
 
     SLN_ram_enable_d_cache();
 
@@ -203,14 +257,16 @@ static status_t SLN_Write_Flash_Page2(uint32_t address, uint8_t *data, uint32_t 
     status_t status = 0;
 
     /* Setup page size write buffer */
-    uint8_t tempPage[FLASH_PAGE_SIZE];
+    //uint8_t tempPage[FLASH_PAGE_SIZE];
 
-    SLN_ram_memset(tempPage, 0xFF, FLASH_PAGE_SIZE);
+    SLN_ram_memset(s_tempPage, 0xFF, FLASH_PAGE_SIZE);
 
-    SLN_ram_memcpy(tempPage, data, len);
+    SLN_ram_memcpy(s_tempPage, data, len);
 
+    //DCACHE_CleanByRange(s_tempPage,sizeof(s_tempPage));
     /*Program page. */
-    status = flexspi_nor_flash_page_program_with_buffer(FLEXSPI, address, (void *)tempPage);
+    status = flexspi_nor_flash_page_program_with_buffer(FLEXSPI, address, (void *)s_tempPage);
+    //DCACHE_InvalidateByRange(SLN_Flash_Get_Read_Address(address),FLASH_PAGE_SIZE);
 
     return status;
 }
@@ -295,6 +351,7 @@ status_t SLN_Erase_Sector(uint32_t address)
 
     /* Erase sectors. */
     status = flexspi_nor_flash_erase_sector(FLEXSPI, address);
+    //DCACHE_InvalidateByRange(SLN_Flash_Get_Read_Address(address),SECTOR_SIZE);
 
     /* Do software reset. */
     FLEXSPI_SoftwareReset(FLEXSPI);
@@ -324,8 +381,11 @@ status_t SLN_Write_Flash_At_Address(uint32_t address, uint8_t *data)
     /* Do software reset. */
     FLEXSPI_SoftwareReset(FLEXSPI);
 
+    SLN_ram_memcpy(s_tempPage, data, FLASH_PAGE_SIZE);
+    //DCACHE_CleanByRange(s_tempPage,FLASH_PAGE_SIZE);
     /*Program page. */
-    status = flexspi_nor_flash_page_program_with_buffer(FLEXSPI, address, (void *)data);
+    status = flexspi_nor_flash_page_program_with_buffer(FLEXSPI, address, (void *)s_tempPage);
+    //DCACHE_InvalidateByRange(SLN_Flash_Get_Read_Address(address),FLASH_PAGE_SIZE);
 
     SLN_ram_enable_d_cache();
 

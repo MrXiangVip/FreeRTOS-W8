@@ -18,6 +18,8 @@
 #include "sln_dev_cfg.h"
 #include "sln_api.h"
 #include "sln_connection.h"
+#include "fsl_nor_disk.h"
+extern "C" uint8_t remote_change_fs;
 /*******************************************************************************
  * Prototypes
  *******************************************************************************/
@@ -1199,6 +1201,14 @@ void UsbShell_CmdProcess_Task(void *arg)
                     SHELL_Printf(shellContextHandle, "Undefined mode\r\n");
                 }
             }
+        }else if (SHELL_EV_FFI_CLI_DISK_WRITE == queueMsg.shellCommand)
+        {
+        	uint8_t* buffer = (uint8_t*) strtoul(queueMsg.argv[0],NULL,10);
+        	uint32_t offset = strtoul(queueMsg.argv[1],NULL,10);
+        	uint32_t size = strtoul(queueMsg.argv[2],NULL,10);
+            nor_disk_write(NORDISK, buffer, offset, size);
+            remote_change_fs = 1;
+
         }
         SHELL_Printf(shellContextHandle, USB_SHELL_PROMPT);
     }

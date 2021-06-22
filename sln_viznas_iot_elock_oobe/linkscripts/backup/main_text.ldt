@@ -1,0 +1,2 @@
+*system_*.o (.text.SystemInit*)
+*_flexram_allocate.o (.text.*)

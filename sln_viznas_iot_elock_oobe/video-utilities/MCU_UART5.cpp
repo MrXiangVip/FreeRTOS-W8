@@ -1291,7 +1291,6 @@ static void uart5_QMsg_task(void *pvParameters)
     BaseType_t ret;
     QMsg* pQMsg;
     int recognize_times = 0;
-	cJSON *root ;
     while (1)
     {
 		//LOGD("uart5_QMsg_task()  -> xQueueReceive()!\n");
@@ -1361,11 +1360,10 @@ static void uart5_QMsg_task(void *pvParameters)
 				case QMSG_FACEREC_RECFACE:
 				{//处理人脸识别结果
 					//LOGD("%s g_reging_flg is %d lcd_back_ground is %d\r\n", __FUNCTION__, g_reging_flg, lcd_back_ground);
-					if(REG_STATUS_WAIT != g_reging_flg)//如果正在注册流程，就过滤掉该识别结果
+					if(REG_STATUS_WAIT != g_reging_flg
+							|| lcd_back_ground == false)//如果正在注册流程，就过滤掉该识别结果
 					{
-						continue;
-					}
-					if(lcd_back_ground == false) {
+						vPortFree(pQMsg);
 						continue;
 					}
 
@@ -1402,11 +1400,19 @@ static void uart5_QMsg_task(void *pvParameters)
 				}
 				break;
 				default:
+					assert(0);
 					break;
             }
+
+    		vPortFree(pQMsg);
+        }
+        else
+        {
+        	//message receive error
+        	assert(0);
         }
 
-		vPortFree(pQMsg);
+
     }
 
 }
@@ -1661,6 +1667,11 @@ int  Uart5_GetFaceRegResult(uint8_t result)
     pQMsg->id = QMSG_FACEREC_ADDNEWFACE;
     pQMsg->msg.val = result;
     status = Uart5_SendQMsg((void*)&pQMsg);
+
+    if (status)
+    {
+    	vPortFree(pQMsg);
+    }
 	
     return status;
 }
@@ -1678,6 +1689,11 @@ int  Uart5_GetFaceRecResult(uint8_t result)
     pQMsg->id = QMSG_FACEREC_RECFACE;
     pQMsg->msg.val = result;
     status = Uart5_SendQMsg((void*)&pQMsg);
+
+    if (status)
+    {
+    	vPortFree(pQMsg);
+    }
 	
     return status;
 }

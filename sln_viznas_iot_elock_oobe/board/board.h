@@ -14,6 +14,8 @@
 #define DISP_USE_SPI_DMA 1
 #define WDOG_ENABLE 1
 
+#define EXCLUSIVE_FLASH_BY_FILE_SYSTEM 0
+
 
 #ifndef APP_VERSION_NUMBER
 #define APP_MAJ_VER 2

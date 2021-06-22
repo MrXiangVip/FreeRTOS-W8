@@ -31,7 +31,8 @@ extern "C" {
 #endif
 
 #define WEAK __attribute__ ((weak))
-#define WEAK_AV __attribute__ ((weak, section(".after_vectors")))
+//#define WEAK_AV __attribute__ ((weak, section(".after_vectors")))
+#define WEAK_AV WEAK
 #define ALIAS(f) __attribute__ ((weak, alias (#f)))
 
 //*****************************************************************************
@@ -433,6 +434,7 @@ extern void __base_SRAM_OC_CACHEABLE(void);
 extern void __top_SRAM_OC_CACHEABLE(void);
 
 // Map managed linker file configuration to FlexRAM config
+__attribute__ ((section(".after_vectors.flexram")))
 static void map_flexram(void)
 {
     unsigned int dtcSize = (unsigned int)__top_SRAM_DTC - (unsigned int)__base_SRAM_DTC;
