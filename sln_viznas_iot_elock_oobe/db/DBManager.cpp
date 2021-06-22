@@ -47,12 +47,13 @@ bool DBManager::saveRecordToFile(list<Record*> recordList,char *filePath){
         cJSON * cObj = cJSON_CreateObject();
         cJSON_AddNumberToObject(cObj, "ID", tmpRecord->ID);
         cJSON_AddStringToObject(cObj, "UUID", tmpRecord->UUID);
+        cJSON_AddNumberToObject(cObj, "action", tmpRecord->action);
         cJSON_AddNumberToObject(cObj, "time_stamp", tmpRecord->time_stamp);
         cJSON_AddNumberToObject(cObj, "status", tmpRecord->status);
-
-        cJSON_AddNumberToObject(cObj, "action", tmpRecord->action);
+        cJSON_AddStringToObject(cObj, "image_path", tmpRecord->image_path);
         cJSON_AddNumberToObject(cObj, "power",  tmpRecord->power);
         cJSON_AddNumberToObject(cObj, "power2", tmpRecord->power2);
+        cJSON_AddNumberToObject(cObj, "upload", tmpRecord->upload);
 
         //4.2 把对象添加到数组
         cJSON_AddItemToArray(ObjArr, cObj);
@@ -108,7 +109,14 @@ list<Record*> DBManager::readRecordFromFile(char *filePath){
                 Record *record = (Record *) pvPortMalloc(sizeof(Record));
                 record->ID = i;
                 strcpy(record->UUID, cJSON_GetObjectItem(SubObj, "UUID")->valuestring);
+                record->action = cJSON_GetObjectItem(SubObj, "action")->valueint;
                 record->time_stamp = cJSON_GetObjectItem(SubObj, "time_stamp")->valuedouble;
+                record->status = cJSON_GetObjectItem(SubObj, "status")->valueint;
+                strcpy(record->image_path , cJSON_GetObjectItem(SubObj, "image_path")->valuestring);
+                record->power = cJSON_GetObjectItem(SubObj, "power")->valueint;
+                record->power2 = cJSON_GetObjectItem(SubObj, "power2")->valueint;
+                record->upload = cJSON_GetObjectItem(SubObj, "upload")->valueint;
+
                 recordList.push_back(record);
                 LOGD("[%d] id:%d\r\n", i, record->ID);
                 LOGD("[%d] uuid:%s\r\n", i, record->UUID);
@@ -118,7 +126,7 @@ list<Record*> DBManager::readRecordFromFile(char *filePath){
         }
 
         cJSON_Delete(jsonroot);
-        free(buf);
+        vPortFree(buf);
     }
 
 

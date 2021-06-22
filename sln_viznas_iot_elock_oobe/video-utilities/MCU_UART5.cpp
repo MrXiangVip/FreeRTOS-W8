@@ -404,6 +404,45 @@ int cmdSysInitOKSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessa
 	return 0;
 }
 
+// 主控接收指令:开门响应
+int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage)
+{
+    printf("x7 收到mcu 的开门回复 \n");
+    uint8_t ret = -1;
+    unsigned char szBuffer[128]={0};
+    int iBufferSize = 0;
+    unsigned char *pop = NULL;
+    unsigned char MsgLen = 0;
+    unsigned char	cal_FCS;
+
+    // MCU到face_loop，0代表开锁成功，1代表开锁失败
+    ret = StrGetUInt8( pszMessage ) ;
+    // 如果开锁成功 更新数据库状态 ,请求mqtt上传本次操作记录。
+    if( ret ==0 ){
+        //					xshx add
+        Record* record = (Record *)pvPortMalloc(sizeof(Record));
+        HexToStr(username,g_uu_id.UID,sizeof(g_uu_id.UID));
+        strcpy(record->UUID, username);
+        record->action = 3;//  操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁
+//        unsigned char image_path[100];
+        record->status =0; // 0,操作成功 1,操作失败.
+        record->time_stamp = ws_systime ; //时间戳 从1970年开始的秒数
+        record->power=0;    // 电池电量
+        record->power2=0;   // 电池电量
+        record->upload=0; //   0代表没上传 1代表记录上传图片未上传 2代表均已
+        DBManager *dbManager = DBManager::getInstance();
+        dbManager->addRecord( record);
+
+        int ID = DBManager::getInstance()->getLastRecordID();
+        printf("开锁成功, 更新数据库状态.请求MQTT上传本次开门的记录 \n");
+//        cmdRequestMqttUpload( ID );
+    }else{
+        printf("开锁失败,不更新数据库状态. 不上传记录\n");
+    }
+
+    return 0;
+}
+
 void SetSysToFactory()
 {
 	VIZN_DelUser(NULL);
@@ -495,6 +534,7 @@ int cmdUserRegRsp(uint8_t ret)
 //主控接收指令:  用户注册请求
 int cmdUserRegReqProc(unsigned char nMessageLen, const unsigned char *pszMessage)
 {
+    LOGD("用户注册请求 \r\n");
 	uint8_t ret = SUCCESS, len=0;	
 	unsigned char szBuffer[32]={0};
 	unsigned char *pos = szBuffer;	
@@ -644,14 +684,14 @@ int cmdWifiOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessag
 
 int save_files_before_pwd()
 {
-
+    LOGD("关机前保存文件 \r\n");
     if(saving_file == false) {
         DB_Save(0);
         save_json_config_file();
         saving_file = true;
     }
 // save record list  to file
-//    DBManager::getInstance()->flushRecordList();
+    DBManager::getInstance()->flushRecordList();
     return  0;
 }
 
@@ -1170,7 +1210,9 @@ int ProcMessage(
 				LOGD("display mode not supported\r\n");
 			}
 #endif
-			break;			
+            cmdOpenDoorRsp(nMessageLen, pszMessage);
+
+            break;
 		}
 		case CMD_FACE_REG:
 		{			
@@ -1276,6 +1318,26 @@ static void uart5_QMsg_task(void *pvParameters)
 						}
 
 						g_reg_start = Time_Now(); //记录注册成功响应发出的时间，并开始计时
+//						增加注册记录
+                        //增加本次操作记录
+                        LOGD("增加注册记录");
+                        Record *record = (Record*)pvPortMalloc(sizeof( Record));
+                        memset(record, 0, sizeof(Record));
+                        strcpy(record->UUID, username);
+                        record->action = 0;// 0 代表注册
+                        record->time_stamp = ws_systime ;//当前时间
+//                        memset(image_path, 0, sizeof(image_path)); // 对注册成功的用户保存一张压缩过的jpeg图片
+//                        snprintf(image_path, sizeof(image_path), "/opt/smartlocker/pic/REG_%d_%d_%s.jpg",regResult, record.time_stamp, record.UID);
+//                        memcpy( record.image_path, image_path, sizeof(image_path) );//image_path
+                        record->status= SUCCESS;// 本次注册成功
+                        record->power=-1;//当前电池电量
+                        record->power2=-1;//当前电池电量
+                        record->upload=0;// 0代表没上传 1代表记录上传图片未上传 2代表均已
+                        LOGD("往数据库中插入本次注册记录 \n");
+                        DBManager::getInstance()->addRecord( record);
+
+//                        g_face.WriteJPG(image_path, faceBuf.color_buf, CAM_HEIGHT,CAM_WIDTH, 3, 50);
+//                        log_info("保存 UID<%s> 注册图片到 path<%s>!\n", record.UID, image_path);
 					}
 					else
 					{//failed
@@ -1334,13 +1396,9 @@ static void uart5_QMsg_task(void *pvParameters)
                             CloseLcdBackground();
                             break;
 						}
+
 					}
-//					xshx add
-//					if( recognize_times <2 ){
-//					    Record* record = (Record *)pvPortMalloc(sizeof(Record));
-//                        DBManager *dbManager = DBManager::getInstance();
-//                        dbManager->addRecord( record);
-//					}
+
 				}
 				break;
 				default:
