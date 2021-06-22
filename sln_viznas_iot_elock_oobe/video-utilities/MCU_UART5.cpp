@@ -38,7 +38,7 @@
 #include "../mqtt/config.h"
 #include "WIFI_UART8.h"
 #include "database.h"
-
+#include "DBManager.h"
 // 20201120 wszgx added for display correct date/time information in the screen
 /*******************************************************************************
  * Definitions
@@ -644,11 +644,15 @@ int cmdWifiOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessag
 
 int save_files_before_pwd()
 {
+
     if(saving_file == false) {
         DB_Save(0);
         save_json_config_file();
         saving_file = true;
     }
+// save record list  to file
+//    DBManager::getInstance()->flushRecordList();
+    return  0;
 }
 
 //主控发送: 关机请求
@@ -1331,6 +1335,12 @@ static void uart5_QMsg_task(void *pvParameters)
                             break;
 						}
 					}
+//					xshx add
+//					if( recognize_times <2 ){
+//					    Record* record = (Record *)pvPortMalloc(sizeof(Record));
+//                        DBManager *dbManager = DBManager::getInstance();
+//                        dbManager->addRecord( record);
+//					}
 				}
 				break;
 				default:
