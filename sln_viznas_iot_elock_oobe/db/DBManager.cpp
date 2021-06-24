@@ -62,7 +62,7 @@ bool DBManager::saveRecordToFile(list<Record*> recordList,char *filePath){
     //cjson_str = cJSON_PrintUnformatted(jsonroot);
     cjson_str = cJSON_Print(jsonroot);
 
-    LOGD("jsonroot : \n%s\r\n", cjson_str);
+    //LOGD("jsonroot : \n%s\r\n", cjson_str);
     LOGD("-----2.将jason格式数据存文件-----\r\n");
 //    FILE *file = fopen( filePath, "w+");
 //    fwrite(cjson_str,  strlen(cjson_str), 1,file);
@@ -117,10 +117,11 @@ list<Record*> DBManager::readRecordFromFile(char *filePath){
                 record->upload = cJSON_GetObjectItem(SubObj, "upload")->valueint;
 
                 recordList.push_back(record);
-                LOGD("[%d] id:%d\r\n", i, record->ID);
-                LOGD("[%d] uuid:%s\r\n", i, record->UUID);
-                LOGD("[%d] time_stamp:%ld\r\n", i, record->time_stamp);
+                //LOGD("[%d] id:%d\r\n", i, record->ID);
+                //LOGD("[%d] uuid:%s\r\n", i, record->UUID);
+                //LOGD("[%d] time_stamp:%ld\r\n", i, record->time_stamp);
 
+                LOGD("i: [%d] id:%d, uuid:%s, time_stamp:%d\r\n", i, record->ID, record->UUID, record->time_stamp);
             }
         }
 

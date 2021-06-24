@@ -134,6 +134,7 @@ int uploadRecordImage(Record *record, bool online);
 int g_uploading_id = -1;
 
 extern bool  shut_down;
+extern bool bPubOasisImage;
 lpuart_rtos_handle_t handle8;
 struct _lpuart_handle t_handle8;
 
@@ -1169,7 +1170,7 @@ void update_rssi() {
 }
 
 int uploadRecord(char *msgId, Record *record) {
-	char pub_msg[MQTT_AT_LEN];
+	char pub_msg[MQTT_AT_LONG_LEN];
 	// int result = record->passed ? 0 : 1;
 	LOGD("upload record uid %s, type %d, time %d, batteryA %d, batteryB %d, result %d\n", record->UUID, record->action, record->time_stamp, record->power, record->power2, record->status);
 	// sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"userId\\\":\\\"%s\\\"\\, \\\"type\\\":%d\\,\\\"time\\\":%u\\,\\\"batteryA\\\":%d\\,\\\"batteryB\\\":%d\\,\\\"result\\\":%d}", msgId, btWifiConfig.bt_mac, record->UID, record->type, record->time, record->power, record->power2, result);
@@ -1191,7 +1192,6 @@ int uploadRecord(char *msgId, Record *record) {
 }
 
 int uploadRecordImage(Record *record, bool online) {
-	char *filename = (char*)(record->image_path);
 	LOGD("uploadRecordImage online is %d \r\n", online);
 	if(online) {
             char *pub_topic = get_pub_topic_pic_report();
@@ -1211,6 +1211,7 @@ int uploadRecordImage(Record *record, bool online) {
             freePointer(&msgId);
             return ret;
     }else {
+        char *filename = (char*)(record->image_path);
         LOGD("uploadRecordImage filename is %s", filename);
         if (filename != NULL && strlen(filename) > 0 && (access(filename, F_OK)) != -1) {
             char *pub_topic = get_pub_topic_pic_report();
@@ -1321,8 +1322,8 @@ static void msghandle_task(void *pvParameters)
     char msg[MQTT_AT_LEN];
     memset(msg, '\0', MQTT_AT_LEN);
     char *pub_topic = NULL;
-    char pub_msg[MQTT_AT_LEN];
-    memset(pub_msg, '\0', MQTT_AT_LEN);
+    char pub_msg[MQTT_AT_LONG_LEN];
+    memset(pub_msg, '\0', MQTT_AT_LONG_LEN);
     memset(wifi_rssi, '\0', sizeof(wifi_rssi));
     wifi_rssi[0] = '0';
 	//mqtt_init_done = 1;
@@ -1336,7 +1337,7 @@ static void msghandle_task(void *pvParameters)
         }
 
         if(count % 5 == 0) {
-            if (mqtt_init_done == 1) {
+            if ((mqtt_init_done == 1) && (bPubOasisImage == false)) {
                 // sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"btmac\\\":\\\"%s\\\"\\,\\\"wifi_rssi\\\":%s\\,\\\"battery\\\":%d\\,\\\"version\\\":\\\"%s\\\"}", msgId, btWifiConfig.wifi_mac, btWifiConfig.bt_mac, wifi_rssi, battery_level, getFirmwareVersion());
                 //sprintf(pub_msg,
                 //        "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"wifi_rssi\\\":%s\\,\\\"battery\\\":%d\\,\\\"index\\\":%d\\,\\\"version\\\":\\\"%s\\\"}",

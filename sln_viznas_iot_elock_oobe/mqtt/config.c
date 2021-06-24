@@ -239,24 +239,24 @@ int read_config() {
 }
 
 void print_project_config(void) {
-    LOGD("version config:\n");
-    LOGD("\tsys_ver: \t%s\n", versionConfig.sys_ver);
-    LOGD("\tbt_ver: \t%s\n", versionConfig.bt_ver);
-    LOGD("\toasis_ver: \t%s\n", versionConfig.oasis_ver);
-    LOGD("\tmcu_ver: \t%s\n", versionConfig.mcu_ver);
+    LOGD("version config:\r\n");
+    LOGD("sys_ver: %s\r\n", versionConfig.sys_ver);
+    LOGD("bt_ver: %s\r\n", versionConfig.bt_ver);
+    LOGD("oasis_ver: %s\r\n", versionConfig.oasis_ver);
+    LOGD("mcu_ver: %s\r\n", versionConfig.mcu_ver);
 
-    LOGD("bt wifi config:\n");
-    LOGD("\tbt_mac: \t%s\n", btWifiConfig.bt_mac);
-    LOGD("\twifi_mac: \t%s\n", btWifiConfig.wifi_mac);
-    LOGD("\tssid: \t\t%s\n", btWifiConfig.ssid);
-    LOGD("\twifi password: \t%s\n", btWifiConfig.password);
+    LOGD("bt wifi config:\r\n");
+    LOGD("bt_mac: %s\r\n", btWifiConfig.bt_mac);
+    LOGD("wifi_mac: %s\r\n", btWifiConfig.wifi_mac);
+    LOGD("ssid: %s\r\n", btWifiConfig.ssid);
+    LOGD("wifi password: %s\r\n", btWifiConfig.password);
 
-    LOGD("mqtt config:\n");
-    LOGD("\tserver_ip: \t%s\n", mqttConfig.server_ip);
-    LOGD("\tserver_port: \t%s\n", mqttConfig.server_port);
-    LOGD("\tclient_id: \t%s\n", mqttConfig.client_id);
-    LOGD("\tusername: \t%s\n", mqttConfig.username);
-    LOGD("\tmqtt password: \t%s\n", mqttConfig.password);
+    LOGD("mqtt config:\r\n");
+    LOGD("server_ip: %s\r\n", mqttConfig.server_ip);
+    LOGD("server_port: %s\r\n", mqttConfig.server_port);
+    LOGD("client_id: %s\r\n", mqttConfig.client_id);
+    LOGD("username: %s\r\n", mqttConfig.username);
+    LOGD("mqtt password: %s\r\n", mqttConfig.password);
 }
 
 int save_json_config_file() {

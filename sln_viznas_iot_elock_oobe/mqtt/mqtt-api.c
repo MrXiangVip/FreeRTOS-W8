@@ -30,11 +30,11 @@ static int sendATCmd(const char *cmd) {
 
 static int sendATLongCmd(const char *cmd) {
     //LOGD("--- send AT Long CMD %s\n", cmd);
-    int res = run_at_long_cmd(cmd, 1, 8000000);
+    int res = run_at_long_cmd(cmd, 2, 8000000);
     while (res == -5) {
         //sleep(1);
         vTaskDelay(pdMS_TO_TICKS(1000));
-        res = run_at_long_cmd(cmd, 1, 8000000);
+        res = run_at_long_cmd(cmd, 2, 8000000);
     }
     return res;
 }
@@ -126,24 +126,26 @@ int unsubscribeMQTT(int linkId, const char* topic) {
 }
 
 // 发布MQTT主题
+char long_cmd[MQTT_MAX_LONG_LEN];
+
 int publishMQTT(int linkId, const char* topic, const char* data, int qos, int retain) {
 	// int cmd_len = CMD_EXTRA_LEN + strlen(topic) + strlen(data);
 
 	// printf("publishMQTT 1 %d\n", cmd_len);
 	// char *cmd = (char*)malloc(cmd_len);
 	// char cmd[MQTT_MAX_LEN];
-    memset(cmd, 0, sizeof(cmd));
-	sprintf(cmd, "AT+MQTTPUB=%d,\"%s\",\"%s\",%d,%d", linkId, topic, data, qos, retain);
+    memset(long_cmd, 0, sizeof(long_cmd));
+	sprintf(long_cmd, "AT+MQTTPUB=%d,\"%s\",\"%s\",%d,%d", linkId, topic, data, qos, retain);
 
-	LOGD("%s cmd is %s\n", __FUNCTION__, cmd);
-    LOGD("%s length is %d\n", __FUNCTION__, strlen(cmd));
+	//LOGD("%s cmd is %s\n", __FUNCTION__, long_cmd);
+    LOGD("%s length is %d\n", __FUNCTION__, strlen(long_cmd));
 	//int res = sendATLongCmd(cmd);
 
     int res = 0;
-    if ((strlen(cmd) > 128) && (strlen(cmd) <= 256)){
-        res = sendATLongCmd(cmd);
+    if ((strlen(long_cmd) > 128) && (strlen(long_cmd) <= 256)){
+        res = sendATLongCmd(long_cmd);
     } else {
-        res = sendATCmd(cmd);
+        res = sendATCmd(long_cmd);
     }
     vPortFree(topic);
 	// free(cmd);

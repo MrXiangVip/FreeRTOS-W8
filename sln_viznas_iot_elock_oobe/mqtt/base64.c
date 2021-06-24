@@ -8,7 +8,8 @@
 #include "fsl_log.h"
 #include "oasis.h"
 
-#define MQTT_PUB_PACKAGE_LEN 126
+#define MQTT_PUB_PACKAGE_LEN    126
+#define MQTT_PUB_MSG_LEN        256
 
 const char * base64char = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -198,8 +199,8 @@ int pubImage(const char* pub_topic, const char *filename, const char *msgId) {
 }
 
 char data[MQTT_PUB_PACKAGE_LEN + 1];
-char pub_msg[MQTT_PUB_PACKAGE_LEN + 32];
-
+char pub_msg[MQTT_PUB_MSG_LEN];
+bool bPubOasisImage = false;
 int pubOasisImage(const char* pub_topic, const char *msgId) {
     //打开图片
     unsigned int size;         //图片字节数
@@ -223,6 +224,7 @@ int pubOasisImage(const char* pub_topic, const char *msgId) {
 
     int count = (length + MQTT_PUB_PACKAGE_LEN - 1) / MQTT_PUB_PACKAGE_LEN;
     int fresult = 0;
+    bPubOasisImage = true;
     for (int i = 0; i < count; i++) {
         int len = MQTT_PUB_PACKAGE_LEN;
         if (i == (count - 1)) {
@@ -231,7 +233,7 @@ int pubOasisImage(const char* pub_topic, const char *msgId) {
         //char data[MQTT_PUB_PACKAGE_LEN + 1];
         //char pub_msg[MQTT_PUB_PACKAGE_LEN + 32];
         memset(data, '\0', MQTT_PUB_PACKAGE_LEN + 1);
-        memset(pub_msg, '\0', MQTT_PUB_PACKAGE_LEN + 32);
+        memset(pub_msg, '\0', MQTT_PUB_MSG_LEN);
         strncpy(data, buffer1 + (i*MQTT_PUB_PACKAGE_LEN), len);
 
         // sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"t\\\":%d\\,\\\"i\\\":%d\\,\\\"p\\\":%d\\,\\\"d\\\":\\\"%s\\\"}", msgId, count, i+1, 0, data);
@@ -250,6 +252,7 @@ int pubOasisImage(const char* pub_topic, const char *msgId) {
             break;
         }
     }
+    bPubOasisImage = false;
 
     vPortFree(buffer1);
     return fresult;
