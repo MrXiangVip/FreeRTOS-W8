@@ -11,7 +11,6 @@ using namespace std;
 
 DBManager* DBManager::m_instance = NULL;
 list<Record*> DBManager::recordList ;
-list<Record*> DBManager::unUploadRecordList ;
 
 
 DBManager::DBManager() {
@@ -138,7 +137,10 @@ void DBManager::initDB()
 
     LOGD("------初始化------ \r\n");
     readRecordFromFile(RECORD_PATH);
-    return ;
+}
+
+list<Record*> DBManager::getRecord() {
+	return recordList;
 }
 
 int DBManager::addRecord(Record *record){
@@ -157,10 +159,10 @@ int DBManager::addRecord(Record *record){
 int  DBManager::getAllUnuploadRecordCount()
 {
     LOGD("获取操作成功但未上传记录总数 \r\n");
-    if( unUploadRecordList.empty()== true ){
+    if( recordList.empty()== true ){
         getAllUnuploadRecord();
     }
-    int nrow = unUploadRecordList.size();
+    int nrow = recordList.size();
     return  nrow;
 }
 
@@ -168,13 +170,15 @@ list<Record*>  DBManager::getAllUnuploadRecord()
 {
     LOGD("获取全部开门成功，但未上传的识别记录 \r\n");
     list <Record*>::iterator it;
-    for ( it = recordList.begin( ); it != recordList.end( ); it++ ) {
+    for ( it = recordList.begin( ); it != recordList.end( ); ) {
         Record *tmpRecord = (Record *) *it;
-        if( tmpRecord->upload == false ){
-            unUploadRecordList.push_back(tmpRecord);
+        if( tmpRecord->upload == 2 ){
+            it = recordList.erase(it);
+        }else{
+            it++;
         }
     }
-    return  unUploadRecordList;
+    return  recordList;
 }
 
 Record*  DBManager::getLastRecord(   )
@@ -203,8 +207,16 @@ int DBManager::getLastRecordID(){
 }
 int DBManager::getRecordByID( int id, Record *record )
 {
-    int ret=0;
-
+    LOGD("查找ID为 %d 的记录 \r\n", id);
+    int ret=-1;
+    list <Record*>::iterator it;
+    for ( it = recordList.begin( ); it != recordList.end( ); it++ ) {
+        Record *tmpRecord = (Record *) *it;
+        if( tmpRecord->ID == id ){
+            memcpy( record, tmpRecord, sizeof(Record));
+            ret = 0;
+        }
+    }
     return  ret;
 }
 bool  DBManager::updateRecordByID(Record *record)
@@ -217,7 +229,7 @@ bool  DBManager::updateRecordByID(Record *record)
             memcpy( tmpRecord, record, sizeof(Record));
         }
     }
-    saveRecordToFile(recordList, RECORD_PATH);
+//    saveRecordToFile(recordList, RECORD_PATH);
     return  true;
 }
 bool  DBManager::updateLastRecordStatus(int status, long currTime)
@@ -230,9 +242,9 @@ bool  DBManager::updateLastRecordStatus(int status, long currTime)
 int DBManager::clearRecord()
 {
     LOGD("清空操作记录 \r\n");
-    int ret;
+    int ret = 0;
     recordList.clear();
-    remove(RECORD_PATH);
+    ret = fatfs_delete(RECORD_PATH);
     return  ret;
 }
 bool DBManager::deleteRecordByUUID(char *UUID )
@@ -252,7 +264,7 @@ bool DBManager::deleteRecordByUUID(char *UUID )
             ++it;
         }
     }
-    saveRecordToFile( recordList, RECORD_PATH);
+//    saveRecordToFile( recordList, RECORD_PATH);
     return  flag;
 }
 void DBManager::flushRecordList(){
