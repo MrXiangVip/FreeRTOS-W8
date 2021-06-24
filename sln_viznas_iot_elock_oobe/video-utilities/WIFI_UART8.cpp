@@ -32,6 +32,7 @@
 #include "../mqtt/base64.h"
 #include "../mqtt/mqtt-instruction-pool.h"
 #include "../mqtt/mqtt-mcu.h"
+#include "../db/DBManager.h"
 
 
 /*******************************************************************************
@@ -104,6 +105,8 @@ static int g_command_executed = 0;
 // 当前pub执行优先级，0为最低优先级，9为最高优先级
 int g_priority = 0;
 
+DBManager *dbmanager = NULL;
+
 MqttInstructionPool mqtt_instruction_pool;
 int battery_level = -1;
 
@@ -125,6 +128,9 @@ static int at_cmd_mode = AT_CMD_MODE_INACTIVE;
 static int at_cmd_result = AT_CMD_RESULT_UNDEF;
 
 static int wifi_ready = 0;
+
+int uploadRecordImage(Record *record, bool online);
+
 int g_uploading_id = -1;
 
 extern bool  shut_down;
@@ -142,9 +148,16 @@ lpuart_rtos_config_t lpuart_config8 = {
 static int handle_line();
 static int random_gen = 1;
 
+void freePointer(char **p) {
+    if (*p != NULL) {
+        vPortFree(*p);
+        *p = NULL;
+    }
+}
+
 char *gen_msgId() {
-    char *msgId = (char *) malloc(200);
-    memset(msgId, '\0', 200);
+    char *msgId = (char *) pvPortMalloc(64);
+    memset(msgId, '\0', 64);
     // mac
     struct timeval tv;
     tv.tv_sec = ws_systime;
@@ -213,23 +226,26 @@ int run_at_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
 	return AT_CMD_RESULT_TIMEOUT;
 }
 
+char at_long_cmd[MQTT_AT_LONG_LEN];
 int run_at_long_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
 {
     if(shut_down) {
         at_cmd_mode = AT_CMD_MODE_INACTIVE;
         return -1;
     }
-    char at_cmd[MQTT_AT_LONG_LEN];
-    memset(at_cmd, '\0', MQTT_AT_LONG_LEN);
-    sprintf(at_cmd, "%s\r\n", cmd);
+    //char at_long_cmd[MQTT_AT_LONG_LEN];
+    memset(at_long_cmd, '\0', MQTT_AT_LONG_LEN);
+    sprintf(at_long_cmd, "%s\r\n", cmd);
     LOGD("start AT long command %s\r\n", cmd);
     //LOGD("start AT long strlen(at_cmd) is %d\r\n", strlen(cmd));
     for (int i = 0; i < retry_times; i++) {
-        if (kStatus_Success != LPUART_RTOS_Send(&handle8, (uint8_t *)at_cmd, strlen(at_cmd))) {
-            LOGD("Failed to run long command %s\r\n", cmd);
+        if (kStatus_Success != LPUART_RTOS_Send(&handle8, (uint8_t *)at_long_cmd, strlen(at_long_cmd))) {
+            //LOGD("Failed to run long command %s\r\n", cmd);
+            LOGD("Failed to run long command\r\n");
             return -1;
         } else {
-            LOGD("Succeed to run long command %s\r\n", cmd);
+            //LOGD("Succeed to run long command %s\r\n", cmd);
+            LOGD("Succeed to run long command\r\n");
             at_cmd_mode = AT_CMD_MODE_ACTIVE;
             at_cmd_result = AT_CMD_RESULT_UNDEF;
         }
@@ -240,17 +256,20 @@ int run_at_long_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
             timeout_usec += delay_usec;
             if (AT_CMD_RESULT_OK == at_cmd_result || AT_CMD_RESULT_ERROR == at_cmd_result) {
                 at_cmd_mode = AT_CMD_MODE_INACTIVE;
-                LOGD("run long command %s %s\r\n", cmd, at_cmd_result ? AT_CMD_RESULT_OK : "OK", "ERROR");
+                //LOGD("run long command %s %s\r\n", cmd, at_cmd_result ? AT_CMD_RESULT_OK : "OK", "ERROR");
+                LOGD("run long command %s\r\n", at_cmd_result ? AT_CMD_RESULT_OK : "OK", "ERROR");
                 return at_cmd_result;
             }
             if (timeout_usec >= cmd_timeout_usec) {
-                LOGD("run long command %s timeout\r\n", cmd);
+                //LOGD("run long command %s timeout\r\n", cmd);
+                LOGD("run long command timeout\r\n");
                 break;
             }
         } while (0);
 //		xEventGroupSetBits(handle8.rxEvent, RTOS_LPUART_RX_TIMEOUT);
     }
-    LOGD("run long command %s timeout end\r\n", cmd);
+    //LOGD("run long command %s timeout end\r\n", cmd);
+    LOGD("run long command timeout end\r\n");
     return AT_CMD_RESULT_TIMEOUT;
 }
 
@@ -792,13 +811,13 @@ int SendMsgToMQTT(char *mqtt_payload, int len) {
                 int id = (int) (mqtt_payload[3]);
                 // TODO:
                 LOGD("dbmanager->getRecord start id %d", id);
-               // Record record;
-                int ret = 0;//dbmanager->getRecordByID(id, &record);
+                Record record;
+                int ret = dbmanager->getRecordByID(id, &record);
                 if (ret == 0) {
                 	LOGD("register/unlcok record is not NULL start upload record/image");
-                    //g_uploading_id = record.ID;
+                    g_uploading_id = record.ID;
                     g_is_uploading_data = 1;
-                    //int ret = uploadRecordImage(&record);
+                    int ret = uploadRecordImage(&record, true);
                     LOGD("uploadRecordImage end");
                     // notifyCommandExecuted(ret);
                     g_is_uploading_data = 0;
@@ -1149,6 +1168,150 @@ void update_rssi() {
 	run_at_cmd("AT+CWJAP?", 1, 1000000);
 }
 
+int uploadRecord(char *msgId, Record *record) {
+	char pub_msg[MQTT_AT_LEN];
+	// int result = record->passed ? 0 : 1;
+	LOGD("upload record uid %s, type %d, time %d, batteryA %d, batteryB %d, result %d\n", record->UUID, record->action, record->time_stamp, record->power, record->power2, record->status);
+	// sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"userId\\\":\\\"%s\\\"\\, \\\"type\\\":%d\\,\\\"time\\\":%u\\,\\\"batteryA\\\":%d\\,\\\"batteryB\\\":%d\\,\\\"result\\\":%d}", msgId, btWifiConfig.bt_mac, record->UID, record->type, record->time, record->power, record->power2, result);
+	sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"userId\\\":\\\"%s\\\"\\, \\\"type\\\":%d\\,\\\"time\\\":%u\\,\\\"batteryA\\\":%d\\,\\\"batteryB\\\":%d\\,\\\"result\\\":%d}", msgId, btWifiConfig.bt_mac, record->UUID, record->action, record->time_stamp, record->power, record->power2, record->status);
+	char *pub_topic = get_pub_topic_record_request();
+	while (g_priority != 0) {
+		//usleep(500000);	// 睡眠0.5s
+		vTaskDelay(pdMS_TO_TICKS(500));
+	}
+    LOGD("%s pub_topic is %s, pub_msg is %s\r\n", __FUNCTION__, pub_topic, pub_msg);
+	int ret = quickPublishMQTT(pub_topic, pub_msg);
+	if (ret == 0) {
+		record->upload = 1;
+		//dbmanager->updateRecord(record);
+	}
+	// notifyCommandExecuted(ret);
+	//freePointer(&pub_topic);
+	return ret;
+}
+
+int uploadRecordImage(Record *record, bool online) {
+	char *filename = (char*)(record->image_path);
+	LOGD("uploadRecordImage online is %d \r\n", online);
+	if(online) {
+            char *pub_topic = get_pub_topic_pic_report();
+            char *msgId = gen_msgId();
+            LOGD("uploadRecordImage msgId is %s\n", msgId);
+            // 第一步：传图
+            int ret = pubOasisImage(pub_topic, msgId);
+            if (ret == 0) {
+                // 第二步：告知图片用户信息
+                ret = uploadRecord(msgId, record);
+                if (ret == 0) {
+                    record->upload = 2;
+                    //dbmanager->updateRecord(record);
+                }
+            }
+            freePointer(&pub_topic);
+            freePointer(&msgId);
+            return ret;
+    }else {
+        LOGD("uploadRecordImage filename is %s", filename);
+        if (filename != NULL && strlen(filename) > 0 && (access(filename, F_OK)) != -1) {
+            char *pub_topic = get_pub_topic_pic_report();
+            char *msgId = gen_msgId();
+            LOGD("uploadRecordImage filename is %s msgId is %s\n", filename, msgId);
+            // 第一步：传图
+            int ret = pubImage(pub_topic, filename, msgId);
+            if (ret == 0) {
+                // 第二步：告知图片用户信息
+                ret = uploadRecord(msgId, record);
+                if (ret == 0) {
+                    record->upload = 2;
+                    //dbmanager->updateRecord(record);
+                }
+            }
+            //freePointer(&pub_topic);
+            freePointer(&msgId);
+            return ret;
+        }
+        return -1;
+	}
+}
+
+int uploadRecords() {
+	// DBManager *dbmanager = DBManager::getInstance();
+	if (dbmanager == NULL) {
+		return -1;
+	}
+
+	int fret = 0;
+	list<Record*> records = dbmanager->getAllUnuploadRecord();
+	int recordNum = dbmanager->getAllUnuploadRecordCount();
+    LOGD("---------------------- register: upload record and image start");
+	// 第一步，只上传未上传的注册记录以及图片，涉及到可能存在的重复上传问题: 注册优先
+    list <Record*>::iterator it;
+	//for (int i = 0; i < recordNum; i++) {
+    for ( it = records.begin( ); it != records.end( ); it++ ) {
+        Record* record = (Record*) *it;
+		//Record record = records[i];
+
+		LOGD("---------------------- register: upload record id %d g_uploading_id %d", record->ID, g_uploading_id);
+		if (record->upload == 0 && g_uploading_id != record->ID) {
+			int ret = uploadRecordImage(record, false);
+			if (ret != 0) {
+				LOGD("register: upload record and image id %d fail with ret %d", record->ID, ret);
+				if (fret == 0) {
+					fret = ret;
+				}
+				break;
+			} else {
+				LOGD("register: upload record and image success");
+			}
+		}
+	}
+	records = dbmanager->getAllUnuploadRecord();
+	recordNum = dbmanager->getAllUnuploadRecordCount();
+	LOGD("--------------------- register/opendoor: upload records only start");
+	// 第二步，只上传未上传的注册/开门记录，包括注册记录和开门记录: 记录次之
+	//for (int i = 0; i < recordNum; i++) {
+	for ( it = records.begin( ); it != records.end( ); it++ ) {
+		//Record record = records[i];
+		Record* record = (Record*) *it;
+		if (record->upload == 0) {
+			int ret = uploadRecord(gen_msgId(), record);
+			if (ret != 0) {
+				LOGD("register/opendoor: upload records fail with ret %d", ret);
+				if (fret == 0) {
+					fret = ret;
+				}
+				break;
+			} else {
+				LOGD("register/opendoor: upload records success");
+			}
+		}
+	}
+	records = dbmanager->getAllUnuploadRecord();
+	recordNum = dbmanager->getAllUnuploadRecordCount();
+	LOGD("------------------- opendoor: upload record and image success");
+	// 第三步，上传未上传的开门记录以及图片, 开门图片最后
+	//for (int i = 0; i < recordNum; i++) {
+	for ( it = records.begin( ); it != records.end( ); it++ ) {
+		//Record record = records[i];
+		Record* record = (Record*) *it;
+
+		LOGD("---------------------- opendoor: upload record id %d g_uploading_id %d", record->ID, g_uploading_id);
+		if ((record->upload == 0 || record->upload == 1) && g_uploading_id != record->ID) {
+			int ret = uploadRecordImage(record, false);
+			if (ret != 0) {
+				LOGD("opendoor: upload record and image fail with ret %d", ret);
+				if (fret == 0) {
+					fret = ret;
+				}
+				break;
+			} else {
+				LOGD("opendoor: upload record and image success");
+			}
+		}
+	}
+	return fret;
+}
+
 static void msghandle_task(void *pvParameters)
 {
     char const *logTag = "[UART8_WIFI]:msghandle_task-";
@@ -1213,27 +1376,13 @@ static void msghandle_task(void *pvParameters)
 }
 
 
-
-int  MqttQMsgSend(unsigned char *cmd, unsigned char msgLen)
-{
-	LOGD("发送消息到MQTT 的消息队列 \n");
-    int ret = LPUART_RTOS_Send(&handle8, (uint8_t *)cmd, msgLen);
-    if (kStatus_Success != ret)
-    {
-        LOGD("LPUART_RTOS_Send() error,errno<%d>!\n", ret);
-        //vTaskSuspend(NULL);
-    }else {
-        LOGD("LPUART_RTOS_Send() succeed!\n");
-    }
-
-    return ret;
-}
-
 int WIFI_UART8_Start()
 {
 	char const *logTag = "[UART8_WIFI]:main-";
     LOGD("%s starting...\r\n", logTag);
     NVIC_SetPriority(LPUART8_IRQn, 4);
+
+	dbmanager = DBManager::getInstance();
 //    if (xTaskCreate(uart8_task, "uart8_task", configMINIMAL_STACK_SIZE + 100, NULL, uart8_task_PRIORITY, NULL) != pdPASS)
 //    {
 //        PRINTF("Task creation failed!.\r\n");

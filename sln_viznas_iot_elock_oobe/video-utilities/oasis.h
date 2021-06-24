@@ -47,6 +47,10 @@ typedef struct {
 int Oasis_Start();
 int Oasis_SendQMsg(void* msg);
 OasisState Oasis_GetState(void);
+void Oasis_SetOasisFileName(const char *filename);
+void Oasis_WriteJpeg();
+char * getOasisBuffer();
+int getOasisBufferSize();
 
 #ifdef __cplusplus
 }

@@ -39,6 +39,7 @@
 #include "WIFI_UART8.h"
 #include "database.h"
 #include "DBManager.h"
+#include "oasis.h"
 // 20201120 wszgx added for display correct date/time information in the screen
 /*******************************************************************************
  * Definitions
@@ -99,6 +100,8 @@ static bool lcd_back_ground = true;
 extern int battery_level;
 static bool  saving_file = false;
 bool  shut_down = false;
+bool  bDeleteUser = false;
+extern int mqtt_init_done;
 
 #if (configSUPPORT_STATIC_ALLOCATION == 1)
 DTC_BSS static StackType_t Uart5TaskStack[UART5TASK_STACKSIZE];
@@ -350,7 +353,7 @@ int cmdSysInitOKSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessa
 		CloseCameraPWM();
 	}
 #endif
-#if	0
+#if	1
 	{		
 		char verbuf[4] = {0}; 
 		char ver_tmp[32] = {0}; 
@@ -385,66 +388,22 @@ int cmdSysInitOKSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessa
 		//system("sync");
 	}
 #endif
-#if	0
-	// 通知MQTT 上传
-    char version[12]={0};
-	memcpy(version, VERSION, sizeof(VERSION));
-    char subVersion[4]={0};
-    subVersion[0]=version[0];
-    subVersion[1]=version[2];
-    subVersion[2]=version[4];
-    LOGD("%s , %s \n", version, subVersion);
 
-
-    uint16_t sVersion= atoi( subVersion );
-    LOGD("%d \n",sVersion);
-
-	sendSysInit2MQTT(sVersion, stInitSyncInfo.PowerVal);
-#endif
 	return 0;
-}
-
-// 主控接收指令:开门响应
-int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage)
-{
-    printf("x7 收到mcu 的开门回复 \n");
-    uint8_t ret = -1;
-    unsigned char szBuffer[128]={0};
-    int iBufferSize = 0;
-    unsigned char *pop = NULL;
-    unsigned char MsgLen = 0;
-    unsigned char	cal_FCS;
-
-    // MCU到face_loop，0代表开锁成功，1代表开锁失败
-    ret = StrGetUInt8( pszMessage ) ;
-    // 如果开锁成功 更新数据库状态 ,请求mqtt上传本次操作记录。
-    if( ret ==0 ){
-        //					xshx add
-        Record* record = (Record *)pvPortMalloc(sizeof(Record));
-        HexToStr(username,g_uu_id.UID,sizeof(g_uu_id.UID));
-        strcpy(record->UUID, username);
-        record->action = 3;//  操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁
-//        unsigned char image_path[100];
-        record->status =0; // 0,操作成功 1,操作失败.
-        record->time_stamp = ws_systime ; //时间戳 从1970年开始的秒数
-        record->power=0;    // 电池电量
-        record->power2=0;   // 电池电量
-        record->upload=0; //   0代表没上传 1代表记录上传图片未上传 2代表均已
-        DBManager *dbManager = DBManager::getInstance();
-        dbManager->addRecord( record);
-
-        int ID = DBManager::getInstance()->getLastRecordID();
-        printf("开锁成功, 更新数据库状态.请求MQTT上传本次开门的记录 \n");
-//        cmdRequestMqttUpload( ID );
-    }else{
-        printf("开锁失败,不更新数据库状态. 不上传记录\n");
-    }
-
-    return 0;
 }
 
 void SetSysToFactory()
 {
+	list<Record*> recordList = DBManager::getInstance()->getRecord();
+    list <Record*>::iterator it;
+    for ( it = recordList.begin( ); it != recordList.end( ); it++ ) {
+        Record *tmpRecord = (Record *) *it;
+		fatfs_delete(tmpRecord->image_path);
+    }
+
+	// 清空操作记录
+    DBManager::getInstance()->clearRecord();
+
 	VIZN_DelUser(NULL);
 }
 
@@ -534,7 +493,6 @@ int cmdUserRegRsp(uint8_t ret)
 //主控接收指令:  用户注册请求
 int cmdUserRegReqProc(unsigned char nMessageLen, const unsigned char *pszMessage)
 {
-    LOGD("用户注册请求 \r\n");
 	uint8_t ret = SUCCESS, len=0;	
 	unsigned char szBuffer[32]={0};
 	unsigned char *pos = szBuffer;	
@@ -665,6 +623,41 @@ int cmdOpenDoorReq(uUID uu_id)
 	return 0;
 }
 
+// 主控接收指令:开门响应
+int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage)
+{
+    LOGD("x7 收到mcu 的开门响应 \n");
+	uint8_t ret = -1;
+
+	// MCU到face_loop，0代表开锁成功，1代表开锁失败
+	ret = StrGetUInt8( pszMessage ) ;
+	// 如果开锁成功 更新数据库状态 ,请求mqtt上传本次操作记录。
+    if( ret ==0 ){
+        //					xshx add
+        Record* record = (Record *)pvPortMalloc(sizeof(Record));
+        HexToStr(username,g_uu_id.UID,sizeof(g_uu_id.UID));
+        strcpy(record->UUID, username);
+        record->action = 3;//  操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁
+//        unsigned char image_path[100];
+        record->status =0; // 0,操作成功 1,操作失败.
+        record->time_stamp = ws_systime ; //时间戳 从1970年开始的秒数
+        record->power=0;    // 电池电量
+        record->power2=0;   // 电池电量
+        record->upload=0; //   0代表没上传 1代表记录上传图片未上传 2代表均已
+        DBManager *dbManager = DBManager::getInstance();
+        dbManager->addRecord( record);
+
+        int ID = DBManager::getInstance()->getLastRecordID();
+        LOGD("开锁成功, 更新数据库状态.请求MQTT上传本次开门的记录 \n");
+        cmdRequestMqttUpload( ID );
+    }else{
+        LOGD("开锁失败,不更新数据库状态. 不上传记录\n");
+    }
+
+	return 0;
+}
+
+
 // 主控接收指令:远程wifi开门响应
 int cmdWifiOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage)
 {
@@ -684,14 +677,17 @@ int cmdWifiOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessag
 
 int save_files_before_pwd()
 {
-    LOGD("关机前保存文件 \r\n");
     if(saving_file == false) {
         DB_Save(0);
         save_json_config_file();
         saving_file = true;
     }
 // save record list  to file
-    DBManager::getInstance()->flushRecordList();
+    if(!bDeleteUser) {
+        DBManager::getInstance()->flushRecordList();
+    }
+    Oasis_WriteJpeg();
+
     return  0;
 }
 
@@ -818,42 +814,6 @@ int cmdUserDeleteRsp(uint8_t result)
 	return 0;
 }
 
-//主控接收指令:  删除用户请求
-int cmdDeleteUserReqProc(unsigned char nMessageLen, const unsigned char *pszMessage)
-{
-	uUID	uu_id;
-	uint8_t ret = SUCCESS, len=0;	
-	unsigned char szBuffer[32]={0};
-	char username[17] = {0}; //用于存放传入NXP提供的人脸注册于识别相关的API的username
-	unsigned char *pos = szBuffer;	
-	memcpy(szBuffer, pszMessage, nMessageLen);
-	
-	//解析指令
-	if((nMessageLen < sizeof(szBuffer)) && nMessageLen == 8)
-	{
-		memcpy(&uu_id, pos+len, 8);
-		len += 8;
-	}	
-	//LOGD("reg uuid<len=%d> : L<0x%08x>, H<0x%08x>.\n", sizeof(g_uu_id), g_uu_id.tUID.L, g_uu_id.tUID.H);
-	
-	memset(username, 0, sizeof(username));
-	HexToStr(username,uu_id.UID,sizeof(uu_id.UID));
-	username[16] = '\0';//NXP的人脸注册API的username最大只能16byte
-	LOGD("=====UUID<len:%d>:%s.\n", sizeof(username), username); 
-	
-	vizn_api_status_t status;	
-	status = VIZN_DelUser(NULL, username);
-	if(kStatus_API_Layer_Success != status)
-	{
-		ret = FAILED;
-	}
-
-	//发送响应
-	cmdUserDeleteRsp(ret);
-
-	return 0;
-}
-
 static void uart5_startUITimeUpdateTimer()
 {	
 	if (!timer_started) {
@@ -959,6 +919,71 @@ int cmdSetSysTimeSynProc(unsigned char nMessageLen, const unsigned char *pszMess
 	return 0;
 }
 
+// 主控接收指令: 删除用户请求
+int cmdDeleteUserReqProcByHead(unsigned char nHead, unsigned char nMessageLen, const unsigned char *pszMessage)
+{
+	uint8_t ret = FAILED;
+	char szBuffer[32]={0};
+	uUID	uu_id;
+
+	// 解析指令
+	if((nMessageLen < sizeof(szBuffer)) && nMessageLen == UUID_LEN)
+	{
+		memcpy(&uu_id, pszMessage, nMessageLen);
+	}
+
+	LOGD("delete uuid : <0x%08x>, <0x%08x>.\n", uu_id.tUID.H, uu_id.tUID.L);
+	if (uu_id.tUID.H == 0xFFFFFFFF && uu_id.tUID.L == 0xFFFFFFFF) {
+		// 清空所有用户 和操作记录
+		char strUUID[20]={0};
+		HexToStr( strUUID, uu_id.UID, UUID_LEN);
+		// 清空用户
+        //ret =DBManager::getInstance()->clearUser();
+		// 清空操作记录
+        ret =DBManager::getInstance()->clearRecord();
+
+        vizn_api_status_t status;
+        status = VIZN_DelUser(NULL);
+        if(kStatus_API_Layer_Success == status) {
+            ret = SUCCESS;
+        }else {
+            ret = FAILED;
+        }
+	} else {
+		// 删除单个用户 和其操作记录
+		LOGD("delete single user start");
+        //删除单个用户
+        char strUUID[20]={0};
+        HexToStr( strUUID, uu_id.UID,  UUID_LEN );
+        //ret = DBManager::getInstance()->deleteUserByUUID( strUUID );
+        //删除用户的操作记录
+        ret = DBManager::getInstance()->deleteRecordByUUID( strUUID);
+
+        memset(username, 0, sizeof(username));
+        HexToStr(username,uu_id.UID,sizeof(uu_id.UID));
+        username[16] = '\0';//NXP的人脸注册API的username最大只能16byte
+        LOGD("=====UUID<len:%d>:%s.\n", sizeof(username), username);
+
+        vizn_api_status_t status;
+        status = VIZN_DelUser(NULL, username);
+        if(kStatus_API_Layer_Success == status) {
+            ret = SUCCESS;
+        }else {
+            ret = FAILED;
+        }
+	}
+
+	LOGD("delete uuid : <0x%08x>, <0x%08x> result %d nHead 0x%2x.\n", uu_id.tUID.H, uu_id.tUID.L, ret, nHead);
+	if (nHead == HEAD_MARK_MQTT) {
+		cmdCommRsp2MqttByHead(HEAD_MARK_MQTT, CMD_FACE_DELETE_USER, ret);
+	} else {
+		cmdCommRsp2MCU(CMD_FACE_DELETE_USER, ret);
+	}
+
+    bDeleteUser = true;
+
+	return 0;
+}
 
 //串口接收消息处理
 // 主控接收指令: WIFI SSID 设置请求
@@ -1154,37 +1179,6 @@ int cmdCommRsp2MqttByHead(unsigned char nHead, unsigned char CmdId, uint8_t ret)
 	return 0;
 }
 
-//开机同步完成后, 请求MQTT上传版本号， 电量，状态
-int sendSysInit2MQTT(uint16_t version, uint8_t powerValue)
-{
-	//LOGD("请求MQTT上传版本号,电量,状态\n");
-    LOGD("%s\n", __FUNCTION__);
-#if	0
-    char szBuffer[32]={0};
-    int iBufferSize;
-    memset(szBuffer, 0, sizeof(szBuffer));
-    char *pop = NULL;
-    unsigned char MsgLen = 0;
-
-    pop = szBuffer+sizeof(MESSAGE_HEAD);
-    memcpy(pop, &version, 2);
-    pop+=2;
-    MsgLen+=2;
-    memcpy(pop, &powerValue, 1);
-    pop+=1;
-    MsgLen+=1;
-
-    /* 填充消息头 */
-    iBufferSize = MsgHead_Packet(
-            szBuffer,
-            HEAD_MARK,
-            CMD_INITOK_SYNC,
-            MsgLen);
-    unsigned short cal_crc16 = CRC16_X25((uint8_t*)szBuffer, MsgLen+sizeof(MESSAGE_HEAD));
-    memcpy((uint8_t*)pop, &cal_crc16, sizeof(cal_crc16));
-    SendMsgToMQTT((uint8_t*)szBuffer, iBufferSize+CRC16_LEN);
-#endif
-}
 int ProcMessage(
 	unsigned char nCommand,
 	unsigned char nMessageLen,
@@ -1200,6 +1194,7 @@ int ProcMessage(
 		}	
 		case CMD_OPEN_DOOR:
 		{
+			cmdOpenDoorRsp(nMessageLen, pszMessage);
 #if 0
 			vizn_api_status_t status;	
 			status = VIZN_SetDispMode(NULL,DISPALY_MODE_IR);
@@ -1210,9 +1205,7 @@ int ProcMessage(
 				LOGD("display mode not supported\r\n");
 			}
 #endif
-            cmdOpenDoorRsp(nMessageLen, pszMessage);
-
-            break;
+			break;			
 		}
 		case CMD_FACE_REG:
 		{			
@@ -1230,7 +1223,7 @@ int ProcMessage(
 		}
 		case CMD_FACE_DELETE_USER:	
 		{
-			cmdDeleteUserReqProc(nMessageLen, pszMessage);
+			cmdDeleteUserReqProcByHead(HEAD_MARK, nMessageLen, pszMessage);
 			break;
 		}
 		case CMD_REQ_RESUME_FACTORY:	
@@ -1242,8 +1235,7 @@ int ProcMessage(
 		{
 			cmdReqActiveByPhoneProc(nMessageLen, pszMessage);
 			break;
-		}		
-
+		}	
 		case CMD_WIFI_SSID:	
 		{
 			cmdWifiSSIDProc(nMessageLen, pszMessage);
@@ -1286,11 +1278,63 @@ int ProcMessage(
 	return 0;
 }
 
+// 主控发送指令:请求MQTT 上传记录
+/*status:
+ * Op: 注册、开门
+ * */
+int cmdRequestMqttUpload(int id)
+{
+    LOGD("%s\r\n", __func__);
+    char szBuffer[32]={0};
+    int iBufferSize;
+    char *pop = NULL;
+    unsigned char MsgLen = 0;
+
+    memset(szBuffer, 0, sizeof(szBuffer));
+    pop = szBuffer+sizeof(MESSAGE_HEAD);
+
+    /* 填充消息体 */
+	memcpy(pop, &id, 4);
+    MsgLen += 4;
+    pop+=MsgLen;
+    /* 填充消息头 */
+    iBufferSize = MsgHead_Packet(
+            szBuffer,
+            HEAD_MARK,
+            CMD_MQTT_UPLOAD,
+            MsgLen);
+
+    /* 计算 FCS */
+    unsigned short cal_crc16 = CRC16_X25((uint8_t*)szBuffer, MsgLen+sizeof(MESSAGE_HEAD));
+    memcpy((uint8_t*)pop, &cal_crc16, sizeof(cal_crc16));
+
+    int count = 0;
+    while(1)
+    {
+        // 发送指令给 wifi 相关的mqtt 模块
+        //usleep(100000);//0.1秒
+        vTaskDelay(pdMS_TO_TICKS(100));
+        if (count++ > 150) {//如果超过15秒 还没有连接上则退出
+            break;
+        }
+        //判断MQTT是否可用
+		if( mqtt_init_done == 1 ){// 1 代表MQTT连接成功
+            LOGD("%s sendToMqtt", __func__);
+            SendMsgToMQTT(szBuffer, iBufferSize+CRC16_LEN);
+            break;
+        }
+    }
+
+    return 0;
+}
+
 static void uart5_QMsg_task(void *pvParameters)
 {
     BaseType_t ret;
     QMsg* pQMsg;
     int recognize_times = 0;
+    char image_path[64] = {0};
+
     while (1)
     {
 		//LOGD("uart5_QMsg_task()  -> xQueueReceive()!\n");
@@ -1325,9 +1369,9 @@ static void uart5_QMsg_task(void *pvParameters)
                         strcpy(record->UUID, username);
                         record->action = 0;// 0 代表注册
                         record->time_stamp = ws_systime ;//当前时间
-//                        memset(image_path, 0, sizeof(image_path)); // 对注册成功的用户保存一张压缩过的jpeg图片
-//                        snprintf(image_path, sizeof(image_path), "/opt/smartlocker/pic/REG_%d_%d_%s.jpg",regResult, record.time_stamp, record.UID);
-//                        memcpy( record.image_path, image_path, sizeof(image_path) );//image_path
+                        memset(image_path, 0, sizeof(image_path)); // 对注册成功的用户保存一张压缩过的jpeg图片
+                        snprintf(image_path, sizeof(image_path), "REG_%d_%d_%s.jpg",g_reging_flg, record->time_stamp, record->UUID);
+                        memcpy(record->image_path, image_path, sizeof(image_path) );//image_path
                         record->status= SUCCESS;// 本次注册成功
                         record->power=-1;//当前电池电量
                         record->power2=-1;//当前电池电量
@@ -1335,6 +1379,7 @@ static void uart5_QMsg_task(void *pvParameters)
                         LOGD("往数据库中插入本次注册记录 \n");
                         DBManager::getInstance()->addRecord( record);
 
+                        Oasis_SetOasisFileName(record->image_path);
 //                        g_face.WriteJPG(image_path, faceBuf.color_buf, CAM_HEIGHT,CAM_WIDTH, 3, 50);
 //                        log_info("保存 UID<%s> 注册图片到 path<%s>!\n", record.UID, image_path);
 					}

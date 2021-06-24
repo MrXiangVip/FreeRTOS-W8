@@ -79,6 +79,7 @@ extern "C" {
 	int quickSubscribeMQTT(const char* topic);
 	int quickUnsubscribeMQTT(const char* topic);
 	int quickPublishMQTT(const char* topic, const char* data);
+    int quickPublishOasisMQTT(const char* topic, const char* data);
 	int quickPublishMQTTWithPriority(const char* topic, const char* data, int priority);
 	int quickDisconnectMQTT();
 	// --------------------------- 辅助接口 end ------------------------

@@ -135,12 +135,45 @@ int publishMQTT(int linkId, const char* topic, const char* data, int qos, int re
     memset(cmd, 0, sizeof(cmd));
 	sprintf(cmd, "AT+MQTTPUB=%d,\"%s\",\"%s\",%d,%d", linkId, topic, data, qos, retain);
 
-	//LOGD("%s cmd is %s\n", __FUNCTION__, cmd);
+	LOGD("%s cmd is %s\n", __FUNCTION__, cmd);
+    LOGD("%s length is %d\n", __FUNCTION__, strlen(cmd));
 	//int res = sendATLongCmd(cmd);
-    int res = sendATCmd(cmd);
+
+    int res = 0;
+    if ((strlen(cmd) > 128) && (strlen(cmd) <= 256)){
+        res = sendATLongCmd(cmd);
+    } else {
+        res = sendATCmd(cmd);
+    }
     vPortFree(topic);
 	// free(cmd);
 	return res;
+}
+
+char long_oasis_cmd[MQTT_MAX_LONG_LEN];
+
+int publishOasisMQTT(int linkId, const char* topic, const char* data, int qos, int retain) {
+    // int cmd_len = CMD_EXTRA_LEN + strlen(topic) + strlen(data);
+
+    // printf("publishMQTT 1 %d\n", cmd_len);
+    // char *cmd = (char*)malloc(cmd_len);
+    // char cmd[MQTT_MAX_LEN];
+    memset(long_oasis_cmd, 0, sizeof(long_oasis_cmd));
+    sprintf(long_oasis_cmd, "AT+MQTTPUB=%d,\"%s\",\"%s\",%d,%d", linkId, topic, data, qos, retain);
+
+    //LOGD("%s long_oasis_cmd is %s\n", __FUNCTION__, long_oasis_cmd);
+    LOGD("%s length is %d\n", __FUNCTION__, strlen(long_oasis_cmd));
+    //int res = sendATLongCmd(cmd);
+    int res = 0;
+
+    if ((strlen(long_oasis_cmd) > 128) && (strlen(long_oasis_cmd) <= 256)){
+        res = sendATLongCmd(long_oasis_cmd);
+    } else {
+        res = sendATCmd(long_oasis_cmd);
+    }
+    //vPortFree(topic);
+    // free(cmd);
+    return res;
 }
 
 int publishMQTT2(int linkId, const char* topic, const char* data, int qos, int retain) {
@@ -222,6 +255,10 @@ int quickUnsubscribeMQTT(const char* topic) {
 
 int quickPublishMQTT(const char* topic, const char* data) {
 	return publishMQTT(MQTT_LINK_ID_DEFAULT, topic, data, MQTT_QOS_AT_LEAST_ONCE, MQTT_RETAIN_OFF);
+}
+
+int quickPublishOasisMQTT(const char* topic, const char* data) {
+    return publishOasisMQTT(MQTT_LINK_ID_DEFAULT, topic, data, MQTT_QOS_AT_LEAST_ONCE, MQTT_RETAIN_OFF);
 }
 
 extern int g_priority;

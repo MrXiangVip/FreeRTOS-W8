@@ -92,6 +92,8 @@ static OASISLTInitPara_t s_InitPara;
 static uint8_t s_lockstatus       = 1;
 static OasisState s_CurOasisState = OASIS_STATE_FACE_REC_START;
 static uint8_t s_appType;
+static char oasis_filename[64] = {0};
+static int oasis_flag = 0;  //1:reg; 2:rec; 0:other
 
 volatile int g_OASISLT_heap_debug;
 
@@ -133,11 +135,27 @@ static uint32_t s_dataSizeInJpeg = 0;
 //}OasisJpegImgCtx;
 //
 //static OasisJpegImgCtx s_JpegImgContext = {0};
+void Oasis_SetOasisFileName(const char *filename)
+{
+    memset(oasis_filename, 0, sizeof(oasis_filename));
+    strcpy(oasis_filename, filename);
+}
 
+void Oasis_WriteJpeg()
+{
+    if(oasis_flag != 0) {
+        int ret = fatfs_write(oasis_filename, (char *) s_tmpBuffer4Jpeg, 0, s_dataSizeInJpeg);
+        UsbShell_Printf("[OASIS]:%s saved ret:%d\r\n", oasis_filename, ret);
+    }
+}
 
+char * getOasisBuffer() {
+    return (char *)s_tmpBuffer4Jpeg;
+}
 
-
-
+int getOasisBufferSize() {
+    return s_dataSizeInJpeg;
+}
 static void Oasis_WriteJpegBuffer(uint8_t byte)
 {
 	s_tmpBuffer4Jpeg[s_dataSizeInJpeg++] = byte;
@@ -436,10 +454,13 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
             	UsbShell_Printf("[OASIS]:TooJpeg ret:%d file size:%d\r\n", ok,s_dataSizeInJpeg);
             	vPortFree(resized);
 
+                oasis_flag = 2;
+#if 0
             	char fn[32];
             	sprintf(fn,"rec_%d.jpg", rand());
             	int ret = fatfs_write(fn, (char *)s_tmpBuffer4Jpeg, 0, s_dataSizeInJpeg);
             	UsbShell_Printf("[OASIS]:%s saved ret:%d\r\n",fn,ret);
+#endif
             }
         }
         break;
@@ -478,6 +499,54 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
                 face_info.enrolment = false;
             }
             VIZN_EnrolmentEvent(gApiHandle, face_info);
+
+            if (para->faceBoxRGB != NULL)
+            {
+                int w = para->faceBoxRGB->rect[2] - para->faceBoxRGB->rect[0] + 1;
+                int h = para->faceBoxRGB->rect[3] - para->faceBoxRGB->rect[1] + 1;
+                uint8_t* croped = (uint8_t*)pvPortMalloc(w*h*3);
+                assert(croped != NULL);
+                util_crop(frames[OASISLT_INT_FRAME_IDX_RGB]->data,
+                          frames[OASISLT_INT_FRAME_IDX_RGB]->width,
+                          frames[OASISLT_INT_FRAME_IDX_RGB]->height,
+                          croped,
+                          w,
+                          h,
+                          para->faceBoxRGB->rect[1],
+                          para->faceBoxRGB->rect[0],
+                          3);
+
+
+                //int util_resize(const unsigned char* src, int srcw, int srch, unsigned char* dst, int w, int h, int c);
+                //resize to special size, for example, 50*50
+                uint8_t* resized = (uint8_t*)pvPortMalloc(OASIS_JPEG_IMG_WIDTH*OASIS_JPEG_IMG_WIDTH*3);
+                util_resize(croped,w,h,resized,OASIS_JPEG_IMG_WIDTH,OASIS_JPEG_IMG_WIDTH,3);
+                vPortFree(croped);
+
+                //pay attention: our image format is BGR888, need convert to RGB888
+                for (int ii = 0;ii<OASIS_JPEG_IMG_WIDTH*OASIS_JPEG_IMG_WIDTH;ii++)
+                {
+                    uint8_t tmp = resized[3*ii];
+                    resized[3*ii] = resized[3*ii + 2];
+                    resized[3*ii + 2] = tmp;
+
+                }
+
+
+                s_dataSizeInJpeg = 0;
+                auto ok = TooJpeg::writeJpeg(Oasis_WriteJpegBuffer, resized, OASIS_JPEG_IMG_WIDTH, OASIS_JPEG_IMG_WIDTH);
+                UsbShell_Printf("[OASIS]:TooJpeg ret:%d file size:%d\r\n", ok,s_dataSizeInJpeg);
+                vPortFree(resized);
+
+                oasis_flag = 1;
+
+#if 0
+                char fn[32];
+                sprintf(fn,"rec_%d.jpg", rand());
+                int ret = fatfs_write(fn, (char *)s_tmpBuffer4Jpeg, 0, s_dataSizeInJpeg);
+                UsbShell_Printf("[OASIS]:%s saved ret:%d\r\n",fn,ret);
+#endif
+            }
         }
         break;
         default:

@@ -8,6 +8,7 @@ extern "C" {
 int base64_decode( const char * base64, char * bindata );
 char* base64_encode( char * bindata, char * base64, int binlength);
 int pubImage(const char* pub_topic, const char *filename, const char*msgId);
+int pubOasisImage(const char* pub_topic, const char*msgId);
 #ifdef __cplusplus
 }
 #endif

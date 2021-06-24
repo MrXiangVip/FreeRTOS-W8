@@ -77,7 +77,8 @@
  * the buffer is too big and current task stack size not big enough.
  */
 #ifndef DEBUG_CONSOLE_PRINTF_MAX_LOG_LEN
-#define DEBUG_CONSOLE_PRINTF_MAX_LOG_LEN (128U)
+//#define DEBUG_CONSOLE_PRINTF_MAX_LOG_LEN (128U)
+#define DEBUG_CONSOLE_PRINTF_MAX_LOG_LEN (256U)
 #endif /* DEBUG_CONSOLE_PRINTF_MAX_LOG_LEN */
 
 /*!@ brief define the buffer support buffer scanf log length, that is when you call scanf("log", &x);, the log

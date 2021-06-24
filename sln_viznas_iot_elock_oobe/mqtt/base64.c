@@ -6,9 +6,9 @@
 #include "mqtt-api.h"
 #include "base64.h"
 #include "fsl_log.h"
+#include "oasis.h"
 
 #define MQTT_PUB_PACKAGE_LEN 126
-#define log_info 
 
 const char * base64char = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -16,7 +16,7 @@ char * base64_encode( char * bindata, char * base64, int binlength )
 {
 	int i, j;
 	unsigned char current;
-	LOGD("-- 0 %s binlength is %d\n", base64, binlength);
+	//LOGD("-- 0 %s binlength is %d\n", base64, binlength);
 
 	for ( i = 0, j = 0 ; i < binlength ; i += 3 )
 	{
@@ -164,7 +164,7 @@ int pubImage(const char* pub_topic, const char *filename, const char *msgId) {
 	}
 	ret1 = base64_encode(buffer, buffer1, size);
 	length = strlen(buffer1);
-	// printf("%d ------- %s\n", length, buffer1);
+	//LOGD("%d ------- %s\n", length, buffer1);
 
 	int count = (length + MQTT_PUB_PACKAGE_LEN - 1) / MQTT_PUB_PACKAGE_LEN;
 	int fresult = 0;
@@ -182,7 +182,8 @@ int pubImage(const char* pub_topic, const char *filename, const char *msgId) {
 		// sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"t\\\":%d\\,\\\"i\\\":%d\\,\\\"p\\\":%d\\,\\\"d\\\":\\\"%s\\\"}", msgId, count, i+1, 0, data);
 		sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"t\\\":%d\\,\\\"i\\\":%d\\,\\\"d\\\":\\\"%s\\\"}", msgId, count, i+1, data);
 		while (g_priority != 0) {
-			usleep(500000);	// 睡眠0.5s
+			//usleep(500000);	// 睡眠0.5s
+			vTaskDelay(pdMS_TO_TICKS(500));
 		}
 		int ret = quickPublishMQTT(pub_topic, pub_msg);
 		if (ret != 0) {
@@ -194,4 +195,62 @@ int pubImage(const char* pub_topic, const char *filename, const char *msgId) {
 	free(buffer);
 	free(buffer1);
 	return fresult;
+}
+
+char data[MQTT_PUB_PACKAGE_LEN + 1];
+char pub_msg[MQTT_PUB_PACKAGE_LEN + 32];
+
+int pubOasisImage(const char* pub_topic, const char *msgId) {
+    //打开图片
+    unsigned int size;         //图片字节数
+    char *buffer1;
+    unsigned int length;
+
+    //获取图片大小
+    size = getOasisBufferSize();
+
+    //base64编码
+    buffer1 = (char *)pvPortMalloc((size/3+1)*4 + 1);
+    if (NULL == buffer1)
+    {
+        LOGD("memory_error");
+        exit(2);
+    }
+    base64_encode(getOasisBuffer(), buffer1, size);
+    length = strlen(buffer1);
+    // printf("%d ------- %s\n", length, buffer1);
+    //LOGD("%d ------- %s\n", length, buffer1);
+
+    int count = (length + MQTT_PUB_PACKAGE_LEN - 1) / MQTT_PUB_PACKAGE_LEN;
+    int fresult = 0;
+    for (int i = 0; i < count; i++) {
+        int len = MQTT_PUB_PACKAGE_LEN;
+        if (i == (count - 1)) {
+            len = length - MQTT_PUB_PACKAGE_LEN * (count - 1);
+        }
+        //char data[MQTT_PUB_PACKAGE_LEN + 1];
+        //char pub_msg[MQTT_PUB_PACKAGE_LEN + 32];
+        memset(data, '\0', MQTT_PUB_PACKAGE_LEN + 1);
+        memset(pub_msg, '\0', MQTT_PUB_PACKAGE_LEN + 32);
+        strncpy(data, buffer1 + (i*MQTT_PUB_PACKAGE_LEN), len);
+
+        // sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"t\\\":%d\\,\\\"i\\\":%d\\,\\\"p\\\":%d\\,\\\"d\\\":\\\"%s\\\"}", msgId, count, i+1, 0, data);
+        sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"t\\\":%d\\,\\\"i\\\":%d\\,\\\"d\\\":\\\"%s\\\"}", msgId, count, i+1, data);
+        LOGD("%s i is %d, g_priority is %d\r\n", __FUNCTION__, i, g_priority);
+        while (g_priority != 0) {
+            //usleep(500000);	// 睡眠0.5s
+            vTaskDelay(pdMS_TO_TICKS(500));
+        }
+        LOGD("%s pub_topic is %s\r\n", __FUNCTION__, pub_topic);
+        LOGD("%s pub_msg is %s\r\n", __FUNCTION__, pub_msg);
+        int ret = quickPublishOasisMQTT(pub_topic, pub_msg);
+        LOGD("%s ret is %d\r\n", __FUNCTION__, ret);
+        if (ret != 0) {
+            fresult = -1;
+            break;
+        }
+    }
+
+    vPortFree(buffer1);
+    return fresult;
 }

@@ -8,14 +8,6 @@
 
 #include <ctype.h>
 
-void freePointer(char **p) {
-	if (*p != NULL) {
-		free(*p);
-		*p = NULL;
-	}
-}
-
-
 int mysplit(char *src, char *first, char *last, char *separator) {
 	if (src == NULL || strlen(src) <= 0 || separator == NULL || strlen(separator) <= 0) {
 		return -1;
