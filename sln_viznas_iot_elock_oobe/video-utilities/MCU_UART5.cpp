@@ -102,7 +102,8 @@ static bool  saving_file = false;
 bool  shut_down = false;
 bool  bDeleteUser = false;
 extern int mqtt_init_done;
-
+int boot_mode = BOOT_MODE_INVALID;  //0:短按;1：长按;2:蓝牙设置;3:蓝牙人脸注册;4:睡眠状态
+bool oasis_task_start = false;
 #if (configSUPPORT_STATIC_ALLOCATION == 1)
 DTC_BSS static StackType_t Uart5TaskStack[UART5TASK_STACKSIZE];
 DTC_BSS static StaticTask_t s_Uart5TaskTCB;
@@ -392,6 +393,23 @@ int cmdSysInitOKSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessa
 	return 0;
 }
 
+int cmdBootModeRsp(unsigned char nMessageLen, const unsigned char *pszMessage)
+{
+    boot_mode = StrGetUInt8(pszMessage) ;
+    if(boot_mode >= 4) {
+    	boot_mode = BOOT_MODE_INVALID;
+    }
+    LOGD("boot_mode: %d\r\n", boot_mode);
+    if((boot_mode == BOOT_MODE_NORMAL) || (boot_mode == BOOT_MODE_REG)) {
+        if(oasis_task_start == false) {
+            oasis_task_start = true;
+            Oasis_Start();
+        }
+    }
+
+    return 0;
+}
+
 void SetSysToFactory()
 {
 	list<Record*> recordList = DBManager::getInstance()->getRecord();
@@ -507,6 +525,7 @@ int cmdUserRegReqProc(unsigned char nMessageLen, const unsigned char *pszMessage
 	}
 
 	g_reging_flg = REG_STATUS_ING;
+    boot_mode = BOOT_MODE_REG;
 	if(lcd_back_ground == false) {
 		OpenLcdBackground();
 	}
@@ -638,14 +657,20 @@ int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage)
         HexToStr(username,g_uu_id.UID,sizeof(g_uu_id.UID));
         strcpy(record->UUID, username);
         record->action = 3;//  操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁
-//        unsigned char image_path[100];
+        char image_path[64];
         record->status =0; // 0,操作成功 1,操作失败.
         record->time_stamp = ws_systime ; //时间戳 从1970年开始的秒数
         record->power=0;    // 电池电量
         record->power2=0;   // 电池电量
         record->upload=0; //   0代表没上传 1代表记录上传图片未上传 2代表均已
+        memset(image_path, 0, sizeof(image_path)); // 对注册成功的用户保存一张压缩过的jpeg图片
+        snprintf(image_path, sizeof(image_path), "REC_%d_%d_%s.jpg",0, record->time_stamp, record->UUID);
+        memcpy(record->image_path, image_path, sizeof(image_path) );//image_path
+
         DBManager *dbManager = DBManager::getInstance();
         dbManager->addRecord( record);
+
+        Oasis_SetOasisFileName(record->image_path);
 
         int ID = DBManager::getInstance()->getLastRecordID();
         LOGD("开锁成功, 更新数据库状态.请求MQTT上传本次开门的记录 \n");
@@ -1261,7 +1286,6 @@ int ProcMessage(
 		case CMD_BT_INFO:
 		{
 			cmdBTInfoRptProc(nMessageLen, pszMessage);
-			
 			break;
 		}
 		case CMD_WIFI_MQTTSER_URL:
@@ -1269,7 +1293,11 @@ int ProcMessage(
 			cmdMqttSvrURLProc(nMessageLen, pszMessage);
 			break;
 		}
-		
+	    case CMD_BOOT_MODE:
+	    {
+            cmdBootModeRsp(nMessageLen, pszMessage);
+            break;
+        }
 		default:
 			LOGD("No effective cmd from MCU!\n");
 			break;				
@@ -1405,8 +1433,8 @@ static void uart5_QMsg_task(void *pvParameters)
 				case QMSG_FACEREC_RECFACE:
 				{//处理人脸识别结果
 					//LOGD("%s g_reging_flg is %d lcd_back_ground is %d\r\n", __FUNCTION__, g_reging_flg, lcd_back_ground);
-					if(REG_STATUS_WAIT != g_reging_flg
-							|| lcd_back_ground == false)//如果正在注册流程，就过滤掉该识别结果
+					if((boot_mode != BOOT_MODE_NORMAL) || (REG_STATUS_WAIT != g_reging_flg)
+							|| (lcd_back_ground == false))//如果正在注册流程，就过滤掉该识别结果
 					{
 						vPortFree(pQMsg);
 						continue;

@@ -129,9 +129,9 @@ const char *emotion_str[] = {
 
 // 20201114 wavezgx added for UI development
 static int logindex = 0;
-static int logfreq = 30;
 static int bat_level = 0;
 // 20201114 wavezgx end
+extern int boot_mode;
 
 /*******************************************************************************
  * Prototypes
@@ -580,7 +580,8 @@ static void UIInfo_UpdateFaceInfo2(uint16_t *pBufferAddr, QUIInfoMsg* infoMsg)
             break;
         case 1 << kEvents_API_Layer_FaceExist:
         {
-            uint16_t *pIcon = (uint16_t *)user_exist_v1;
+            //uint16_t *pIcon = (uint16_t *)user_exist_v1;
+            uint16_t *pIcon = (uint16_t *)reg_succ_v3;
             for (int i = 0; i < 320; i++)
             {
                 for (int j = 0; j < 240; j++)
@@ -856,7 +857,9 @@ static void UIInfo_Elock(uint16_t *pBufferAddr, QUIInfoMsg* infoMsg, uint8_t p_D
         VIZN_GetEvents(NULL, &s_OasisEvents);
         UIInfo_UpdateFaceInfo2(pBufferAddr, infoMsg);
         UIInfo_UpdateQualityInfo(pBufferAddr, infoMsg);
-        UIInfo_DrawFocusRectV2(pBufferAddr, infoMsg);
+        if((boot_mode == BOOT_MODE_NORMAL) || (boot_mode == BOOT_MODE_REG)) {
+        	UIInfo_DrawFocusRectV2(pBufferAddr, infoMsg);
+        }
     }
 }
 

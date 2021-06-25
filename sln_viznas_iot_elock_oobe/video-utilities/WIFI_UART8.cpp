@@ -102,6 +102,8 @@ static int g_has_more_upload_data = 1;
 static int g_is_uploading_data = 0;
 // 命令是否已经执行完成
 static int g_command_executed = 0;
+// 关机通知是否已经执行完成
+static int g_shutdown_notified = 0;
 // 当前pub执行优先级，0为最低优先级，9为最高优先级
 int g_priority = 0;
 
@@ -135,6 +137,7 @@ int g_uploading_id = -1;
 
 extern bool  shut_down;
 extern bool bPubOasisImage;
+bool bOasisRecordUpload = false;
 lpuart_rtos_handle_t handle8;
 struct _lpuart_handle t_handle8;
 
@@ -1174,7 +1177,7 @@ int uploadRecord(char *msgId, Record *record) {
 	// int result = record->passed ? 0 : 1;
 	LOGD("upload record uid %s, type %d, time %d, batteryA %d, batteryB %d, result %d\n", record->UUID, record->action, record->time_stamp, record->power, record->power2, record->status);
 	// sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"userId\\\":\\\"%s\\\"\\, \\\"type\\\":%d\\,\\\"time\\\":%u\\,\\\"batteryA\\\":%d\\,\\\"batteryB\\\":%d\\,\\\"result\\\":%d}", msgId, btWifiConfig.bt_mac, record->UID, record->type, record->time, record->power, record->power2, result);
-	sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"userId\\\":\\\"%s\\\"\\, \\\"type\\\":%d\\,\\\"time\\\":%u\\,\\\"batteryA\\\":%d\\,\\\"batteryB\\\":%d\\,\\\"result\\\":%d}", msgId, btWifiConfig.bt_mac, record->UUID, record->action, record->time_stamp, record->power, record->power2, record->status);
+	sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"userId\\\":\\\"%s\\\"\\, \\\"type\\\":%d\\,\\\"time\\\":%d\\,\\\"batteryA\\\":%d\\,\\\"batteryB\\\":%d\\,\\\"result\\\":%d}", msgId, btWifiConfig.bt_mac, record->UUID, record->action, record->time_stamp, record->power, record->power2, record->status);
 	char *pub_topic = get_pub_topic_record_request();
 	while (g_priority != 0) {
 		//usleep(500000);	// 睡眠0.5s
@@ -1184,7 +1187,7 @@ int uploadRecord(char *msgId, Record *record) {
 	int ret = quickPublishMQTT(pub_topic, pub_msg);
 	if (ret == 0) {
 		record->upload = 1;
-		//dbmanager->updateRecord(record);
+		dbmanager->updateRecordByID(record);
 	}
 	// notifyCommandExecuted(ret);
 	//freePointer(&pub_topic);
@@ -1198,13 +1201,15 @@ int uploadRecordImage(Record *record, bool online) {
             char *msgId = gen_msgId();
             LOGD("uploadRecordImage msgId is %s\n", msgId);
             // 第一步：传图
+            bOasisRecordUpload = false;
             int ret = pubOasisImage(pub_topic, msgId);
             if (ret == 0) {
                 // 第二步：告知图片用户信息
                 ret = uploadRecord(msgId, record);
                 if (ret == 0) {
                     record->upload = 2;
-                    //dbmanager->updateRecord(record);
+                    dbmanager->updateRecordByID(record);
+                    bOasisRecordUpload = true;
                 }
             }
             freePointer(&pub_topic);
@@ -1213,10 +1218,10 @@ int uploadRecordImage(Record *record, bool online) {
     }else {
         char *filename = (char*)(record->image_path);
         LOGD("uploadRecordImage filename is %s", filename);
-        if (filename != NULL && strlen(filename) > 0 && (access(filename, F_OK)) != -1) {
+        if (filename != NULL && strlen(filename) > 0 && (fatfs_getsize(filename)) != -1) {
             char *pub_topic = get_pub_topic_pic_report();
             char *msgId = gen_msgId();
-            LOGD("uploadRecordImage filename is %s msgId is %s\n", filename, msgId);
+            LOGD("uploadRecordImage msgId is %s\n", msgId);
             // 第一步：传图
             int ret = pubImage(pub_topic, filename, msgId);
             if (ret == 0) {
@@ -1224,10 +1229,10 @@ int uploadRecordImage(Record *record, bool online) {
                 ret = uploadRecord(msgId, record);
                 if (ret == 0) {
                     record->upload = 2;
-                    //dbmanager->updateRecord(record);
+                    dbmanager->updateRecordByID(record);
                 }
             }
-            //freePointer(&pub_topic);
+            freePointer(&pub_topic);
             freePointer(&msgId);
             return ret;
         }
@@ -1319,8 +1324,7 @@ static void msghandle_task(void *pvParameters)
     LOGD("%s start...\r\n", logTag);
 	int count = 0;
 
-    char msg[MQTT_AT_LEN];
-    memset(msg, '\0', MQTT_AT_LEN);
+    bool mqtt_upload_records_run = false;
     char *pub_topic = NULL;
     char pub_msg[MQTT_AT_LONG_LEN];
     memset(pub_msg, '\0', MQTT_AT_LONG_LEN);
@@ -1329,6 +1333,15 @@ static void msghandle_task(void *pvParameters)
 	//mqtt_init_done = 1;
     do {
         vTaskDelay(pdMS_TO_TICKS(1000));
+
+        if ((mqtt_init_done == 1) && (g_priority == 0) && (bPubOasisImage == false)) {
+            if(mqtt_upload_records_run == false) {
+                LOGD("----------------- g_priority == 0");
+                int ret = uploadRecords();
+                mqtt_upload_records_run = true;
+            }
+            g_has_more_upload_data = 0;
+        }
 
         if (count % 30 == 0) {
             if (mqtt_init_done == 1) {
@@ -1349,14 +1362,32 @@ static void msghandle_task(void *pvParameters)
                         "0", btWifiConfig.bt_mac, wifi_rssi, battery_level, g_heartbeat_index++,
                         getFirmwareVersion());
 
-                //sprintf(pub_msg,
-                //        "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"index\\\":%d\\\"}",
-                //        "0", btWifiConfig.bt_mac,g_heartbeat_index++);
-
                 pub_topic = get_pub_topic_heart_beat();
                 //LOGD("%s pub_msg is %s\n", __FUNCTION__, pub_msg);
                 int ret = quickPublishMQTTWithPriority(pub_topic, pub_msg, 1);
-                //int ret = quickPublishMQTTWithPriority(pub_topic, "{\\\"msgId\\\":\\\"0\\\"\\,\\\"mac\\\":\\\"CECADED19DB9\\\"\\,\\\"index\\\":2\\}", 1);
+            }
+        }
+
+        // 判断是否需要下电
+        if (g_is_online == 1) {
+            if (g_has_more_download_data == 0) {
+                // 没有更多下载数据
+                if (g_has_more_upload_data == 0 && g_is_uploading_data == 0 && (g_shutdown_notified == 0 || (g_shutdown_notified == 1 && count % 5 == 0))) {
+                    // 没有更多上传数据
+                    if (g_command_executed) {
+                        // 如果远程开锁完成或者其他指令执行完成，并且上传也执行完成了
+                        notifyCommandExecuted(0);
+                        // } else if (g_shutdown_notified == 0) {
+                    } else { // if (g_shutdown_notified == 0) {
+                        // 如果没有收到指令执行完成的状况，可以尝试通知MCU下电，MCU根据是否是远程开锁决定是否下电
+                        notifyShutdown();
+                    }
+                    g_shutdown_notified = 1;
+                } else if (count % 10 == 0) {
+                    // 每隔10s发送一次心跳，确保不会随意下电
+                    LOGD("need to keep alive");
+                    notifyKeepAlive();
+                }
             }
         }
         count++;

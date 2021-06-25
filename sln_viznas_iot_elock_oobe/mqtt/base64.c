@@ -13,6 +13,10 @@
 
 const char * base64char = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
+char data[MQTT_PUB_PACKAGE_LEN + 1];
+char pub_msg[MQTT_PUB_MSG_LEN];
+bool bPubOasisImage = false;
+
 char * base64_encode( char * bindata, char * base64, int binlength )
 {
 	int i, j;
@@ -117,67 +121,58 @@ void get_extension(const char *file_name,char *extension)
 extern int g_priority;
 int pubImage(const char* pub_topic, const char *filename, const char *msgId) {	
 	//打开图片
-	FILE *fp = NULL;
 	unsigned int size;         //图片字节数
 	char *buffer;
 	char *buffer1;
 	size_t result;
 	char *ret1; 
 	unsigned int length;
-	char file_extension[20];
-	get_extension(filename, file_extension);
 
-	fp = fopen(filename, "rb");
-	if (NULL == fp)
-	{
-		printf("open_error");
-		exit(1);
-	}
+    LOGD("%s 1\r\n", __FUNCTION__);
 
+    LOGD("%s 2\r\n", __FUNCTION__);
 	//获取图片大小
-	fseek(fp, 0L, SEEK_END);
-	size = ftell(fp);
-	fseek(fp, 0L, SEEK_SET);
+	size = fatfs_getsize(filename);
+    LOGD("%s size is %d\r\n", __FUNCTION__, size);
 
+    LOGD("%s 3\r\n", __FUNCTION__);
 	//分配内存存储整个图片
-	buffer = (char *)malloc((size/4+1)*4);
+	buffer = (char *)pvPortMalloc((size/4+1)*4);
 	if (NULL == buffer)
 	{
-		printf("memory_error");
+        LOGD("memory_error");
 		exit(2);
 	}
 
+    LOGD("%s 4\r\n", __FUNCTION__);
 	//将图片拷贝到buffer
-	result = fread(buffer, 1, size, fp);
-	if (result != size)  
-	{  
-		printf("reading_error");  
-		exit (3);  
-	}  
-	fclose(fp);
+	result = fatfs_read(filename, buffer, 0, size);
 
+    LOGD("%s 5\r\n", __FUNCTION__);
 	//base64编码
-	buffer1 = (char *)malloc((size/3+1)*4 + 1);
+	buffer1 = (char *)pvPortMalloc((size/3+1)*4 + 1);
 	if (NULL == buffer1)
 	{
-		printf("memory_error");
+        LOGD("memory_error");
 		exit(2);
 	}
 	ret1 = base64_encode(buffer, buffer1, size);
 	length = strlen(buffer1);
 	//LOGD("%d ------- %s\n", length, buffer1);
+    LOGD("%s length is %d\n", __FUNCTION__, length);
 
 	int count = (length + MQTT_PUB_PACKAGE_LEN - 1) / MQTT_PUB_PACKAGE_LEN;
 	int fresult = 0;
+    bPubOasisImage = true;
 	for (int i = 0; i < count; i++) {
 		int len = MQTT_PUB_PACKAGE_LEN;
 		if (i == (count - 1)) {
 			len = length - MQTT_PUB_PACKAGE_LEN * (count - 1);
 		}
 		char data[MQTT_PUB_PACKAGE_LEN + 1];
-		char pub_msg[MQTT_PUB_PACKAGE_LEN + 100];
+		char pub_msg[MQTT_PUB_MSG_LEN];
 		memset(data, '\0', MQTT_PUB_PACKAGE_LEN + 1);
-		memset(pub_msg, '\0', MQTT_PUB_PACKAGE_LEN + 100);
+		memset(pub_msg, '\0', MQTT_PUB_MSG_LEN);
 		strncpy(data, buffer1 + (i*MQTT_PUB_PACKAGE_LEN), len);
 
 		// sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"t\\\":%d\\,\\\"i\\\":%d\\,\\\"p\\\":%d\\,\\\"d\\\":\\\"%s\\\"}", msgId, count, i+1, 0, data);
@@ -186,21 +181,24 @@ int pubImage(const char* pub_topic, const char *filename, const char *msgId) {
 			//usleep(500000);	// 睡眠0.5s
 			vTaskDelay(pdMS_TO_TICKS(500));
 		}
-		int ret = quickPublishMQTT(pub_topic, pub_msg);
-		if (ret != 0) {
+        LOGD("%s pub_topic is %s\r\n", __FUNCTION__, pub_topic);
+        LOGD("%s pub_msg is %s\r\n", __FUNCTION__, pub_msg);
+		//int ret = quickPublishMQTT(pub_topic, pub_msg);
+        int ret = quickPublishOasisMQTT(pub_topic, pub_msg);
+        LOGD("%s ret is %d\r\n", __FUNCTION__, ret);
+
+        if (ret != 0) {
 			fresult = -1;
 			break;
 		}
 	}
 
-	free(buffer);
-	free(buffer1);
+    bPubOasisImage = false;
+    vPortFree(buffer);
+    vPortFree(buffer1);
 	return fresult;
 }
 
-char data[MQTT_PUB_PACKAGE_LEN + 1];
-char pub_msg[MQTT_PUB_MSG_LEN];
-bool bPubOasisImage = false;
 int pubOasisImage(const char* pub_topic, const char *msgId) {
     //打开图片
     unsigned int size;         //图片字节数

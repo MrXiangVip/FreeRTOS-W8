@@ -73,6 +73,7 @@ extern "C" {
 #define CMD_SETNETWORK_OPTVER			25		// 设置网络参数版本号,每次设置后都自加1，存入flash
 #define CMD_NETWORK_OPT					26		// 网络参数设置
 #define CMD_MQTT_UPLOAD					27		// 请求mqtt 上传记录
+#define CMD_BOOT_MODE                   0x82  //上报开机模式 (与其它命令有区别 06.21)
 #define CMD_WIFI_OPEN_DOOR				0x83	// 远程wifi开门
 #define CMD_WIFI_TIME_SYNC				0x8A	// 通过wifi设置系统时间
 #define CMD_IRLIGHT_PWM_Req				0xE0	// 设置IR补光灯
@@ -130,6 +131,15 @@ typedef enum
 	REG_STATUS_WAIT=4,	//等待注册
 }Reg_Status;
 
+//0:短按;1：长按;2:蓝牙设置;3:蓝牙人脸注册;4:睡眠状态
+typedef enum
+{
+	BOOT_MODE_NORMAL = 0,		// 短按--识别模式
+	BOOT_MODE_REMOTE = 1,		// 长按--远程开锁模式
+	BOOT_MODE_BLE = 2,      	// 蓝牙设置
+	BOOT_MODE_REG = 3,			//蓝牙人脸注册
+	BOOT_MODE_INVALID = 0XFF,	//非法模式
+}BootMode_Status;
 
 /*8字节UUID*/
 typedef union{

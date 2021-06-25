@@ -100,7 +100,7 @@ int main(void)
     Camera_Start();
     APP_PXP_Start();
     Display_Start();
-    Oasis_Start();
+    //Oasis_Start();
 
     vizn_api_init();
 
