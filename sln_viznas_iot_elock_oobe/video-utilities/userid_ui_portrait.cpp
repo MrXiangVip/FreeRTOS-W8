@@ -580,8 +580,7 @@ static void UIInfo_UpdateFaceInfo2(uint16_t *pBufferAddr, QUIInfoMsg* infoMsg)
             break;
         case 1 << kEvents_API_Layer_FaceExist:
         {
-            //uint16_t *pIcon = (uint16_t *)user_exist_v1;
-            uint16_t *pIcon = (uint16_t *)reg_succ_v3;
+            uint16_t *pIcon = (uint16_t *)user_exist_v1;
             for (int i = 0; i < 320; i++)
             {
                 for (int j = 0; j < 240; j++)
