@@ -310,7 +310,7 @@ int cmdSysInitOKSyncReq(const char *strVersion)
 //主控接收指令:  开机同步响应
 int cmdSysInitOKSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessage)
 {
-	unsigned char szBuffer[128]={0};
+	unsigned char szBuffer[32]={0};
 
 	if((nMessageLen < sizeof(szBuffer)) && nMessageLen == 4)
 	{
@@ -1501,7 +1501,6 @@ static void uart5_sync_task(void *pvParameters)
 static void uart5_task(void *pvParameters)
 {
     int error;
-	int i = 0;
     size_t rcvlen = 0;
     int msglen = 0;
 	uint16_t  Msg_CRC16 = 0,Cal_CRC16= 0;
@@ -1510,6 +1509,7 @@ static void uart5_task(void *pvParameters)
 	unsigned char CmdId=0;
 	unsigned char datalen = 0;
 	uint8_t recv_buffer[64] = {0};
+	char message_buffer[64] = {0};
 	uint8_t data_tmp;
     LOGD("[uart5_task]:starting...\r\n");
     lpuart_config5.srcclk = DEMO_LPUART_CLK_FREQ;
@@ -1567,12 +1567,9 @@ static void uart5_task(void *pvParameters)
             }
 		}
 
-#if 1		
         if (msglen > 0)
         {
 			//LOGD("\n===rcv msg<len:%d>:", msglen);	
-			
-			char message_buffer[64];
 			
 			memset(message_buffer, 0, sizeof(message_buffer));
 			HexToStr(message_buffer, recv_buffer, msglen);
@@ -1583,7 +1580,6 @@ static void uart5_task(void *pvParameters)
 			}	
 			LOGD("\n");*/
         }
-#endif		
 		//收到完整的以HEAD_MARK开头的消息后校验处理
 		memcpy(&Msg_CRC16, recv_buffer+msglen-CRC16_LEN, CRC16_LEN);
 		Cal_CRC16 = CRC16_X25(recv_buffer, msglen-CRC16_LEN);
@@ -1610,6 +1606,7 @@ static void uart5_task(void *pvParameters)
     vTaskSuspend(NULL);
 }
 
+#if	0
 static void uart5_Loop_task(void *pvParameters)
 {
     uint32_t timeNow = 0;
@@ -1659,6 +1656,7 @@ static void uart5_Loop_task(void *pvParameters)
     vTaskDelete (NULL);
 
 }
+#endif
 
 int MCU_UART5_Start()
 {
