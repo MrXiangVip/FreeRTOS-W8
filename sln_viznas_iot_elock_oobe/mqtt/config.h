@@ -54,8 +54,8 @@ typedef struct mqtt_config {
 	char server_ip[CONFIG_MQTT_ITEM_LEN];
 	char server_port[CONFIG_MQTT_ITEM_LEN];
 	char client_id[CONFIG_MQTT_ITEM_LEN];
-	char username[CONFIG_ITEM_LEN];
-	char password[CONFIG_ITEM_LEN];
+	char username[CONFIG_MQTT_ITEM_LEN];
+	char password[CONFIG_MQTT_ITEM_LEN];
 } MQTTCONFIG;
 
 extern VERSIONCONFIG versionConfig;

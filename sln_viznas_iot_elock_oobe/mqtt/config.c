@@ -15,12 +15,19 @@ VERSIONCONFIG versionConfig;
 BTWIFICONFIG btWifiConfig;
 MQTTCONFIG mqttConfig;
 
-static char buf[1024] = {0};
+static char buf[512] = {0};
 //char buf2[1024] = {0};
 static bool config_json_changed = false;
 
 #if SUPPORT_CONFIG_JSON != 0
 void init_config() {
+    cJSON_Hooks hooks;
+
+    /* Initialize cJSON library to use FreeRTOS heap memory management. */
+    hooks.malloc_fn = pvPortMalloc;
+    hooks.free_fn   = vPortFree;
+    cJSON_InitHooks(&hooks);
+
     if(fatfs_read(DEFAULT_CONFIG_FILE, buf, 0, sizeof(buf)) !=0) 
     {
         cJSON *root = NULL;
@@ -47,8 +54,12 @@ void init_config() {
             char* tmp = NULL;
 
             tmp = cJSON_Print(root);
+            memset(buf, 0, sizeof(buf));
             memcpy(buf, tmp, strlen(tmp));
-            LOGD("%s tmp is %s\n", __FUNCTION__, tmp);
+            LOGD("%s tmp is %s\r\n", __FUNCTION__, tmp);
+            if(tmp != NULL) {
+                vPortFree(tmp);
+            }
 
             cJSON_Delete(root);
             fatfs_write(DEFAULT_CONFIG_FILE, buf, 0, sizeof(buf));
@@ -80,6 +91,9 @@ int update_section_key(char *section, char *key) {
 		memset(buf, 0, sizeof(buf));
         memcpy(buf, tmp, strlen(tmp));
 
+        if(tmp != NULL) {
+            vPortFree(tmp);
+        }
 		//fatfs_write(DEFAULT_CONFIG_FILE, buf2, 0, strlen(buf2));
 
 		cJSON_Delete(root);
@@ -101,6 +115,7 @@ int update_wifi_ssid(char *ssid) {
 	//LOGD("%s\n", __FUNCTION__);
 	
 	update_section_key(CONFIG_KEY_SSID, ssid);
+    save_json_config_file();
 
 	return 0;
 }
@@ -109,6 +124,7 @@ int update_wifi_pwd(char *password) {
 	//LOGD("%s\n", __FUNCTION__);
 	
 	update_section_key(CONFIG_KEY_WIFI_PWD, password);
+    save_json_config_file();
 
 	return 0;
 }
@@ -121,6 +137,8 @@ int update_mqtt_opt(char *username, char *password)
     update_section_key(CONFIG_KEY_MQTT_PASSWORD, password);
     memcpy(mqttConfig.username, username, strlen(username));
     memcpy(mqttConfig.password, password, strlen(password));
+
+    save_json_config_file();
 
     return 0;
 }
@@ -138,6 +156,8 @@ int update_MqttSvr_opt(char *MqttSvrUrl)
     LOGD("%s server_ip is %s, server_port is %s\r\n", __FUNCTION__, mqttConfig.server_ip, mqttConfig.server_port);
     update_section_key(CONFIG_KEY_MQTT_SERVER_IP, mqttConfig.server_ip);
     update_section_key(CONFIG_KEY_MQTT_SERVER_PORT, mqttConfig.server_port);
+
+    save_json_config_file();
 
     return 0;
 }
@@ -185,20 +205,19 @@ int update_project_info(char *version)
 
 int read_config_value(char *dst, char *key) {
 	cJSON *root = NULL;
-    memset(buf, 0, sizeof(buf));
-
-    fatfs_read(DEFAULT_CONFIG_FILE, buf, 0, sizeof(buf));
     //LOGD("buf is %s\n", buf);
     root = cJSON_Parse(buf);
 
     if(root != NULL) {
         cJSON *item = cJSON_GetObjectItem(root, key);
-        char *item_string;
         if(item != NULL) {
+            char *item_string;
             item_string = cJSON_GetStringValue(item);
 
             //LOGD("key is %s, item_string is %s\r\n", key, item_string);
-            memcpy(dst, item_string, strlen(item_string));
+            if(item_string != NULL) {
+                memcpy(dst, item_string, strlen(item_string));
+            }
         }
 
         cJSON_Delete(root);
@@ -211,9 +230,16 @@ int read_config() {
     memset(&btWifiConfig, '\0', sizeof(BTWIFICONFIG));
     memset(&mqttConfig, '\0', sizeof(MQTTCONFIG));
 
+    memset(buf, 0, sizeof(buf));
 
-    LOGD("========= reading config =========\n");
+    if(fatfs_read(DEFAULT_CONFIG_FILE, buf, 0, sizeof(buf)) != 0) {
+        LOGD("%s read error\r\n", __FUNCTION__);
+        return -1;
+    }
+    LOGD("buf is %s\r\n", buf);
+    LOGD("buf length is %d, size is %d\r\n", strlen(buf), sizeof(buf));
 
+    LOGD("========= reading config =========\r\n");
     read_config_value(versionConfig.sys_ver, CONFIG_KEY_SYS_VERSION);
     read_config_value(versionConfig.bt_ver, CONFIG_KEY_BT_VERSION);
     read_config_value(versionConfig.oasis_ver, CONFIG_KEY_OASIS_VERSION);
@@ -224,8 +250,8 @@ int read_config() {
     read_config_value(btWifiConfig.ssid, CONFIG_KEY_SSID);
     read_config_value(btWifiConfig.password, CONFIG_KEY_WIFI_PWD);
 
-    char server_url[CONFIG_ITEM_LEN];
-    memset(server_url, '\0', CONFIG_ITEM_LEN);
+    char server_url[CONFIG_MQTT_ITEM_LEN * 2 + 1];
+    memset(server_url, '\0', sizeof(server_url));
     read_config_value(server_url, CONFIG_KEY_MQTT_SERVER_URL);
     mysplit(server_url, mqttConfig.server_ip, mqttConfig.server_port, ":");
 
