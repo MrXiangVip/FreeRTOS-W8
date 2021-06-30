@@ -19,22 +19,22 @@ static char cmd[MQTT_MAX_LEN];
 
 static int sendATCmd(const char *cmd) {
 	//LOGD("--- send AT CMD %s\n", cmd);
-	int res = run_at_cmd(cmd, 2, 8000000);
+	int res = run_at_cmd(cmd, 2, 8000);
 	while (res == -5) {
 		//sleep(1);
         vTaskDelay(pdMS_TO_TICKS(1000));
-		res = run_at_cmd(cmd, 2, 8000000);
+		res = run_at_cmd(cmd, 2, 8000);
 	}
 	return res;
 }
 
 static int sendATLongCmd(const char *cmd) {
     //LOGD("--- send AT Long CMD %s\n", cmd);
-    int res = run_at_long_cmd(cmd, 2, 8000000);
+    int res = run_at_long_cmd(cmd, 2, 8000);
     while (res == -5) {
         //sleep(1);
         vTaskDelay(pdMS_TO_TICKS(1000));
-        res = run_at_long_cmd(cmd, 2, 8000000);
+        res = run_at_long_cmd(cmd, 2, 8000);
     }
     return res;
 }
@@ -138,7 +138,7 @@ int publishMQTT(int linkId, const char* topic, const char* data, int qos, int re
 	sprintf(long_cmd, "AT+MQTTPUB=%d,\"%s\",\"%s\",%d,%d", linkId, topic, data, qos, retain);
 
 	//LOGD("%s cmd is %s\n", __FUNCTION__, long_cmd);
-    LOGD("%s length is %d\n", __FUNCTION__, strlen(long_cmd));
+    //LOGD("%s length is %d\n", __FUNCTION__, strlen(long_cmd));
 	//int res = sendATLongCmd(cmd);
 
     int res = 0;
@@ -164,7 +164,7 @@ int publishOasisMQTT(int linkId, const char* topic, const char* data, int qos, i
     sprintf(long_oasis_cmd, "AT+MQTTPUB=%d,\"%s\",\"%s\",%d,%d", linkId, topic, data, qos, retain);
 
     //LOGD("%s long_oasis_cmd is %s\n", __FUNCTION__, long_oasis_cmd);
-    LOGD("%s length is %d\n", __FUNCTION__, strlen(long_oasis_cmd));
+    //LOGD("%s length is %d\n", __FUNCTION__, strlen(long_oasis_cmd));
     //int res = sendATLongCmd(cmd);
     int res = 0;
 

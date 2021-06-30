@@ -128,14 +128,10 @@ int pubImage(const char* pub_topic, const char *filename, const char *msgId) {
 	char *ret1; 
 	unsigned int length;
 
-    LOGD("%s 1\r\n", __FUNCTION__);
-
-    LOGD("%s 2\r\n", __FUNCTION__);
 	//获取图片大小
 	size = fatfs_getsize(filename);
     LOGD("%s size is %d\r\n", __FUNCTION__, size);
 
-    LOGD("%s 3\r\n", __FUNCTION__);
 	//分配内存存储整个图片
 	buffer = (char *)pvPortMalloc((size/4+1)*4);
 	if (NULL == buffer)
@@ -144,11 +140,9 @@ int pubImage(const char* pub_topic, const char *filename, const char *msgId) {
 		exit(2);
 	}
 
-    LOGD("%s 4\r\n", __FUNCTION__);
 	//将图片拷贝到buffer
 	result = fatfs_read(filename, buffer, 0, size);
 
-    LOGD("%s 5\r\n", __FUNCTION__);
 	//base64编码
 	buffer1 = (char *)pvPortMalloc((size/3+1)*4 + 1);
 	if (NULL == buffer1)
@@ -159,7 +153,7 @@ int pubImage(const char* pub_topic, const char *filename, const char *msgId) {
 	ret1 = base64_encode(buffer, buffer1, size);
 	length = strlen(buffer1);
 	//LOGD("%d ------- %s\n", length, buffer1);
-    LOGD("%s length is %d\n", __FUNCTION__, length);
+    //LOGD("%s length is %d\n", __FUNCTION__, length);
 
 	int count = (length + MQTT_PUB_PACKAGE_LEN - 1) / MQTT_PUB_PACKAGE_LEN;
 	int fresult = 0;
@@ -181,8 +175,8 @@ int pubImage(const char* pub_topic, const char *filename, const char *msgId) {
 			//usleep(500000);	// 睡眠0.5s
 			vTaskDelay(pdMS_TO_TICKS(500));
 		}
-        LOGD("%s pub_topic is %s\r\n", __FUNCTION__, pub_topic);
-        LOGD("%s pub_msg is %s\r\n", __FUNCTION__, pub_msg);
+        //LOGD("%s pub_topic is %s\r\n", __FUNCTION__, pub_topic);
+        //LOGD("%s pub_msg is %s\r\n", __FUNCTION__, pub_msg);
 		//int ret = quickPublishMQTT(pub_topic, pub_msg);
         int ret = quickPublishOasisMQTT(pub_topic, pub_msg);
         LOGD("%s ret is %d\r\n", __FUNCTION__, ret);
@@ -236,13 +230,13 @@ int pubOasisImage(const char* pub_topic, const char *msgId) {
 
         // sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"t\\\":%d\\,\\\"i\\\":%d\\,\\\"p\\\":%d\\,\\\"d\\\":\\\"%s\\\"}", msgId, count, i+1, 0, data);
         sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"t\\\":%d\\,\\\"i\\\":%d\\,\\\"d\\\":\\\"%s\\\"}", msgId, count, i+1, data);
-        LOGD("%s i is %d, g_priority is %d\r\n", __FUNCTION__, i, g_priority);
+        LOGD("%s g_priority is %d\r\n", __FUNCTION__, g_priority);
         while (g_priority != 0) {
             //usleep(500000);	// 睡眠0.5s
             vTaskDelay(pdMS_TO_TICKS(500));
         }
-        LOGD("%s pub_topic is %s\r\n", __FUNCTION__, pub_topic);
-        LOGD("%s pub_msg is %s\r\n", __FUNCTION__, pub_msg);
+        //LOGD("%s pub_topic is %s\r\n", __FUNCTION__, pub_topic);
+        //LOGD("%s pub_msg is %s\r\n", __FUNCTION__, pub_msg);
         int ret = quickPublishOasisMQTT(pub_topic, pub_msg);
         LOGD("%s ret is %d\r\n", __FUNCTION__, ret);
         if (ret != 0) {

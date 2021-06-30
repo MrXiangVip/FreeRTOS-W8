@@ -210,7 +210,7 @@ int run_at_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
 			at_cmd_result = AT_CMD_RESULT_UNDEF;
 		}
 		int timeout_usec = 0;
-		int delay_usec = 1000;
+		int delay_usec = 20;
 		do {
 			vTaskDelay(pdMS_TO_TICKS(delay_usec));
 			timeout_usec += delay_usec;
@@ -223,7 +223,7 @@ int run_at_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
 				LOGD("run command %s timeout\r\n", cmd);
 				break;
 			}
-		} while (0);
+		} while (1);
 //		xEventGroupSetBits(handle8.rxEvent, RTOS_LPUART_RX_TIMEOUT);
 	}
 	LOGD("run command %s timeout end\r\n", cmd);
@@ -254,7 +254,7 @@ int run_at_long_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
             at_cmd_result = AT_CMD_RESULT_UNDEF;
         }
         int timeout_usec = 0;
-        int delay_usec = 1000;
+        int delay_usec = 20;
         do {
             vTaskDelay(pdMS_TO_TICKS(delay_usec));
             timeout_usec += delay_usec;
@@ -269,7 +269,7 @@ int run_at_long_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
                 LOGD("run long command timeout\r\n");
                 break;
             }
-        } while (0);
+        } while (1);
 //		xEventGroupSetBits(handle8.rxEvent, RTOS_LPUART_RX_TIMEOUT);
     }
     //LOGD("run long command %s timeout end\r\n", cmd);
@@ -319,9 +319,8 @@ static void mqttinit_task(void *pvParameters) {
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 
-
     result = run_at_cmd("AT+SYSLOG=1", 2, 1200);
-    result = run_at_cmd("AT+CWMODE=3", 1, 1200);
+    result = run_at_cmd("AT+CWMODE=1", 1, 1200);
     result = run_at_cmd("ATE0", 1, 1200);
     //result = run_at_cmd("AT+CIPSTAMAC?", 1, 1200);
     //result = run_at_cmd("AT+CWJAP=\"wireless_052E81\",\"12345678\"", 2, 5000);
@@ -336,7 +335,7 @@ static void mqttinit_task(void *pvParameters) {
     }
     LOGD("--------- connect to WIFI\n");
 
-    vTaskDelay(pdMS_TO_TICKS(3000));
+    vTaskDelay(pdMS_TO_TICKS(300));
 
     char lwtMsg[50];
     // sprintf(lwtMsg, "{\\\"username\\\":\\\"%s\\\"\\,\\\"state\\\":\\\"0\\\"}", btWifiConfig.wifi_mac);
@@ -361,14 +360,14 @@ static void mqttinit_task(void *pvParameters) {
     }
     LOGD("--------- connect to mqtt done\n");
 
-    vTaskDelay(pdMS_TO_TICKS(2000));
+    vTaskDelay(pdMS_TO_TICKS(200));
 
     result = quickPublishMQTT(pub_topic_last_will, "{}");
 
     //freePointer(&pub_topic_last_will);
 
 
-    vTaskDelay(pdMS_TO_TICKS(2000));
+    vTaskDelay(pdMS_TO_TICKS(200));
     char *sub_topic_cmd = get_sub_topic_cmd();
     result = quickSubscribeMQTT(sub_topic_cmd);
     if (result < 0) {
@@ -382,7 +381,7 @@ static void mqttinit_task(void *pvParameters) {
     }
 #endif
 
-    vTaskDelay(pdMS_TO_TICKS(2000));
+    vTaskDelay(pdMS_TO_TICKS(200));
     mqtt_init_done = 1;
 //    run_at_cmd("AT\r\n", 2, 3000);
 
