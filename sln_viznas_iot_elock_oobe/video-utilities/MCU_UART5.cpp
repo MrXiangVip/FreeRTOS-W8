@@ -1494,7 +1494,7 @@ static void uart5_sync_task(void *pvParameters)
 {
     vTaskDelay(pdMS_TO_TICKS(200));
     check_config();
-	vTaskDelay(pdMS_TO_TICKS(1300));
+	vTaskDelay(pdMS_TO_TICKS(100));
 	cmdSysInitOKSyncReq(SYS_VERSION);
 	vTaskDelete(NULL);
 }
