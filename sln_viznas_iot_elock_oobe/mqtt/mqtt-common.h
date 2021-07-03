@@ -11,6 +11,7 @@
 
 #define MQTT_MSG_ID_LEN 50
 #define MQTT_AT_LEN 128
+#define MQTT_AT_TOPIC_LEN 64
 #define AT_SEND_BUF_LEN 256
 #define UART_RX_BUF_LEN 8292
 

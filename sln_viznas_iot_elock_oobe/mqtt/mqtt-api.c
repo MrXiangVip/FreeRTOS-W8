@@ -48,7 +48,7 @@ int connectWifi(const char* ssid, const char* password) {
 	sprintf(cmd, "AT+CWJAP=\"%s\",\"%s\"", ssid, password);
 
 	LOGD("--- send AT CMD %s\n", cmd);
-	int res = run_at_cmd(cmd, 2, 10000000);
+	int res = run_at_cmd(cmd, 2, 10000);
 	// free(cmd);
 	return res;
 }

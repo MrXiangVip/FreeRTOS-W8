@@ -2,8 +2,6 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
-#include <sys/time.h>
 #include "mqtt-common.h"
 //#include "log.h"
 #include "fsl_log.h"
@@ -13,8 +11,8 @@
 #include <ctype.h>
 
 char *generate_topic(char *cmd) {
-	char *topic = (char*)pvPortMalloc(MQTT_AT_LEN);
-	memset(topic, '\0', MQTT_AT_LEN);
+	char *topic = (char*)pvPortMalloc(MQTT_AT_TOPIC_LEN);
+	memset(topic, '\0', MQTT_AT_TOPIC_LEN);
 	sprintf(topic, cmd, mqttConfig.username);
     //sprintf(topic, cmd, "CECADED19DB9");
 	//LOGD("generate topic is %s\n", topic);

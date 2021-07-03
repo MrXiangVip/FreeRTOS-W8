@@ -61,8 +61,8 @@ int sendStatusToMCU(int biz, int ret) {
 	if (ret == 0 && biz == 2) {
 		//SHM::getInstance()->setMQTTStatus(biz);
 	}
-	char payload_bin[MQTT_AT_LEN];
-	memset(payload_bin, '\0', MQTT_AT_LEN);
+	char payload_bin[16];
+    memset(payload_bin, '\0', sizeof(payload_bin));
 	payload_bin[0] = 0x23;
 	payload_bin[1] = 0x12;
 	payload_bin[2] = 0x02;

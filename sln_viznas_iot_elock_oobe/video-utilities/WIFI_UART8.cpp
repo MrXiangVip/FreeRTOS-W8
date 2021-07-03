@@ -1168,7 +1168,7 @@ static int handle_line()
 }
 
 void update_rssi() {
-	run_at_cmd("AT+CWJAP?", 1, 1000000);
+	run_at_cmd("AT+CWJAP?", 1, 1000);
 }
 
 int uploadRecord(char *msgId, Record *record) {
