@@ -210,7 +210,7 @@ int run_at_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
 			at_cmd_result = AT_CMD_RESULT_UNDEF;
 		}
 		int timeout_usec = 0;
-		int delay_usec = 20;
+		int delay_usec = 10;
 		do {
 			vTaskDelay(pdMS_TO_TICKS(delay_usec));
 			timeout_usec += delay_usec;
@@ -254,7 +254,7 @@ int run_at_long_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
             at_cmd_result = AT_CMD_RESULT_UNDEF;
         }
         int timeout_usec = 0;
-        int delay_usec = 20;
+        int delay_usec = 10;
         do {
             vTaskDelay(pdMS_TO_TICKS(delay_usec));
             timeout_usec += delay_usec;
@@ -1350,17 +1350,13 @@ static void msghandle_task(void *pvParameters)
 
         if(count % 5 == 0) {
             if ((mqtt_init_done == 1) && (bPubOasisImage == false)) {
+                char *msgId = gen_msgId();
                 // sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"btmac\\\":\\\"%s\\\"\\,\\\"wifi_rssi\\\":%s\\,\\\"battery\\\":%d\\,\\\"version\\\":\\\"%s\\\"}", msgId, btWifiConfig.wifi_mac, btWifiConfig.bt_mac, wifi_rssi, battery_level, getFirmwareVersion());
-                //sprintf(pub_msg,
-                //        "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"wifi_rssi\\\":%s\\,\\\"battery\\\":%d\\,\\\"index\\\":%d\\,\\\"version\\\":\\\"%s\\\"}",
-                //        msgId, btWifiConfig.bt_mac, wifi_rssi, battery_level, g_heartbeat_index++,
-                //        getFirmwareVersion());
-
                 sprintf(pub_msg,
                         "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"wifi_rssi\\\":%s\\,\\\"battery\\\":%d\\,\\\"index\\\":%d\\,\\\"version\\\":\\\"%s\\\"}",
-                        "0", btWifiConfig.bt_mac, wifi_rssi, battery_level, g_heartbeat_index++,
+                        msgId, btWifiConfig.bt_mac, wifi_rssi, battery_level, g_heartbeat_index++,
                         getFirmwareVersion());
-
+                freePointer(&msgId);
                 pub_topic = get_pub_topic_heart_beat();
                 //LOGD("%s pub_msg is %s\n", __FUNCTION__, pub_msg);
                 int ret = quickPublishMQTTWithPriority(pub_topic, pub_msg, 1);
