@@ -1391,7 +1391,7 @@ static void uart5_QMsg_task(void *pvParameters)
 						g_reg_start = Time_Now(); //记录注册成功响应发出的时间，并开始计时
 //						增加注册记录
                         //增加本次操作记录
-                        LOGD("增加注册记录");
+						LOGD("增加注册记录");
                         Record *record = (Record*)pvPortMalloc(sizeof( Record));
                         memset(record, 0, sizeof(Record));
                         strcpy(record->UUID, username);
@@ -1416,16 +1416,18 @@ static void uart5_QMsg_task(void *pvParameters)
 						LOGD("User face register failed!\r\n");
 						g_reging_flg = REG_STATUS_FAILED;
 					}
-					StrToHex(g_uu_id.UID,(char*)gFaceInfo.name.c_str(),sizeof(g_uu_id.UID));
-					/*LOGD("\n<<<UUID<len:%d>:%s.\n", sizeof(g_uu_id.UID),gFaceInfo.name);
-					for(i = 0; i<sizeof(g_uu_id.UID); i++)
-					{		
-						LOGD("0x%02x   ", g_uu_id.UID[i]);	
-					}
-					LOGD("\n"); */
+					//StrToHex(g_uu_id.UID,(char*)gFaceInfo.name.c_str(),sizeof(g_uu_id.UID));
+					StrToHex(g_uu_id.UID,(char*)username,sizeof(g_uu_id.UID));
+
 					cmdRegResultNotifyReq(g_uu_id, g_reging_flg);
-					vTaskDelay(pdMS_TO_TICKS(200));
-					cmdCloseFaceBoardReq();
+					if(g_reging_flg == REG_STATUS_FAILED) {
+                        vTaskDelay(pdMS_TO_TICKS(200));
+                        cmdCloseFaceBoardReq();
+                    }else {
+                        shut_down = true;
+                        vTaskDelay(pdMS_TO_TICKS(100));
+                        save_files_before_pwd();
+					}
 	            }
 				CloseLcdBackground();
 				break;
@@ -1447,12 +1449,7 @@ static void uart5_QMsg_task(void *pvParameters)
 						char name[64];
                         memcpy(name, gFaceInfo.name.c_str(), gFaceInfo.name.size());
 						StrToHex(g_uu_id.UID,name,sizeof(g_uu_id.UID));
-						//LOGD("\n<<<UUID<len:%d>:%s.\n", sizeof(g_uu_id.UID),gFaceInfo.name);	
-						/*for(i; i<sizeof(g_uu_id.UID); i++)	
-						{		
-							LOGD("0x%02x   ", g_uu_id.UID[i]);	
-						}	
-						LOGD("\n"); */
+
 						cmdOpenDoorReq(g_uu_id);
 						CloseLcdBackground();
 					}
