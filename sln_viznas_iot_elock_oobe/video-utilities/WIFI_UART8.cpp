@@ -137,6 +137,7 @@ int g_uploading_id = -1;
 
 extern bool  shut_down;
 extern bool bPubOasisImage;
+extern int boot_mode;
 bool bOasisRecordUpload = false;
 lpuart_rtos_handle_t handle8;
 struct _lpuart_handle t_handle8;
@@ -172,7 +173,7 @@ char *gen_msgId() {
     // sprintf(msgId, "%s%d%06d%03d", btWifiConfig.wifi_mac, tv.tv_sec, tv.tv_usec, random_gen);
     // sprintf(msgId, "%s%d%d", btWifiConfig.wifi_mac, tv.tv_sec, random_gen);
     sprintf(msgId, "%d%06d%03d", tv.tv_sec, tv.tv_usec, random_gen);
-    LOGD("generate msgId is %s\n", msgId);
+    //LOGD("generate msgId is %s\n", msgId);
     // 3位random
     // if (++random_gen >= 1000) {
     // 1位random
@@ -767,7 +768,23 @@ int SendMsgToMQTT(char *mqtt_payload, int len) {
             pub_topic = get_pub_topic_cmd_res();
             LOGD("-------- pub_topic is %s\n", pub_topic);
             LOGD("---- from MCU\n");
-            if ((int) (char) (mqtt_payload[1]) == 0x83 && (int) (char) (mqtt_payload[2]) == 0x01) {
+			if ((int)(char)(mqtt_payload[1]) == 0x82 && (int)(char)(mqtt_payload[2]) == 0x01 &&(int)(char)(mqtt_payload[3]) == 0x01) {
+				//freePointer(&pub_topic);
+				pub_topic = get_pub_topic_heart_beat();
+				// 远程开锁模式心跳上报
+				LOGD("---- remote unlock door mode");
+				char *msgId = gen_msgId();
+				if (versionConfig.sys_ver!= NULL && strlen(versionConfig.sys_ver) > 0) {
+					sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"wifi_rssi\\\":%s\\,\\\"battery\\\":%d\\,\\\"index\\\":%d\\,\\\"version\\\":\\\"%s\\\"}", msgId, btWifiConfig.bt_mac, wifi_rssi, battery_level, -1, versionConfig.sys_ver);
+				} else {
+					sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"wifi_rssi\\\":%s\\,\\\"battery\\\":%d\\,\\\"index\\\":%d\\,\\\"version\\\":\\\"%s\\\"}", msgId, btWifiConfig.bt_mac, wifi_rssi, battery_level, -1, getFirmwareVersion());
+				}
+				freePointer(&msgId);
+				pub_topic = get_pub_topic_heart_beat();
+				int ret = quickPublishMQTTWithPriority(pub_topic, pub_msg, 1);
+				//freePointer(&pub_topic);
+				return 0;
+			} else if ((int)(char)(mqtt_payload[1]) == 0x83 && (int)(char)(mqtt_payload[2]) == 0x01) {
                 // 远程开锁指令反馈
                 // 远程开锁成功
                 if ((int) (char) (mqtt_payload[3]) == 0x00) {
@@ -1333,13 +1350,15 @@ static void msghandle_task(void *pvParameters)
     do {
         vTaskDelay(pdMS_TO_TICKS(1000));
 
-        if ((mqtt_init_done == 1) && (g_priority == 0) && (bPubOasisImage == false)) {
-            if(mqtt_upload_records_run == false) {
-                LOGD("----------------- g_priority == 0");
-                int ret = uploadRecords();
-                mqtt_upload_records_run = true;
+        if((boot_mode == BOOT_MODE_NORMAL) || (boot_mode == BOOT_MODE_REG)) {
+            if ((mqtt_init_done == 1) && (g_priority == 0) && (bPubOasisImage == false)) {
+                if (mqtt_upload_records_run == false) {
+                    LOGD("----------------- g_priority == 0");
+                    int ret = uploadRecords();
+                    mqtt_upload_records_run = true;
+                }
+                g_has_more_upload_data = 0;
             }
-            g_has_more_upload_data = 0;
         }
 
         if (count % 30 == 0) {

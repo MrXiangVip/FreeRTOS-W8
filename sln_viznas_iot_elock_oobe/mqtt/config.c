@@ -65,6 +65,9 @@ void init_config() {
             fatfs_write(DEFAULT_CONFIG_FILE, buf, 0, sizeof(buf));
         }
     }
+
+    read_config();
+
 }
 
 void check_config() {

@@ -91,7 +91,7 @@ static int Display_sendReqMsg(void *data)
     pDisplayReqMsg->msg.raw.IR_frame_data = data;
     return Camera_SendQMsg((void *)&pDisplayReqMsg);
 }
-
+extern int boot_mode;
 static void Display_Task(void *param)
 {
     BaseType_t ret;
@@ -102,7 +102,8 @@ static void Display_Task(void *param)
 
     LOGD("[Display]:running\r\n");
     Display_sendReqMsg((void *)s_BufferLcd[s_ActiveFrameIndex]);
-    while (1)
+    //while (1)
+    while ((boot_mode == BOOT_MODE_NORMAL) || (boot_mode == BOOT_MODE_REG))
     {
         // pick up message
         ret = xQueueReceive(s_DisplayMsgQ, (void *)&pQMsg, portMAX_DELAY);
@@ -284,7 +285,7 @@ void Display_Init_Task(void *param)
     }
 #if SCREEN_PORTRAIT_MODE
     //Display_Update((uint32_t)nxp_vertical_logo);
-	Display_Update((uint32_t)wave_logo_v3);
+	//Display_Update((uint32_t)wave_logo_v3);
 #else
     //Display_Update((uint32_t)nxp_facemanager);
 #endif
