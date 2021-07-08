@@ -612,6 +612,7 @@ static void UIInfo_UpdateFaceInfo2(uint16_t *pBufferAddr, QUIInfoMsg* infoMsg)
             			*(pBufferAddr + i*APP_AS_WIDTH + j) = *pIcon++;
             		}
             	}
+            	CloseLcdBackground();
 
         }
         break;
@@ -625,6 +626,7 @@ static void UIInfo_UpdateFaceInfo2(uint16_t *pBufferAddr, QUIInfoMsg* infoMsg)
         			*(pBufferAddr + i*APP_AS_WIDTH + j) = *pIcon++;
         		}
         	}
+        	CloseLcdBackground();
         }
         break;
         case 1 << kEvents_API_Layer_RecSuccess:

@@ -1357,9 +1357,12 @@ static void uart5_QMsg_task(void *pvParameters) {
                         vTaskDelay(pdMS_TO_TICKS(200));
                         cmdCloseFaceBoardReq();
                     } else {
-                        shut_down = true;
-                        vTaskDelay(pdMS_TO_TICKS(100));
-                        save_files_before_pwd();
+                        //shut_down = true;
+                        //vTaskDelay(pdMS_TO_TICKS(100));
+                        //save_files_before_pwd();
+                    	LOGD("注册成功,请求MQTT上传本次用户注册记录 \n");
+						int ID = DBManager::getInstance()->getLastRecordID();
+						cmdRequestMqttUpload( ID );
                     }
                 }
                     CloseLcdBackground();

@@ -1160,12 +1160,16 @@ static int handle_line()
                     int ret = analyzeMQTTMsgInternal((char*)recv_msg_lines[current_handle_line]);
                 }else if (strncmp((const char*)recv_msg_lines[current_handle_line], "+MQTTDISCONNECTED:0", 19) == 0 && mqtt_init_done == 1) {
                     LOGD("###receive disconnect message from wifi_module \r\n");
+                    g_has_more_upload_data = 0;
+                    g_has_more_download_data = 0;
+#if 0
                     char pub_msg[50];
                     memset(pub_msg, '\0', 50);
                     sprintf(pub_msg, "%s%s", DEFAULT_HEADER, "reconnect");
                     // NOTE: 此处必须异步操作
                     //MessageSend(1883, pub_msg, strlen(pub_msg));
                     SendMsgToMQTT(pub_msg, strlen(pub_msg));
+#endif
                 }
 #if 0
 			}
@@ -1341,6 +1345,8 @@ static void msghandle_task(void *pvParameters)
 	int count = 0;
 
     bool mqtt_upload_records_run = false;
+    int is_online_handled = 0;	// g_is_online只处理一次
+
     char *pub_topic = NULL;
     char pub_msg[MQTT_AT_LONG_LEN];
     memset(pub_msg, '\0', MQTT_AT_LONG_LEN);
@@ -1359,6 +1365,8 @@ static void msghandle_task(void *pvParameters)
                 }
                 g_has_more_upload_data = 0;
             }
+        }else {
+            g_has_more_upload_data = 0;
         }
 
         if (count % 30 == 0) {
@@ -1382,6 +1390,13 @@ static void msghandle_task(void *pvParameters)
             }
         }
 
+        // 如果后台已经有指令反馈，我们认为已经连接上后台了，这个时候，30s进行一次心跳
+        if (g_is_online == 1 && is_online_handled == 0) {
+            // 通知MCU，需要将后台指示灯长亮
+            notifyHeartBeat(CODE_SUCCESS);
+            is_online_handled = 1;
+        }
+
         // 判断是否需要下电
         if (g_is_online == 1) {
             if (g_has_more_download_data == 0) {
@@ -1399,7 +1414,7 @@ static void msghandle_task(void *pvParameters)
                     g_shutdown_notified = 1;
                 } else if (count % 10 == 0) {
                     // 每隔10s发送一次心跳，确保不会随意下电
-                    LOGD("need to keep alive");
+                    LOGD("need to keep alive\r\n");
                     notifyKeepAlive();
                 }
             }
