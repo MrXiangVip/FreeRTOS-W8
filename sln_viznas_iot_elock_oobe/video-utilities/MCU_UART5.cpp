@@ -395,10 +395,12 @@ int cmdBootModeRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
     LOGD("boot_mode: %d\r\n", boot_mode);
     if((boot_mode == BOOT_MODE_NORMAL) || (boot_mode == BOOT_MODE_REG)) {
         if(oasis_task_start == false) {
-            oasis_task_start = true;
+        	oasis_task_start = true;
+        	Display_Start();
             Oasis_Start();
+
+            Display_Update((uint32_t)wave_logo_v3);
         }
-        Display_Update((uint32_t)wave_logo_v3);
     }
     return 0;
 }

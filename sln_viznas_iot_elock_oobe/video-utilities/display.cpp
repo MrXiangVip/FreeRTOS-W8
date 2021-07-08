@@ -102,8 +102,7 @@ static void Display_Task(void *param)
 
     LOGD("[Display]:running\r\n");
     Display_sendReqMsg((void *)s_BufferLcd[s_ActiveFrameIndex]);
-    //while (1)
-    while ((boot_mode == BOOT_MODE_NORMAL) || (boot_mode == BOOT_MODE_REG))
+    while (1)
     {
         // pick up message
         ret = xQueueReceive(s_DisplayMsgQ, (void *)&pQMsg, portMAX_DELAY);
