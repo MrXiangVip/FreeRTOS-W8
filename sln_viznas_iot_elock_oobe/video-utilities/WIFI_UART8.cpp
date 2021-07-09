@@ -1352,18 +1352,21 @@ static void msghandle_task(void *pvParameters)
     memset(pub_msg, '\0', MQTT_AT_LONG_LEN);
     memset(wifi_rssi, '\0', sizeof(wifi_rssi));
     wifi_rssi[0] = '0';
+    int MAX_COUNT = 5;
 	//mqtt_init_done = 1;
     do {
         vTaskDelay(pdMS_TO_TICKS(1000));
 
         if((boot_mode == BOOT_MODE_NORMAL) || (boot_mode == BOOT_MODE_REG)) {
-            if ((mqtt_init_done == 1) && (g_priority == 0) && (bPubOasisImage == false)) {
-                if (mqtt_upload_records_run == false) {
-                    LOGD("----------------- g_priority == 0");
-                    int ret = uploadRecords();
-                    mqtt_upload_records_run = true;
+            if (g_has_more_download_data == 0 && g_has_more_upload_data == 1) {
+                if ((mqtt_init_done == 1) && (g_priority == 0) && (bPubOasisImage == false)) {
+                    if (mqtt_upload_records_run == false) {
+                        LOGD("----------------- g_priority == 0");
+                        int ret = uploadRecords();
+                        mqtt_upload_records_run = true;
+                    }
+                    g_has_more_upload_data = 0;
                 }
-                g_has_more_upload_data = 0;
             }
         }else {
             g_has_more_upload_data = 0;
@@ -1375,7 +1378,7 @@ static void msghandle_task(void *pvParameters)
             }
         }
 
-        if(count % 5 == 0) {
+        if(count % MAX_COUNT == 0) {
             if ((mqtt_init_done == 1) && (bPubOasisImage == false)) {
                 char *msgId = gen_msgId();
                 // sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"btmac\\\":\\\"%s\\\"\\,\\\"wifi_rssi\\\":%s\\,\\\"battery\\\":%d\\,\\\"version\\\":\\\"%s\\\"}", msgId, btWifiConfig.wifi_mac, btWifiConfig.bt_mac, wifi_rssi, battery_level, getFirmwareVersion());
@@ -1393,6 +1396,7 @@ static void msghandle_task(void *pvParameters)
         // 如果后台已经有指令反馈，我们认为已经连接上后台了，这个时候，30s进行一次心跳
         if (g_is_online == 1 && is_online_handled == 0) {
             // 通知MCU，需要将后台指示灯长亮
+            MAX_COUNT = 30;
             notifyHeartBeat(CODE_SUCCESS);
             vTaskDelay(pdMS_TO_TICKS(20));
             is_online_handled = 1;
