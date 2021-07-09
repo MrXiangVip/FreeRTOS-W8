@@ -1394,6 +1394,7 @@ static void msghandle_task(void *pvParameters)
         if (g_is_online == 1 && is_online_handled == 0) {
             // 通知MCU，需要将后台指示灯长亮
             notifyHeartBeat(CODE_SUCCESS);
+            vTaskDelay(pdMS_TO_TICKS(20));
             is_online_handled = 1;
         }
 
