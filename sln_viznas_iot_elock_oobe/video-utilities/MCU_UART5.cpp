@@ -634,12 +634,25 @@ int cmdOpenDoorReq(uUID uu_id) {
 int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
     LOGD("x7 收到mcu 的开门响应 \n");
     uint8_t ret = -1;
+    unsigned char *pop = NULL;
+    unsigned char szBuffer[32]={0};
+
+    // MCU到face_loop，0代表开锁成功，1代表开锁失败
+    memcpy(szBuffer, pszMessage, nMessageLen);
+
+    pop = szBuffer;
 
     // MCU到face_loop，0代表开锁成功，1代表开锁失败
     ret = StrGetUInt8(pszMessage);
     // 如果开锁成功 更新数据库状态 ,请求mqtt上传本次操作记录。
     if (ret == 0) {
         //					xshx add
+        //char power_msg[32] = {0};
+        pop += 1;
+        uint8_t power = StrGetUInt8(pop);
+        pop += 1;
+        uint8_t  power2 = StrGetUInt8(pop);
+
         Record *record = (Record *) pvPortMalloc(sizeof(Record));
         HexToStr(username, g_uu_id.UID, sizeof(g_uu_id.UID));
         strcpy(record->UUID, username);
@@ -647,8 +660,19 @@ int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
         char image_path[64];
         record->status = 0; // 0,操作成功 1,操作失败.
         record->time_stamp = ws_systime; //时间戳 从1970年开始的秒数
-        record->power = 0;    // 电池电量
-        record->power2 = 0;   // 电池电量
+        if(power == 255 ) {
+            record->power = -1;
+        }else {
+            record->power = power;
+        }
+        if( power2 == 255 ) {
+            record->power2 = -1;
+        }else {
+            record->power2 = power2;
+        }
+        //sprintf(power_msg, "{\\\"batteryA\\\":%d\\,\\\"batteryB\\\":%d}", record->power, record->power2);
+        //LOGD("power_msg is %s \r\n", power_msg);
+
         record->upload = 0; //   0代表没上传 1代表记录上传图片未上传 2代表均已
         memset(image_path, 0, sizeof(image_path)); // 对注册成功的用户保存一张压缩过的jpeg图片
         snprintf(image_path, sizeof(image_path), "REC_%d_%d_%s.jpg", 0, record->time_stamp, record->UUID);
