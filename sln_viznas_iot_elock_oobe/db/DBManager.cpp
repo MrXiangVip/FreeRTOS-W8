@@ -38,24 +38,25 @@ bool DBManager::saveRecordToFile(list<Record*> recordList,char *filePath){
         return false;
     }
     //4.1 先生成每个对象
-    LOGD("-----1.将链表数据组织成jason格式-----\r\n");
+    LOGD("-----1.将链表数据组织成json格式-----\r\n");
     cJSON * ObjArr = cJSON_CreateArray();
     for ( it = recordList.begin( ); it != recordList.end( ); it++ ){
         Record  *tmpRecord = (Record*)*it;
-
-        cJSON * cObj = cJSON_CreateObject();
-        cJSON_AddNumberToObject(cObj, "ID", tmpRecord->ID);
-        cJSON_AddStringToObject(cObj, "UUID", tmpRecord->UUID);
-        cJSON_AddNumberToObject(cObj, "action", tmpRecord->action);
-        cJSON_AddNumberToObject(cObj, "time_stamp", tmpRecord->time_stamp);
-        cJSON_AddNumberToObject(cObj, "status", tmpRecord->status);
-        cJSON_AddStringToObject(cObj, "image_path", tmpRecord->image_path);
-        cJSON_AddNumberToObject(cObj, "power",  tmpRecord->power);
-        cJSON_AddNumberToObject(cObj, "power2", tmpRecord->power2);
-        cJSON_AddNumberToObject(cObj, "upload", tmpRecord->upload);
-
-        //4.2 把对象添加到数组
-        cJSON_AddItemToArray(ObjArr, cObj);
+        //保存未上传的记录
+        if( tmpRecord->upload != 2 ){
+            cJSON * cObj = cJSON_CreateObject();
+            cJSON_AddNumberToObject(cObj, "ID", tmpRecord->ID);
+            cJSON_AddStringToObject(cObj, "UUID", tmpRecord->UUID);
+            cJSON_AddNumberToObject(cObj, "action", tmpRecord->action);
+            cJSON_AddNumberToObject(cObj, "time_stamp", tmpRecord->time_stamp);
+            cJSON_AddNumberToObject(cObj, "status", tmpRecord->status);
+            cJSON_AddStringToObject(cObj, "image_path", tmpRecord->image_path);
+            cJSON_AddNumberToObject(cObj, "power",  tmpRecord->power);
+            cJSON_AddNumberToObject(cObj, "power2", tmpRecord->power2);
+            cJSON_AddNumberToObject(cObj, "upload", tmpRecord->upload);
+            //4.2 把对象添加到数组
+            cJSON_AddItemToArray(ObjArr, cObj);
+        }
     }
     //4.3 ObjArr加入到jsonroot
     cJSON_AddItemToObject(jsonroot, "ObjInfo", ObjArr);
@@ -63,7 +64,7 @@ bool DBManager::saveRecordToFile(list<Record*> recordList,char *filePath){
     cjson_str = cJSON_Print(jsonroot);
 
     //LOGD("jsonroot : \n%s\r\n", cjson_str);
-    LOGD("-----2.将jason格式数据存文件-----\r\n");
+    LOGD("-----2.将json格式数据存文件-----\r\n");
 //    FILE *file = fopen( filePath, "w+");
 //    fwrite(cjson_str,  strlen(cjson_str), 1,file);
     fatfs_write( filePath, cjson_str, 0, strlen(cjson_str));
@@ -76,7 +77,7 @@ bool DBManager::saveRecordToFile(list<Record*> recordList,char *filePath){
     return true;
 }
 list<Record*> DBManager::readRecordFromFile(char *filePath){
-    LOGD("-----1.从文件中读出jason格式的记录-----\r\n");
+    LOGD("-----1.从文件中读出json格式的记录-----\r\n");
 
     int ArrLen = 0;
 

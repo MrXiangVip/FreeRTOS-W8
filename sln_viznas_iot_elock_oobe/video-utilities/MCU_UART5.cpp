@@ -716,9 +716,7 @@ int save_files_before_pwd() {
         saving_file = true;
     }
 // save record list  to file
-    if (!bDeleteUser) {
-        DBManager::getInstance()->flushRecordList();
-    }
+    DBManager::getInstance()->flushRecordList();
     Oasis_WriteJpeg();
 
     return 0;
