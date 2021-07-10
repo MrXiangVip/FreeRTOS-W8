@@ -206,6 +206,7 @@ extern bool bSysTimeSynProc;
 // 20201120 wszgx modified for display correct date/time information in the screen
 extern ws_time_t ws_systime;
 // 20201120 wszgx end
+int save_files_before_pwd();
 void OpenLcdBackground();
 void CloseLcdBackground();
 

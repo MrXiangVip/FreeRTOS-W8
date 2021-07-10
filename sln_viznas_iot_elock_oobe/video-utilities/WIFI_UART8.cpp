@@ -1353,6 +1353,7 @@ static void msghandle_task(void *pvParameters)
     memset(wifi_rssi, '\0', sizeof(wifi_rssi));
     wifi_rssi[0] = '0';
     int MAX_COUNT = 5;
+    int TIMEOUT_COUNT = 30;
 	//mqtt_init_done = 1;
     do {
         vTaskDelay(pdMS_TO_TICKS(1000));
@@ -1411,10 +1412,14 @@ static void msghandle_task(void *pvParameters)
                     if (g_command_executed) {
                         // 如果远程开锁完成或者其他指令执行完成，并且上传也执行完成了
                         notifyCommandExecuted(0);
+                        vTaskDelay(pdMS_TO_TICKS(100));
+                        save_files_before_pwd();
                         // } else if (g_shutdown_notified == 0) {
                     } else { // if (g_shutdown_notified == 0) {
                         // 如果没有收到指令执行完成的状况，可以尝试通知MCU下电，MCU根据是否是远程开锁决定是否下电
                         notifyShutdown();
+                        vTaskDelay(pdMS_TO_TICKS(100));
+                        save_files_before_pwd();
                     }
                     g_shutdown_notified = 1;
                 } else if (count % 10 == 0) {
@@ -1423,6 +1428,15 @@ static void msghandle_task(void *pvParameters)
                     notifyKeepAlive();
                 }
             }
+        } else if (g_is_online == 0) {
+            // 30秒，如果还没有连接上后台，可以下电
+			if (count >= TIMEOUT_COUNT) {
+				// TODO: 后续可以使用下电指令来代替
+				// notifyShutdown();
+				notifyCommandExecuted(0);
+                vTaskDelay(pdMS_TO_TICKS(100));
+                save_files_before_pwd();
+			}
         }
         count++;
 
