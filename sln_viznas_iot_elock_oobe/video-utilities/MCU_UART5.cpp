@@ -1406,8 +1406,10 @@ static void uart5_QMsg_task(void *pvParameters) {
                     if (pQMsg->msg.val) {//success
                         LOGD("User face recognize succuss!\r\n");
                         //LOGD("gFaceInfo.name is %s!\n", gFaceInfo.name);
+                        LOGD("pQMsg->msg.info.name is %s!\n", pQMsg->msg.info.name);
                         char name[64];
-                        memcpy(name, gFaceInfo.name.c_str(), gFaceInfo.name.size());
+                        //memcpy(name, gFaceInfo.name.c_str(), gFaceInfo.name.size());
+                        memcpy(name, pQMsg->msg.info.name, 64);
                         StrToHex(g_uu_id.UID, name, sizeof(g_uu_id.UID));
 
                         cmdOpenDoorReq(g_uu_id);
@@ -1601,6 +1603,7 @@ int MCU_UART5_Start() {
 
     NVIC_SetPriority(LPUART5_IRQn, 5);
 
+    DBManager::getInstance();
     //创建uart5串口数据通信task
 #if (configSUPPORT_STATIC_ALLOCATION == 1)
     if (NULL == xTaskCreateStatic(uart5_task, "Uart5_task", UART5TASK_STACKSIZE, NULL, UART5TASK_PRIORITY,

@@ -1268,14 +1268,20 @@ int uploadRecords() {
 
 	int fret = 0;
 	list<Record*> records = dbmanager->getAllUnuploadRecord();
-	int recordNum = dbmanager->getAllUnuploadRecordCount();
     LOGD("---------------------- register: upload record and image start");
+    g_is_uploading_data = 1;
 	// 第一步，只上传未上传的注册记录以及图片，涉及到可能存在的重复上传问题: 注册优先
     list <Record*>::iterator it;
 	//for (int i = 0; i < recordNum; i++) {
     for ( it = records.begin( ); it != records.end( ); it++ ) {
         Record* record = (Record*) *it;
 		//Record record = records[i];
+
+        notifyKeepAlive();
+        vTaskDelay(pdMS_TO_TICKS(20));
+        save_files_before_pwd();
+        vTaskDelay(pdMS_TO_TICKS(100));
+
 
 		LOGD("---------------------- register: upload record id %d g_uploading_id %d", record->ID, g_uploading_id);
 		if (record->upload == 0 && g_uploading_id != record->ID) {
@@ -1292,12 +1298,16 @@ int uploadRecords() {
 		}
 	}
 	records = dbmanager->getAllUnuploadRecord();
-	recordNum = dbmanager->getAllUnuploadRecordCount();
 	LOGD("--------------------- register/opendoor: upload records only start");
 	// 第二步，只上传未上传的注册/开门记录，包括注册记录和开门记录: 记录次之
 	//for (int i = 0; i < recordNum; i++) {
 	for ( it = records.begin( ); it != records.end( ); it++ ) {
 		//Record record = records[i];
+        notifyKeepAlive();
+        vTaskDelay(pdMS_TO_TICKS(20));
+        save_files_before_pwd();
+        vTaskDelay(pdMS_TO_TICKS(100));
+
 		Record* record = (Record*) *it;
 		if (record->upload == 0) {
 			int ret = uploadRecord(gen_msgId(), record);
@@ -1313,12 +1323,18 @@ int uploadRecords() {
 		}
 	}
 	records = dbmanager->getAllUnuploadRecord();
-	recordNum = dbmanager->getAllUnuploadRecordCount();
 	LOGD("------------------- opendoor: upload record and image success");
 	// 第三步，上传未上传的开门记录以及图片, 开门图片最后
 	//for (int i = 0; i < recordNum; i++) {
 	for ( it = records.begin( ); it != records.end( ); it++ ) {
 		//Record record = records[i];
+
+        notifyKeepAlive();
+        vTaskDelay(pdMS_TO_TICKS(20));
+        save_files_before_pwd();
+        vTaskDelay(pdMS_TO_TICKS(100));
+
+
 		Record* record = (Record*) *it;
 
 		LOGD("---------------------- opendoor: upload record id %d g_uploading_id %d", record->ID, g_uploading_id);
@@ -1335,6 +1351,7 @@ int uploadRecords() {
 			}
 		}
 	}
+    g_is_uploading_data = 0;
 	return fret;
 }
 
@@ -1426,6 +1443,7 @@ static void msghandle_task(void *pvParameters)
                     // 每隔10s发送一次心跳，确保不会随意下电
                     LOGD("need to keep alive\r\n");
                     notifyKeepAlive();
+                    vTaskDelay(pdMS_TO_TICKS(20));
                 }
             }
         } else if (g_is_online == 0) {
