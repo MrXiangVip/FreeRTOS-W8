@@ -76,7 +76,7 @@ int sendStatusToMCU(int biz, int ret) {
 	// }
 	char payload_str[15];
 	HexToStr(payload_str, reinterpret_cast<unsigned char*>(&payload_bin), 7);
-	LOGD("sendStatusToMCU %s", payload_str);
+	//LOGD("sendStatusToMCU %s", payload_str);
 	//int result = MessageSend(1234, payload_bin, 7);
 	int result = SendMsgToMCU((uint8_t *)payload_bin, 7);
 	return result;

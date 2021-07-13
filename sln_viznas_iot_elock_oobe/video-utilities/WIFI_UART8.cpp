@@ -573,12 +573,10 @@ int handlePayload(char *payload, char *msg_idStr) {
         int ret1 = base64_decode(payload, payload_bin);
         //LOGD("decode payload_bin_len is %d ret1 is %d", payload_bin_len, ret1);
 
-        LOGD("\ndecode payload_bin<len:%d %s> ret1 is %d", payload_bin_len, payload_bin, ret1);
+        char payload_str[MQTT_AT_LEN];
+        HexToStr(payload_str, reinterpret_cast<unsigned char*>(&payload_bin), payload_bin_len);
+        LOGD("\ndecode payload_bin<len:%d %s> ret1 is %d", payload_bin_len, payload_str, ret1);
 
-        /*for (int i = 0; i < ret1; i++) {
-        	LOGD("0x%02x ", (unsigned char) payload_bin[i]);
-        }
-        LOGD("\n");*/
         // TODO:
         unsigned char x7_cmd = payload_bin[0];
         unsigned char x7_cmd_code = payload_bin[1];
@@ -649,6 +647,7 @@ int handlePayload(char *payload, char *msg_idStr) {
         }
         if (x7_cmd == 0x24) {
             //MessageSend(1235, payload_bin, ret1);
+            SendMsgToSelf((unsigned char *)payload_bin, payload_bin_len);
         } else {
             //MessageSend(1234, payload_bin, ret1);
         	SendMsgToMCU((unsigned char *)payload_bin, payload_bin_len);

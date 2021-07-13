@@ -242,6 +242,34 @@ int cmdCommRsp2MCU(unsigned char CmdId, uint8_t ret) {
     return 0;
 }
 
+int  SendMsgToSelf(unsigned char *MsgBuf, unsigned char MsgLen)
+{
+    unsigned char szBuffer[128] = {0};
+
+    const unsigned char *pszMsgInfo=NULL;
+    unsigned char CmdId=0;
+    unsigned char HeadMark;
+
+    memset(szBuffer, 0, sizeof(szBuffer));
+	memcpy(szBuffer, &MsgBuf[0], MsgLen);
+
+	pszMsgInfo = MsgHead_Unpacket(
+				szBuffer,
+				MsgLen,
+				&HeadMark,
+				&CmdId,
+				&MsgLen);
+
+	if(HeadMark != HEAD_MARK_MQTT)
+	{
+		LOGD("msg headmark error: 0x%x!\n", HeadMark);
+		return -1;
+	}
+	ProcMessage(CmdId, MsgLen, pszMsgInfo);
+
+    return 0;
+}
+
 int SendMsgToMCU(unsigned char *MsgBuf, unsigned char MsgLen) {
     if (shut_down) {
         return 0;
@@ -963,14 +991,6 @@ int cmdDeleteUserReqProcByHead(unsigned char nHead, unsigned char nMessageLen, c
         //ret =DBManager::getInstance()->clearUser();
         // 清空操作记录
         ret = DBManager::getInstance()->clearRecord();
-
-        vizn_api_status_t status;
-        status = VIZN_DelUser(NULL);
-        if (kStatus_API_Layer_Success == status) {
-            ret = SUCCESS;
-        } else {
-            ret = FAILED;
-        }
     } else {
         // 删除单个用户 和其操作记录
         LOGD("delete single user start");
@@ -980,19 +1000,6 @@ int cmdDeleteUserReqProcByHead(unsigned char nHead, unsigned char nMessageLen, c
         //ret = DBManager::getInstance()->deleteUserByUUID( strUUID );
         //删除用户的操作记录
         ret = DBManager::getInstance()->deleteRecordByUUID(strUUID);
-
-        memset(username, 0, sizeof(username));
-        HexToStr(username, uu_id.UID, sizeof(uu_id.UID));
-        username[16] = '\0';//NXP的人脸注册API的username最大只能16byte
-        LOGD("=====UUID<len:%d>:%s.\n", sizeof(username), username);
-
-        vizn_api_status_t status;
-        status = VIZN_DelUser(NULL, username);
-        if (kStatus_API_Layer_Success == status) {
-            ret = SUCCESS;
-        } else {
-            ret = FAILED;
-        }
     }
 
     LOGD("delete uuid : <0x%08x>, <0x%08x> result %d nHead 0x%2x.\n", uu_id.tUID.H, uu_id.tUID.L, ret, nHead);

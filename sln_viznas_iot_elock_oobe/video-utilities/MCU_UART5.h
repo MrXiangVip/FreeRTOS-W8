@@ -184,6 +184,9 @@ int  Uart5_GetFaceRecResult(uint8_t result);
 //从oasis_rt106f_elcok.cpp中获取识别或者注册时的face_info
 void Set_curFaceInfo(char *name, bool recognize, bool enrolment, int rt);
 
+int ProcMessage(unsigned char nCommand, unsigned char nMessageLen, const unsigned char *pszMessage);
+int SendMsgToSelf(uint8_t *MsgBuf, uint8_t MsgLen);
+
 int SendMsgToMCU(uint8_t *MsgBuf, uint8_t MsgLen);
 int cmdSysInitOKSyncReq(const char *strVersion);
 
