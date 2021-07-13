@@ -79,6 +79,7 @@ extern "C" {
 	int quickSubscribeMQTT(const char* topic);
 	int quickUnsubscribeMQTT(const char* topic);
 	int quickPublishMQTT(const char* topic, const char* data);
+	int quickPublishRawMQTT(const char* topic, const char* data, int data_len);
     int quickPublishOasisMQTT(const char* topic, const char* data);
 	int quickPublishMQTTWithPriority(const char* topic, const char* data, int priority);
 	int quickDisconnectMQTT();

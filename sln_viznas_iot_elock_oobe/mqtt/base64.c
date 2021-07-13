@@ -8,8 +8,12 @@
 #include "fsl_log.h"
 #include "oasis.h"
 
-#define MQTT_PUB_PACKAGE_LEN    126
-#define MQTT_PUB_MSG_LEN        256
+//#define MQTT_PUB_PACKAGE_LEN    126
+//#define MQTT_PUB_MSG_LEN        256
+
+#define MQTT_PUB_PACKAGE_LEN        1826
+#define MQTT_PUB_MSG_LEN            2000
+
 
 const char * base64char = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -170,7 +174,8 @@ int pubImage(const char* pub_topic, const char *filename, const char *msgId) {
 		strncpy(data, buffer1 + (i*MQTT_PUB_PACKAGE_LEN), len);
 
 		// sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"t\\\":%d\\,\\\"i\\\":%d\\,\\\"p\\\":%d\\,\\\"d\\\":\\\"%s\\\"}", msgId, count, i+1, 0, data);
-		sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"t\\\":%d\\,\\\"i\\\":%d\\,\\\"d\\\":\\\"%s\\\"}", msgId, count, i+1, data);
+		//sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"t\\\":%d\\,\\\"i\\\":%d\\,\\\"d\\\":\\\"%s\\\"}", msgId, count, i+1, data);
+		sprintf(pub_msg, "{\"msgId\":\"%s\",\"t\":%d,\"i\":%d,\"d\":\"%s\"}", msgId, count, i+1, data);
 		while (g_priority != 0) {
 			//usleep(500000);	// 睡眠0.5s
 			vTaskDelay(pdMS_TO_TICKS(500));
@@ -178,7 +183,9 @@ int pubImage(const char* pub_topic, const char *filename, const char *msgId) {
         //LOGD("%s pub_topic is %s\r\n", __FUNCTION__, pub_topic);
         //LOGD("%s pub_msg is %s\r\n", __FUNCTION__, pub_msg);
 		//int ret = quickPublishMQTT(pub_topic, pub_msg);
-        int ret = quickPublishOasisMQTT(pub_topic, pub_msg);
+        //int ret = quickPublishOasisMQTT(pub_topic, pub_msg);
+		int ret = quickPublishRawMQTT(pub_topic, pub_msg, strlen(pub_msg));
+
         LOGD("%s ret is %d\r\n", __FUNCTION__, ret);
 
         if (ret != 0) {
@@ -229,15 +236,18 @@ int pubOasisImage(const char* pub_topic, const char *msgId) {
         strncpy(data, buffer1 + (i*MQTT_PUB_PACKAGE_LEN), len);
 
         // sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"t\\\":%d\\,\\\"i\\\":%d\\,\\\"p\\\":%d\\,\\\"d\\\":\\\"%s\\\"}", msgId, count, i+1, 0, data);
-        sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"t\\\":%d\\,\\\"i\\\":%d\\,\\\"d\\\":\\\"%s\\\"}", msgId, count, i+1, data);
+        //sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"t\\\":%d\\,\\\"i\\\":%d\\,\\\"d\\\":\\\"%s\\\"}", msgId, count, i+1, data);
+		sprintf(pub_msg, "{\"msgId\":\"%s\",\"t\":%d,\"i\":%d,\"d\":\"%s\"}", msgId, count, i+1, data);
         LOGD("%s g_priority is %d\r\n", __FUNCTION__, g_priority);
         while (g_priority != 0) {
             //usleep(500000);	// 睡眠0.5s
             vTaskDelay(pdMS_TO_TICKS(500));
         }
-        //LOGD("%s pub_topic is %s\r\n", __FUNCTION__, pub_topic);
-        //LOGD("%s pub_msg is %s\r\n", __FUNCTION__, pub_msg);
-        int ret = quickPublishOasisMQTT(pub_topic, pub_msg);
+        //LOGD("%s pub_topic is %s length is %d\r\n", __FUNCTION__, pub_topic, strlen(pub_topic));
+        //LOGD("%s pub_msg is %s length is %d\r\n", __FUNCTION__, pub_msg, strlen(pub_msg));
+        //int ret = quickPublishOasisMQTT(pub_topic, pub_msg);
+		int ret = quickPublishRawMQTT(pub_topic, pub_msg, strlen(pub_msg));
+
         LOGD("%s ret is %d\r\n", __FUNCTION__, ret);
         if (ret != 0) {
             fresult = -1;

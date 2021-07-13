@@ -142,13 +142,28 @@ int publishMQTT(int linkId, const char* topic, const char* data, int qos, int re
 	//int res = sendATLongCmd(cmd);
 
     int res = 0;
-    if ((strlen(long_cmd) > 128) && (strlen(long_cmd) <= 256)){
+    if ((strlen(long_cmd) > 128) && (strlen(long_cmd) <= MQTT_MAX_LONG_LEN)){
         res = sendATLongCmd(long_cmd);
     } else {
         res = sendATCmd(long_cmd);
     }
     vPortFree(topic);
 	// free(cmd);
+	return res;
+}
+
+// 发布MQTT主题
+int publishRawMQTT(int linkId, const char* topic, char* data, int data_len, int qos, int retain) {
+	char cmd[MQTT_MAX_LEN];
+	sprintf(cmd, "AT+MQTTPUBRAW=%d,\"%s\",%d,%d,%d", linkId, topic, data_len, qos, retain);
+
+	LOGD("--- send AT CMD %s\r\n", cmd);
+	int res = run_at_raw_cmd(cmd, data, data_len, 2, 15000000);
+	while (res == -5) {
+		//sleep(1);
+        vTaskDelay(pdMS_TO_TICKS(1000));
+		res = run_at_raw_cmd(cmd, data, data_len, 2, 15000000);
+	}
 	return res;
 }
 
@@ -168,7 +183,7 @@ int publishOasisMQTT(int linkId, const char* topic, const char* data, int qos, i
     //int res = sendATLongCmd(cmd);
     int res = 0;
 
-    if ((strlen(long_oasis_cmd) > 128) && (strlen(long_oasis_cmd) <= 256)){
+    if ((strlen(long_oasis_cmd) > 128) && (strlen(long_oasis_cmd) <= MQTT_MAX_LONG_LEN)){
         res = sendATLongCmd(long_oasis_cmd);
     } else {
         res = sendATCmd(long_oasis_cmd);
@@ -257,6 +272,10 @@ int quickUnsubscribeMQTT(const char* topic) {
 
 int quickPublishMQTT(const char* topic, const char* data) {
 	return publishMQTT(MQTT_LINK_ID_DEFAULT, topic, data, MQTT_QOS_AT_LEAST_ONCE, MQTT_RETAIN_OFF);
+}
+
+int quickPublishRawMQTT(const char* topic, const char* data, int data_len) {
+	return publishRawMQTT(MQTT_LINK_ID_DEFAULT, topic, (char*)data, data_len, MQTT_QOS_AT_LEAST_ONCE, MQTT_RETAIN_OFF);
 }
 
 int quickPublishOasisMQTT(const char* topic, const char* data) {

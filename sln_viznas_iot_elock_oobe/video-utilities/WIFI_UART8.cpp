@@ -278,6 +278,58 @@ int run_at_long_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
     return AT_CMD_RESULT_TIMEOUT;
 }
 
+int run_at_raw_cmd(char const *cmd, char *data, int data_len, int retry_times, int cmd_timeout_usec)
+{
+    if(shut_down) {
+        at_cmd_mode = AT_CMD_MODE_INACTIVE;
+        return -1;
+    }
+
+    int ret = 0;
+    LOGD("start AT raw command %s\r\n", cmd);
+    LOGD("start AT raw data_len is %d\r\n", data_len);
+    LOGD("start AT raw data %s\r\n", data);
+
+    ret = run_at_cmd(cmd, retry_times, cmd_timeout_usec);
+    vTaskDelay(pdMS_TO_TICKS(20));
+
+    if(ret == 0) {
+        for (int i = 0; i < retry_times; i++) {
+            if (kStatus_Success != LPUART_RTOS_Send(&handle8, (uint8_t *) data, data_len)) {
+                //LOGD("Failed to run long command %s\r\n", cmd);
+                LOGD("Failed to run raw command\r\n");
+                return -1;
+            } else {
+                //LOGD("Succeed to run long command %s\r\n", cmd);
+                LOGD("Succeed to run raw command\r\n");
+                at_cmd_mode = AT_CMD_MODE_ACTIVE;
+                at_cmd_result = AT_CMD_RESULT_UNDEF;
+            }
+            int timeout_usec = 0;
+            int delay_usec = 10;
+            do {
+                vTaskDelay(pdMS_TO_TICKS(delay_usec));
+                timeout_usec += delay_usec;
+                if (AT_CMD_RESULT_OK == at_cmd_result || AT_CMD_RESULT_ERROR == at_cmd_result) {
+                    at_cmd_mode = AT_CMD_MODE_INACTIVE;
+                    //LOGD("run long command %s %s\r\n", cmd, at_cmd_result ? AT_CMD_RESULT_OK : "OK", "ERROR");
+                    LOGD("run long raw %s\r\n", at_cmd_result ? AT_CMD_RESULT_OK : "OK", "ERROR");
+                    return at_cmd_result;
+                }
+                if (timeout_usec >= cmd_timeout_usec) {
+                    //LOGD("run long command %s timeout\r\n", cmd);
+                    LOGD("run long raw timeout\r\n");
+                    break;
+                }
+            } while (1);
+        }
+    }
+    //LOGD("run long command %s timeout end\r\n", cmd);
+    LOGD("run long raw timeout end\r\n");
+
+    return AT_CMD_RESULT_TIMEOUT;
+}
+
 static void mqttinit_task(void *pvParameters) {
     char const *logTag = "[UART8_WIFI]:mqttinit_task-";
     LOGD("%s start...\r\n", logTag);
@@ -1082,7 +1134,10 @@ static int handle_line()
 				} else if (strncmp((const char*)recv_msg_lines[current_handle_line], "ERROR", 5) == 0) {
 					LOGD("\r\n----------------- RUN COMMAND FAIL ---------- \r\n");
 					at_cmd_result = AT_CMD_RESULT_ERROR;
-				} else if (strncmp((const char*)recv_msg_lines[current_handle_line], MQTT_CWJAP, MQTT_CWJAP_SIZE) == 0) {
+				} else if (strncmp((const char*)recv_msg_lines[current_handle_line], ">+MQTTPUB:OK", 12) == 0 || strncmp((const char*)recv_msg_lines[current_handle_line], "+MQTTPUB:OK", 11) == 0) {
+					at_cmd_result = AT_CMD_RESULT_OK;
+					LOGD("raw data sent OK\r\n");
+				}else if (strncmp((const char*)recv_msg_lines[current_handle_line], MQTT_CWJAP, MQTT_CWJAP_SIZE) == 0) {
                     LOGD("\r\n----------------- RUN COMMAND CWJAP ---------- \r\n");
                     char *second = (char *) strstr((const char *) recv_msg_lines[current_handle_line], MQTT_CWJAP);
                     // TODO: 确认是否有OK
@@ -1220,18 +1275,26 @@ int uploadRecordImage(Record *record, bool online) {
             char *pub_topic = get_pub_topic_pic_report();
             char *msgId = gen_msgId();
             LOGD("uploadRecordImage msgId is %s\n", msgId);
-            // 第一步：传图
+            // 第一步：传记录
             bOasisRecordUpload = false;
-            int ret = pubOasisImage(pub_topic, msgId);
+            //int ret = pubOasisImage(pub_topic, msgId);
+            int ret = uploadRecord(msgId, record);
             if (ret == 0) {
-                // 第二步：告知图片用户信息
-                ret = uploadRecord(msgId, record);
-                if (ret == 0) {
-                    record->upload = 2;
-                    dbmanager->updateRecordByID(record);
-                    bOasisRecordUpload = true;
-                }
+                //ret = uploadRecord(msgId, record);
+                record->upload = 1;
             }
+            // 第二步：传图片
+            ret = pubOasisImage(pub_topic, msgId);
+            if (ret == 0) {
+            	// 第三步：再传记录
+            	ret = uploadRecord(msgId, record);
+            	if (ret == 0) {
+					record->upload = 2;
+				}
+                bOasisRecordUpload = true;
+            }
+            dbmanager->updateRecordByID(record);
+
             freePointer(&pub_topic);
             freePointer(&msgId);
             return ret;
@@ -1242,16 +1305,23 @@ int uploadRecordImage(Record *record, bool online) {
             char *pub_topic = get_pub_topic_pic_report();
             char *msgId = gen_msgId();
             LOGD("uploadRecordImage msgId is %s\n", msgId);
-            // 第一步：传图
-            int ret = pubImage(pub_topic, filename, msgId);
+            // 第一步：传记录
+            int ret = uploadRecord(msgId, record);
+            //int ret = pubImage(pub_topic, filename, msgId);
             if (ret == 0) {
-                // 第二步：告知图片用户信息
-                ret = uploadRecord(msgId, record);
-                if (ret == 0) {
-                    record->upload = 2;
-                    dbmanager->updateRecordByID(record);
-                }
+                record->upload = 1;
             }
+            // 第二步：传图片
+            ret = pubImage(pub_topic, filename, msgId);
+            if(ret == 0) {
+            	// 第三步：再传记录
+				ret = uploadRecord(msgId, record);
+				if (ret == 0) {
+					record->upload = 2;
+				}
+            }
+			dbmanager->updateRecordByID(record);
+
             freePointer(&pub_topic);
             freePointer(&msgId);
             return ret;
