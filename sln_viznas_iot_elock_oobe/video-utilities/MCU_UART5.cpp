@@ -417,7 +417,8 @@ void SetSysToFactory() {
     // 清空操作记录
     DBManager::getInstance()->clearRecord();
 
-    VIZN_DelUser(NULL);
+	VIZN_DelUser(NULL);
+    DB_Save(0);
 }
 
 //主控返回响应指令: 请求恢复出厂设置响应
