@@ -447,6 +447,8 @@ void SetSysToFactory() {
 
 	VIZN_DelUser(NULL);
     DB_Save(0);
+
+    fatfs_delete(DEFAULT_CONFIG_FILE);
 }
 
 //主控返回响应指令: 请求恢复出厂设置响应
@@ -1330,6 +1332,8 @@ int cmdRequestMqttUpload(int id) {
         }
     }
 
+    save_files_before_pwd();
+
     return 0;
 }
 
@@ -1393,7 +1397,7 @@ static void uart5_QMsg_task(void *pvParameters) {
                     } else {
                         //shut_down = true;
                         vTaskDelay(pdMS_TO_TICKS(100));
-                        save_files_before_pwd();
+
                     	LOGD("注册成功,请求MQTT上传本次用户注册记录 \n");
 						int ID = DBManager::getInstance()->getLastRecordID();
 						cmdRequestMqttUpload( ID );

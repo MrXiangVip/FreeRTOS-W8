@@ -40,6 +40,8 @@ void init_config() {
             cJSON_AddItemToObject(root, CONFIG_KEY_BT_VERSION, cJSON_CreateString((const char *)""));
             cJSON_AddItemToObject(root, CONFIG_KEY_BT_MAC, cJSON_CreateString((const char *)""));
 
+            cJSON_AddItemToObject(root, CONFIG_KEY_WIFI_RESET, cJSON_CreateString((const char *)"true"));
+            cJSON_AddItemToObject(root, CONFIG_KEY_WIFI_RECONNECT, cJSON_CreateString((const char *)"true"));
             cJSON_AddItemToObject(root, CONFIG_KEY_WIFI_MAC, cJSON_CreateString((const char *)""));
             cJSON_AddItemToObject(root, CONFIG_KEY_SSID, cJSON_CreateString((const char *)""));
             cJSON_AddItemToObject(root, CONFIG_KEY_WIFI_PWD, cJSON_CreateString((const char *)""));
@@ -113,6 +115,23 @@ int update_mac(char *mac) {
 
 	return 0;
 }
+
+int update_need_reset(char *need_reset) {
+	//LOGD("%s\n", __FUNCTION__);
+	
+	update_section_key(CONFIG_KEY_WIFI_RESET, need_reset);
+
+	return 0;
+}
+
+int update_need_reconnect(char *need_reconnect) {
+	//LOGD("%s\n", __FUNCTION__);
+	
+	update_section_key(CONFIG_KEY_WIFI_RECONNECT, need_reconnect);
+
+	return 0;
+}
+
 
 int update_wifi_ssid(char *ssid) {
 	//LOGD("%s\n", __FUNCTION__);
@@ -248,6 +267,8 @@ int read_config() {
     read_config_value(versionConfig.oasis_ver, CONFIG_KEY_OASIS_VERSION);
     read_config_value(versionConfig.mcu_ver, CONFIG_KEY_MCU_VERSION);
 
+    read_config_value(btWifiConfig.need_reset, CONFIG_KEY_WIFI_RESET);
+    read_config_value(btWifiConfig.need_reconnect, CONFIG_KEY_WIFI_RECONNECT);
     read_config_value(btWifiConfig.bt_mac, CONFIG_KEY_BT_MAC);
     read_config_value(btWifiConfig.wifi_mac, CONFIG_KEY_WIFI_MAC);
     read_config_value(btWifiConfig.ssid, CONFIG_KEY_SSID);
@@ -275,6 +296,8 @@ void print_project_config(void) {
     LOGD("mcu_ver: %s\r\n", versionConfig.mcu_ver);
 
     LOGD("bt wifi config:\r\n");
+    LOGD("reset: %s\r\n", btWifiConfig.need_reset);
+    LOGD("reconnect: %s\r\n", btWifiConfig.need_reconnect);
     LOGD("bt_mac: %s\r\n", btWifiConfig.bt_mac);
     LOGD("wifi_mac: %s\r\n", btWifiConfig.wifi_mac);
     LOGD("ssid: %s\r\n", btWifiConfig.ssid);

@@ -106,6 +106,8 @@ static int g_command_executed = 0;
 static int g_shutdown_notified = 0;
 // 当前pub执行优先级，0为最低优先级，9为最高优先级
 int g_priority = 0;
+// wifi是否已自动连接
+static int g_is_wifi_connected = 0;
 
 DBManager *dbmanager = NULL;
 
@@ -330,6 +332,10 @@ int run_at_raw_cmd(char const *cmd, char *data, int data_len, int retry_times, i
     return AT_CMD_RESULT_TIMEOUT;
 }
 
+void update_rssi() {
+    run_at_cmd("AT+CWJAP?", 1, 1000);
+}
+
 static void mqttinit_task(void *pvParameters) {
     char const *logTag = "[UART8_WIFI]:mqttinit_task-";
     LOGD("%s start...\r\n", logTag);
@@ -351,43 +357,85 @@ static void mqttinit_task(void *pvParameters) {
 //    	vTaskDelete(NULL);
 //    	return;
 //    }
-
-    result = run_at_cmd("AT+RST", 2, 1200);
-    LOGD("run AT+RST result %d\r\n", result);
-    notifyWifiInitialized(result);
-    if (AT_CMD_RESULT_OK != result) {
-        LOGD("%sFailed to reset WiFi module\r\n", logTag);
-        // TODO: try to notify MCU
-        vTaskDelete(NULL);
-        return;
-    }
-    //cmdSysInitOKSyncReq(SYS_VERSION);
-
-//    LOGD("\r\n%sSuccess to reset WiFi module\r\n", logTag);
-    for (int i = 0; i < 10; i++) {
-        if (wifi_ready == 1) {
-            LOGD("%sSuccess to reset WiFi module\r\n", logTag);
-            break;
+    if (strncmp("true", btWifiConfig.need_reset, 4) == 0 ) {
+        result = run_at_cmd("AT+RST", 2, 1200);
+        LOGD("run AT+RST result %d\r\n", result);
+        notifyWifiInitialized(result);
+        if (AT_CMD_RESULT_OK != result) {
+            LOGD("%sFailed to reset WiFi module\r\n", logTag);
+            // TODO: try to notify MCU
+            vTaskDelete(NULL);
+            return;
         }
-        vTaskDelay(pdMS_TO_TICKS(100));
+        //cmdSysInitOKSyncReq(SYS_VERSION);
+
+    //    LOGD("\r\n%sSuccess to reset WiFi module\r\n", logTag);
+        for (int i = 0; i < 10; i++) {
+            if (wifi_ready == 1) {
+                LOGD("%sSuccess to reset WiFi module\r\n", logTag);
+                break;
+            }
+            vTaskDelay(pdMS_TO_TICKS(100));
+        }
+
+        int result1 = run_at_cmd("AT+SYSLOG=1", 2, 1200);
+        int result2 = run_at_cmd("AT+CWMODE=1", 1, 1200);
+        int result3 = run_at_cmd("ATE0", 1, 1200);
+
+        if (result == 0 && result1 == 0 && result2 == 0 && result3 == 0) {
+            update_need_reset("false");
+        }
     }
 
-    result = run_at_cmd("AT+SYSLOG=1", 2, 1200);
-    result = run_at_cmd("AT+CWMODE=1", 1, 1200);
-    result = run_at_cmd("ATE0", 1, 1200);
-    //result = run_at_cmd("AT+CIPSTAMAC?", 1, 1200);
-    //result = run_at_cmd("AT+CWJAP=\"wireless_052E81\",\"12345678\"", 2, 5000);
-    //result = run_at_cmd("AT+CWJAP=\"TP-LINK_RD\",\"rd.123456\"", 2, 5000);
-    result = connectWifi(btWifiConfig.ssid, btWifiConfig.password);
+#if	0
+    result = run_at_cmd("AT+UART_CUR=921600,8,1,0,1", 1, 1000);
+    if (result == 0) {
+        // 关闭WIFI串口
+        LOGD("%s 1\r\n", __FUNCTION__);
+    	vTaskDelete(NULL);
+        LOGD("%s 2\r\n", __FUNCTION__);
 
-    notifyWifiConnected(result);
-    if (result < 0) {
-        LOGD("--------- Failed to connect to WIFI\n");
-        vTaskDelete(NULL);
+        //result = LPUART_RTOS_Deinit(&handle8);
+        LOGD("%s 3\r\n", __FUNCTION__);
+        // 打开WIFI串口
+        result = LPUART_RTOS_Init(&handle8, &t_handle8, &lpuart_config8_921600);
+        if (result < 0) {
+            LOGD("open serial port %s failed!\n", "UART8");
+            return;
+        }
+        LOGD("open serial port %s with B921600\n", "UART8");
         return;
     }
-    LOGD("--------- connect to WIFI\n");
+    LOGD("--------- connect to URART8\n");
+#endif
 
+    int wifi_count = 0;
+    // 尽量3s以内判断wifi是否已自动连接，若已经自动连接，则无需处理下面的操作
+    while (g_is_wifi_connected == 0 && wifi_count < 10) {
+        run_at_cmd("AT+CWJAP?", 1, 1000);
+        // 睡眠300ms
+        //usleep(300000);
+        vTaskDelay(pdMS_TO_TICKS(300));
+        wifi_count++;
+    }
+
+    if (g_is_wifi_connected == 0 || strncmp(btWifiConfig.need_reconnect, "true", 4) == 0) {
+        // 连接WIFI
+        result = connectWifi(btWifiConfig.ssid, btWifiConfig.password);
+        // sendStatusToMCU(0x01, ret);
+        notifyWifiConnected(result);
+        update_rssi();
+        if (result < 0) {
+            LOGD("--------- Failed to connect to WIFI\n");
+            vTaskDelete(NULL);
+            return;
+        } else {
+            update_need_reconnect("false");
+        }
+        LOGD("--------- connect to WIFI done\n");
+    } else {
+        LOGD("--------- auto connect to WIFI done\n");
+    }
     vTaskDelay(pdMS_TO_TICKS(300));
 
     char lwtMsg[50];
@@ -1169,6 +1217,7 @@ static int handle_line()
                             LOGD("RSSI is %s\r\n", field42);
                             strcpy(wifi_rssi, field42);
                             //at_state = AT_CMD_OK;
+							g_is_wifi_connected = 1;
                             rx_len = 0;
                         }
                     }
@@ -1240,10 +1289,6 @@ static int handle_line()
 	LOGD("=============== handle_line finished =================\r\n");
 	is_handling_line = 0;
 	return 0;
-}
-
-void update_rssi() {
-	run_at_cmd("AT+CWJAP?", 1, 1000);
 }
 
 int uploadRecord(char *msgId, Record *record) {

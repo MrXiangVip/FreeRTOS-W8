@@ -16,6 +16,8 @@
 #define CONFIG_KEY_OASIS_VERSION	"OASIS"
 #define CONFIG_KEY_BT_VERSION		"BT_VERSION"
 
+#define CONFIG_KEY_WIFI_RESET		"RESET"
+#define CONFIG_KEY_WIFI_RECONNECT	"RECONNECT"
 #define CONFIG_KEY_BT_MAC			"BT_MAC"
 #define CONFIG_KEY_WIFI_MAC			"WIFI_MAC"
 #define CONFIG_KEY_SSID				"SSID"
@@ -27,6 +29,7 @@
 #define CONFIG_KEY_MQTT_SERVER_IP		"MQTT_IP"
 #define CONFIG_KEY_MQTT_SERVER_PORT		"MQTT_PORT"
 
+#define CONFIG_BT_WIFI_RESET_LEN        6
 #define MAC_LEN 20
 #define CONFIG_ITEM_LEN 128
 #define CONFIG_VERSION_ITEM_LEN         32
@@ -43,6 +46,9 @@ typedef struct version_config {
 } VERSIONCONFIG;
 
 typedef struct btwifi_config {
+	char need_reset[CONFIG_BT_WIFI_RESET_LEN];
+	char need_reconnect[CONFIG_BT_WIFI_RESET_LEN];
+
 	char bt_mac[MAC_LEN];
 	char wifi_mac[MAC_LEN];
 
@@ -78,6 +84,8 @@ extern "C"  {
 	// int write_config(const char *file, const char *entry, const char *value);
 	int write_config(char *file, char *section, char *key, char *value);
 	
+	int update_need_reset(char *need_reset) ;
+	int update_need_reconnect(char *need_reconnect) ;
 	int update_wifi_ssid(char *ssid) ;
 	int update_wifi_pwd(char *password) ;
 	int update_mqtt_opt(char *username, char *password) ;
