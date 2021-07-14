@@ -69,7 +69,7 @@ uint8_t recv_buffer8[1];
 
 
 #define AT_CMD_RESULT_OK 		0
-#define AT_CMD_RESULT_ERROR 	1
+#define AT_CMD_RESULT_ERROR 	(-1)
 #define AT_CMD_RESULT_TIMEOUT 	2
 #define AT_CMD_RESULT_BUSY		3
 #define AT_CMD_RESULT_UNDEF	    4
@@ -385,6 +385,8 @@ static void mqttinit_task(void *pvParameters) {
         if (result == 0 && result1 == 0 && result2 == 0 && result3 == 0) {
             update_need_reset("false");
         }
+    }else {
+        int result3 = run_at_cmd("ATE0", 1, 1200);
     }
 
 #if	0
