@@ -27,7 +27,11 @@ DBManager* DBManager::getInstance()
 }
 
 bool DBManager::saveRecordToFile(list<Record*> recordList,char *filePath){
-    LOGD("-----0.将链表记录保存到文件-----\r\n");
+
+    LOGD("----- 保存记录文件-----\r\n");
+    LOGD("-----0.删除文件-----\r\n");
+    fatfs_delete( filePath );
+    LOGD("-----1.将链表数据组织成json格式-----\r\n");
     list <Record*>::iterator it;
     char 	*cjson_str = NULL;
     cJSON 	*jsonroot = NULL;
@@ -38,7 +42,6 @@ bool DBManager::saveRecordToFile(list<Record*> recordList,char *filePath){
         return false;
     }
     //4.1 先生成每个对象
-    LOGD("-----1.将链表数据组织成json格式-----\r\n");
     cJSON * ObjArr = cJSON_CreateArray();
     for ( it = recordList.begin( ); it != recordList.end( ); it++ ){
         Record  *tmpRecord = (Record*)*it;
@@ -60,29 +63,20 @@ bool DBManager::saveRecordToFile(list<Record*> recordList,char *filePath){
     }
     //4.3 ObjArr加入到jsonroot
     cJSON_AddItemToObject(jsonroot, "ObjInfo", ObjArr);
-    //cjson_str = cJSON_PrintUnformatted(jsonroot);
     cjson_str = cJSON_Print(jsonroot);
 
-    //LOGD("jsonroot : \n%s\r\n", cjson_str);
     LOGD("-----2.将json格式数据存文件-----\r\n");
-//    FILE *file = fopen( filePath, "w+");
-//    fwrite(cjson_str,  strlen(cjson_str), 1,file);
     fatfs_write( filePath, cjson_str, 0, strlen(cjson_str));
-//    fflush( file );
-//    fclose( file );
 
-//    free(cjson_str);
     vPortFree(cjson_str);
     cJSON_Delete(jsonroot);
+    LOGD("----- 保存记录文件结束-----\r\n");
     return true;
 }
 list<Record*> DBManager::readRecordFromFile(char *filePath){
     LOGD("-----1.从文件中读出json格式的记录-----\r\n");
-
     int ArrLen = 0;
-
     int fsize = 0;
-
     fsize = fatfs_getsize(filePath);
     if (fsize == -1) {
         return recordList;
@@ -91,8 +85,6 @@ list<Record*> DBManager::readRecordFromFile(char *filePath){
         memset(buf, 0, fsize);
         fatfs_read(filePath, buf, 0, fsize);
         LOGD("%s \r\n", buf);
-
-
         cJSON *jsonroot = cJSON_Parse(buf);
         //4. 解析数组成员是json对象的数组ObjArr
         LOGD("------2.将json 格式数据组织成链表---------\r\n");
@@ -105,7 +97,6 @@ list<Record*> DBManager::readRecordFromFile(char *filePath){
                 if (NULL == SubObj) {
                     continue;
                 }
-
                 Record *record = (Record *) pvPortMalloc(sizeof(Record));
                 record->ID = i;
                 strcpy(record->UUID, cJSON_GetObjectItem(SubObj, "UUID")->valuestring);
@@ -118,19 +109,12 @@ list<Record*> DBManager::readRecordFromFile(char *filePath){
                 record->upload = cJSON_GetObjectItem(SubObj, "upload")->valueint;
 
                 recordList.push_back(record);
-                //LOGD("[%d] id:%d\r\n", i, record->ID);
-                //LOGD("[%d] uuid:%s\r\n", i, record->UUID);
-                //LOGD("[%d] time_stamp:%ld\r\n", i, record->time_stamp);
-
                 LOGD("i: [%d] id:%d, uuid:%s, time_stamp:%d\r\n", i, record->ID, record->UUID, record->time_stamp);
             }
         }
-
         cJSON_Delete(jsonroot);
         vPortFree(buf);
     }
-
-
     return  recordList;
 }
 // 初始化DB
