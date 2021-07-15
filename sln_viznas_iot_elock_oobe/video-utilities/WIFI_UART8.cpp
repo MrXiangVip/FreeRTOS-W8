@@ -290,7 +290,7 @@ int run_at_raw_cmd(char const *cmd, char *data, int data_len, int retry_times, i
     int ret = 0;
     LOGD("start AT raw command %s\r\n", cmd);
     LOGD("start AT raw data_len is %d\r\n", data_len);
-    LOGD("start AT raw data %s\r\n", data);
+    //LOGD("start AT raw data %s\r\n", data);
 
     ret = run_at_cmd(cmd, retry_times, cmd_timeout_usec);
     vTaskDelay(pdMS_TO_TICKS(20));
@@ -928,7 +928,6 @@ int SendMsgToMQTT(char *mqtt_payload, int len) {
                 return 0;
             } else if ((int) (char) (mqtt_payload[1]) == 0x1b) {
                 // 注册/开门记录
-                int len = mqtt_payload[2];
                 int id = (int) (mqtt_payload[3]);
                 // TODO:
                 LOGD("dbmanager->getRecord start id %d", id);
@@ -1395,8 +1394,8 @@ int uploadRecords() {
 
         notifyKeepAlive();
         vTaskDelay(pdMS_TO_TICKS(20));
-        save_files_before_pwd();
-        vTaskDelay(pdMS_TO_TICKS(100));
+        //save_files_before_pwd();
+        //vTaskDelay(pdMS_TO_TICKS(100));
 
 
 		LOGD("---------------------- register: upload record id %d g_uploading_id %d", record->ID, g_uploading_id);
@@ -1421,8 +1420,8 @@ int uploadRecords() {
 		//Record record = records[i];
         notifyKeepAlive();
         vTaskDelay(pdMS_TO_TICKS(20));
-        save_files_before_pwd();
-        vTaskDelay(pdMS_TO_TICKS(100));
+        //save_files_before_pwd();
+        //vTaskDelay(pdMS_TO_TICKS(100));
 
 		Record* record = (Record*) *it;
 		if (record->upload == 0) {
@@ -1447,9 +1446,8 @@ int uploadRecords() {
 
         notifyKeepAlive();
         vTaskDelay(pdMS_TO_TICKS(20));
-        save_files_before_pwd();
-        vTaskDelay(pdMS_TO_TICKS(100));
-
+        //save_files_before_pwd();
+        //vTaskDelay(pdMS_TO_TICKS(100));
 
 		Record* record = (Record*) *it;
 
@@ -1491,7 +1489,7 @@ static void msghandle_task(void *pvParameters)
     do {
         vTaskDelay(pdMS_TO_TICKS(1000));
 
-        if((boot_mode == BOOT_MODE_NORMAL) || (boot_mode == BOOT_MODE_REG)) {
+        if((boot_mode == BOOT_MODE_NORMAL) || (boot_mode == BOOT_MODE_REMOTE)) {
             if (g_has_more_download_data == 0 && g_has_more_upload_data == 1) {
                 if ((mqtt_init_done == 1) && (g_priority == 0) && (bPubOasisImage == false)) {
                     if (mqtt_upload_records_run == false) {
