@@ -84,7 +84,8 @@ list<Record*> DBManager::readRecordFromFile(char *filePath){
         char *buf = (char *) pvPortMalloc(fsize);
         memset(buf, 0, fsize);
         fatfs_read(filePath, buf, 0, fsize);
-        LOGD("%s \r\n", buf);
+        LOGD("%d %s \r\n", fsize, buf);
+
         cJSON *jsonroot = cJSON_Parse(buf);
         //4. 解析数组成员是json对象的数组ObjArr
         LOGD("------2.将json 格式数据组织成链表---------\r\n");

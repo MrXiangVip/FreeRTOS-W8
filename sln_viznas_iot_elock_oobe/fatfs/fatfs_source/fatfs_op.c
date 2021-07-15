@@ -153,7 +153,7 @@ int fatfs_read(char *file_name, char *buf, int offset, int bytes)
         }
         else
         {
-            FATFS_PRINTF(("Open file failed: %d.\r\n", error));
+            FATFS_PRINTF(("Open file %s failed: %d.\r\n",  _T(file_name), error));
             return -1;
         }
     }
@@ -162,7 +162,7 @@ int fatfs_read(char *file_name, char *buf, int offset, int bytes)
     error = f_read(&g_fileObject, buf, bytes, &num);
     if (error || (num != bytes))
     {
-        FATFS_PRINTF(("Read file failed: %d, read number: %d.\r\n", error, num));
+        FATFS_PRINTF(("Read file failed: %d, read bytes: %d, read number: %d.\r\n", error, bytes, num));
     }
 
     //    FATFS_PRINTF(("Content of %s: %s.\r\n", _T(file_name), buf));
