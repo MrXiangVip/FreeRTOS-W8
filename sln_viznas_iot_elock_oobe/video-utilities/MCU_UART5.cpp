@@ -103,7 +103,6 @@ static char username[17] = {0}; //用于存放传入NXP提供的人脸注册于�
 bool lcd_back_ground = true;
 extern int battery_level;
 static bool saving_file = false;
-static bool saving_db = false;
 bool shut_down = false;
 bool bDeleteUser = false;
 extern int mqtt_init_done;
@@ -746,8 +745,7 @@ int save_files_before_pwd() {
         saving_file = true;
     }
 // save record list  to file
-    if (saving_db == false) {
-        saving_db = true;
+    if (!bDeleteUser) {
         DBManager::getInstance()->flushRecordList();
     }
     Oasis_WriteJpeg();
@@ -1393,8 +1391,7 @@ static void uart5_QMsg_task(void *pvParameters) {
                     } else {
                         //shut_down = true;
                         vTaskDelay(pdMS_TO_TICKS(100));
-                        DB_Save(0);
-
+                        save_files_before_pwd();
                     	LOGD("注册成功,请求MQTT上传本次用户注册记录 \n");
 						int ID = DBManager::getInstance()->getLastRecordID();
 						cmdRequestMqttUpload( ID );

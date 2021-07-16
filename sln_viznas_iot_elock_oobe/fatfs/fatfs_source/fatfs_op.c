@@ -75,7 +75,7 @@ int fatfs_write(const char *file_name, const char *buf, int offset, int bytes)
         }
         else
         {
-            FATFS_PRINTF(("Open file failed: %d.\r\n", error));
+            FATFS_PRINTF(("Open %s file failed: %d.\r\n", file_name, error));
             return -1;
         }
     }
