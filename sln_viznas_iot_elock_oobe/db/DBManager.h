@@ -14,6 +14,12 @@
 
 
 #define RECORD_PATH "record"
+//记录最大column
+#define MAX_COLUMN 300
+//记录最大字节数
+#define MAX_BYTE (300*200)
+
+#define FIX_SIZE   1
 typedef unsigned char byte;
 
 using namespace std;
@@ -44,7 +50,8 @@ private:
     list<Record*> readRecordFromFile(char *filePath);
 public:
 
-
+    int max_size=MAX_COLUMN;
+    char buf[MAX_BYTE]={0};
     int recordNum=-1;
     Record *record=NULL;
 
