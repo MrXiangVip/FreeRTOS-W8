@@ -158,11 +158,11 @@ int publishRawMQTT(int linkId, const char* topic, char* data, int data_len, int 
 	sprintf(cmd, "AT+MQTTPUBRAW=%d,\"%s\",%d,%d,%d", linkId, topic, data_len, qos, retain);
 
 	LOGD("--- send AT CMD %s\r\n", cmd);
-	int res = run_at_raw_cmd(cmd, data, data_len, 2, 15000000);
+	int res = run_at_raw_cmd(cmd, data, data_len, 2, 15000);
 	while (res == -5) {
 		//sleep(1);
         vTaskDelay(pdMS_TO_TICKS(1000));
-		res = run_at_raw_cmd(cmd, data, data_len, 2, 15000000);
+		res = run_at_raw_cmd(cmd, data, data_len, 2, 15000);
 	}
 	return res;
 }
