@@ -605,14 +605,14 @@ static void UIInfo_UpdateFaceInfo2(uint16_t *pBufferAddr, QUIInfoMsg* infoMsg)
         case 1 << kEvents_API_Layer_RegSuccess:
         {
             uint16_t *pIcon = (uint16_t *)reg_succ_v3;
-            	for (int i = 0; i < 320; i++)
-            	{
-            		for (int j = 0; j < 240; j++)
-            		{
-            			*(pBufferAddr + i*APP_AS_WIDTH + j) = *pIcon++;
-            		}
-            	}
-            	CloseLcdBackground();
+			for (int i = 0; i < 320; i++)
+			{
+				for (int j = 0; j < 240; j++)
+				{
+					*(pBufferAddr + i*APP_AS_WIDTH + j) = *pIcon++;
+				}
+			}
+			CloseLcdBackground();
 
         }
         break;
@@ -631,6 +631,7 @@ static void UIInfo_UpdateFaceInfo2(uint16_t *pBufferAddr, QUIInfoMsg* infoMsg)
         break;
         case 1 << kEvents_API_Layer_RecSuccess:
         {
+#if	0
             uint16_t *pIcon = NULL;
             pIcon = (uint16_t *)welcome_v4;
             for (int i = 0; i < 320; i++)
@@ -640,6 +641,7 @@ static void UIInfo_UpdateFaceInfo2(uint16_t *pBufferAddr, QUIInfoMsg* infoMsg)
             		*(pBufferAddr + i*APP_AS_WIDTH + j) = *pIcon++;
             	}
             }
+#endif
         }
         break;
 
