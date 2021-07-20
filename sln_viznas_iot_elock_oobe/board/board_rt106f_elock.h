@@ -494,8 +494,8 @@ extern "C" {
 #define WIFI_SUPPORT	1
 #define PWM2_SUPPORT	1
 
-#define  PROJECT_VERSION  "W8_106F_V1.0.8"
-#define  FIRMWARE_VERSION  "FW_W8_4f3b4c_20210716_V1.0.8"
+#define  PROJECT_VERSION  "W8_106F_V1.0.9"
+#define  FIRMWARE_VERSION  "FW_W8_298f9b_20210720_V1.0.9"
 
 /*******************************************************************************
  * API
