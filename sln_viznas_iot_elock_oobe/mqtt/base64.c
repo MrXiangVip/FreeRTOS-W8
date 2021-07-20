@@ -135,13 +135,16 @@ int pubImage(const char* pub_topic, const char *filename, const char *msgId) {
 	//获取图片大小
 	size = fatfs_getsize(filename);
     LOGD("%s size is %d\r\n", __FUNCTION__, size);
+    if(size == 0) {
+    	return (-1);
+    }
 
 	//分配内存存储整个图片
 	buffer = (char *)pvPortMalloc((size/4+1)*4);
 	if (NULL == buffer)
 	{
-        LOGD("memory_error");
-		exit(2);
+        LOGD("memory_error1");
+        return (-1);
 	}
 
 	//将图片拷贝到buffer
@@ -151,8 +154,9 @@ int pubImage(const char* pub_topic, const char *filename, const char *msgId) {
 	buffer1 = (char *)pvPortMalloc((size/3+1)*4 + 1);
 	if (NULL == buffer1)
 	{
-        LOGD("memory_error");
-		exit(2);
+        LOGD("memory_error2");
+        vPortFree(buffer);
+        return (-1);
 	}
 	ret1 = base64_encode(buffer, buffer1, size);
 	length = strlen(buffer1);
@@ -167,8 +171,8 @@ int pubImage(const char* pub_topic, const char *filename, const char *msgId) {
 		if (i == (count - 1)) {
 			len = length - MQTT_PUB_PACKAGE_LEN * (count - 1);
 		}
-		char data[MQTT_PUB_PACKAGE_LEN + 1];
-		char pub_msg[MQTT_PUB_MSG_LEN];
+		//char data[MQTT_PUB_PACKAGE_LEN + 1];
+		//char pub_msg[MQTT_PUB_MSG_LEN];
 		memset(data, '\0', MQTT_PUB_PACKAGE_LEN + 1);
 		memset(pub_msg, '\0', MQTT_PUB_MSG_LEN);
 		strncpy(data, buffer1 + (i*MQTT_PUB_PACKAGE_LEN), len);
@@ -214,7 +218,7 @@ int pubOasisImage(const char* pub_topic, const char *msgId) {
     if (NULL == buffer1)
     {
         LOGD("memory_error");
-        exit(2);
+        return (-1);
     }
     base64_encode(getOasisBuffer(), buffer1, size);
     length = strlen(buffer1);
