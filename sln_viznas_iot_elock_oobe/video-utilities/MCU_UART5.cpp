@@ -103,6 +103,7 @@ static char username[17] = {0}; //用于存放传入NXP提供的人脸注册于�
 bool lcd_back_ground = true;
 extern int battery_level;
 static bool saving_file = false;
+static bool saving_db = false;
 bool shut_down = false;
 bool bDeleteUser = false;
 extern int mqtt_init_done;
@@ -745,7 +746,8 @@ int save_files_before_pwd() {
         saving_file = true;
     }
 // save record list  to file
-    if (!bDeleteUser) {
+    if (saving_db == false) {
+        saving_db = true;
         DBManager::getInstance()->flushRecordList();
     }
     Oasis_WriteJpeg();
@@ -1386,18 +1388,21 @@ static void uart5_QMsg_task(void *pvParameters) {
 
                     cmdRegResultNotifyReq(g_uu_id, g_reging_flg);
                     if (g_reging_flg == REG_STATUS_FAILED) {
+                        CloseLcdBackground();
                         vTaskDelay(pdMS_TO_TICKS(200));
                         cmdCloseFaceBoardReq();
                     } else {
                         //shut_down = true;
-                        vTaskDelay(pdMS_TO_TICKS(100));
+                        CloseLcdBackground();
+                        vTaskDelay(pdMS_TO_TICKS(200));
                         save_files_before_pwd();
+                        vTaskDelay(pdMS_TO_TICKS(100));
+
                     	LOGD("注册成功,请求MQTT上传本次用户注册记录 \n");
 						int ID = DBManager::getInstance()->getLastRecordID();
 						cmdRequestMqttUpload( ID );
                     }
                 }
-                    CloseLcdBackground();
                     break;
 
                 case QMSG_FACEREC_RECFACE: {//处理人脸识别结果
@@ -1421,9 +1426,8 @@ static void uart5_QMsg_task(void *pvParameters) {
                         cmdOpenDoorReq(g_uu_id);
                         CloseLcdBackground();
                     } else {//failed
-                        LOGD("User face recognize failed!\r\n");
                         recognize_times++;
-                        LOGD("recognize_times is %d\r\n", recognize_times);
+                        LOGD("User face recognize failed %d times\r\n", recognize_times);
                         if (recognize_times > 100) {
                             recognize_times = 0;
                             cmdCloseFaceBoardReq();//关主控电源

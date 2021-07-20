@@ -97,6 +97,8 @@ static int g_command_executed = 0;
 static int g_shutdown_notified = 0;
 // 当前pub执行优先级，0为最低优先级，9为最高优先级
 int g_priority = 0;
+// 是否是自动上传过程中	: 0 未上传/上传完成 1 上传中 2 上传中断
+static int g_is_auto_uploading = 0;
 // wifi是否已自动连接
 static int g_is_wifi_connected = 0;
 
@@ -756,44 +758,6 @@ int handlePayload(char *payload, char *msg_idStr) {
     return 0;
 }
 
-int sendImage(const char *filename, char *uuidStr, int needSendMCU) {
-
-	LOGD("sendImage filename is %s");
-    if (0/*filename != NULL && strlen(filename) > 0 && (access(filename, F_OK)) != -1*/) {
-        char *pub_topic = get_pub_topic_pic_report();
-        char *pub_topic_tmp = get_pub_topic_pic_report_u();
-        char *msgId = gen_msgId();
-        LOGD("sendImage filename is %s msgId is %s\n", filename, msgId);
-        char pub_msg[MQTT_AT_LEN];
-        memset(pub_msg, '\0', MQTT_AT_LEN);
-        sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"userId\\\":\\\"%s\\\"}", msgId, uuidStr);
-        // 第一步：传图
-        int ret = pubImage(pub_topic, filename, msgId);
-        if (ret == 0) {
-            // 第二步：告知图片用户信息
-            ret = quickPublishMQTT(pub_topic_tmp, pub_msg);
-            if (ret == 0) {
-                // 重命名文件
-                char newFilename[255];
-                memset(newFilename, '\0', 255);
-                sprintf(newFilename, "%s.sent", filename);
-                rename(filename, newFilename);
-                system("sync");
-            }
-        }
-        if (needSendMCU == 1) {
-            // sendStatusToMCU(0x04, ret);
-            // notifyCommandExecuted(ret);
-            g_command_executed = 1;
-        }
-        //freePointer(&pub_topic);
-        //freePointer(&pub_topic_tmp);
-        freePointer(&msgId);
-        return ret;
-    }
-    return -1;
-}
-
 int SendMsgToMQTT(char *mqtt_payload, int len) {
     char mqtt_payload_str[MQTT_AT_LEN];
     memset(mqtt_payload_str, '\0', MQTT_AT_LEN);
@@ -979,6 +943,12 @@ int SendMsgToMQTT(char *mqtt_payload, int len) {
                 	LOGD("register/unlcok record is not NULL start upload record/image");
                     g_uploading_id = record.ID;
                     g_is_uploading_data = 1;
+					// 优先上传最新的记录
+					while (g_is_auto_uploading == 1) {
+						// 如果正在自动上传中，睡眠100ms继续等待
+						//usleep(100000);
+						vTaskDelay(pdMS_TO_TICKS(100));
+					}
                     int ret = uploadRecordImage(&record, true);
                     LOGD("uploadRecordImage end");
                     // notifyCommandExecuted(ret);
@@ -1020,27 +990,6 @@ int SendMsgToMQTT(char *mqtt_payload, int len) {
                 } else {
                     LOGD("unlock record length is %d instead of 15\n", (int) (char) (mqtt_payload[2]));
                 }
-            } else if ((int) (char) (mqtt_payload[1]) == 0x07 && (int) (char) (mqtt_payload[2]) == 0x09 &&
-                       (int) (char) (mqtt_payload[11]) == 0x00) {
-                // 传图指令
-                char uuid[17];
-                HexToStr(uuid, reinterpret_cast<unsigned char *>(&mqtt_payload[3]), 8);
-                for (int x = 0; x < 14; x++) {
-                	LOGD("uuid mqtt_payload[%d] is %d\n", x, (int) (char) (mqtt_payload[x]));
-                }
-                LOGD("uuid %s mqtt_payload[1] is %d mqtt_payload[2] is %d mqtt_payload[11] is %d\n", uuid,
-                          (int) (char) (mqtt_payload[1]), (int) (char) (mqtt_payload[2]),
-                          (int) (char) (mqtt_payload[11]));
-                char filename[50];
-                memset(filename, '\0', sizeof(filename));
-                LOGD("uuid is %s\n", uuid);
-                sprintf(filename, "/opt/smartlocker/pic/ID_%s.jpg", uuid);
-                int ret = sendImage(filename, uuid, 1);
-                // fix bug 135: 【流程】W7注册人脸用户后，40s还不掉电
-                // 没有下发下电指令给设备导致的。后续可能要统一确认是否下电而不是单独针对这个操作做处理
-                // notifyCommandExecuted(ret);
-                g_command_executed = 1;
-                return ret;
             } else {
             }
         }
@@ -1365,7 +1314,7 @@ int uploadRecordImage(Record *record, bool online) {
 	if(online) {
             char *pub_topic = get_pub_topic_pic_report();
             char *msgId = gen_msgId();
-            LOGD("uploadRecordImage msgId is %s\n", msgId);
+            LOGD("uploadRecordImage msgId is %s\r\n", msgId);
             // 第一步：传记录
             bOasisRecordUpload = false;
             //int ret = pubOasisImage(pub_topic, msgId);
@@ -1391,11 +1340,11 @@ int uploadRecordImage(Record *record, bool online) {
             return ret;
     }else {
         char *filename = (char*)(record->image_path);
-        LOGD("uploadRecordImage filename is %s", filename);
+        LOGD("uploadRecordImage filename is %s\r\n", filename);
         if (filename != NULL && strlen(filename) > 0 && (fatfs_getsize(filename)) != -1) {
             char *pub_topic = get_pub_topic_pic_report();
             char *msgId = gen_msgId();
-            LOGD("uploadRecordImage msgId is %s\n", msgId);
+            LOGD("uploadRecordImage msgId is %s\r\n", msgId);
             // 第一步：传记录
             int ret = uploadRecord(msgId, record);
             //int ret = pubImage(pub_topic, filename, msgId);
@@ -1426,11 +1375,15 @@ int uploadRecords() {
 	if (dbmanager == NULL) {
 		return -1;
 	}
+	g_is_auto_uploading = 1;
+	if (g_is_uploading_data == 1) {
+		g_is_auto_uploading = 2;
+		return -2;
+	}
 
 	int fret = 0;
 	list<Record*> records = dbmanager->getAllUnuploadRecord();
-    LOGD("---------------------- register: upload record and image start");
-    g_is_uploading_data = 1;
+    LOGD("---------------------- register: upload record and image start\r\n");
 	// 第一步，只上传未上传的注册记录以及图片，涉及到可能存在的重复上传问题: 注册优先
     list <Record*>::iterator it;
 	//for (int i = 0; i < recordNum; i++) {
@@ -1438,80 +1391,86 @@ int uploadRecords() {
         Record* record = (Record*) *it;
 		//Record record = records[i];
 
-        notifyKeepAlive();
-        vTaskDelay(pdMS_TO_TICKS(20));
-        //save_files_before_pwd();
-        //vTaskDelay(pdMS_TO_TICKS(100));
-
-
-		LOGD("---------------------- register: upload record id %d g_uploading_id %d", record->ID, g_uploading_id);
+		LOGD("---------------------- register: upload record id %d g_uploading_id %d\r\n", record->ID, g_uploading_id);
 		if (record->upload == 0 && g_uploading_id != record->ID) {
-			int ret = uploadRecordImage(record, false);
+	        notifyKeepAlive();
+	        vTaskDelay(pdMS_TO_TICKS(20));
+
+	        int ret = uploadRecordImage(record, false);
+			if (g_is_uploading_data == 1) {
+				g_is_auto_uploading = 2;
+				return -2;
+			}
 			if (ret != 0) {
-				LOGD("register: upload record and image id %d fail with ret %d", record->ID, ret);
+				LOGD("register: upload record and image id %d fail with ret %d\r\n", record->ID, ret);
 				if (fret == 0) {
 					fret = ret;
 				}
 				break;
 			} else {
-				LOGD("register: upload record and image success");
+				LOGD("register: upload record and image success\r\n");
 			}
 		}
 	}
 	records = dbmanager->getAllUnuploadRecord();
-	LOGD("--------------------- register/opendoor: upload records only start");
+	LOGD("--------------------- register/opendoor: upload records only start\r\n");
 	// 第二步，只上传未上传的注册/开门记录，包括注册记录和开门记录: 记录次之
 	//for (int i = 0; i < recordNum; i++) {
 	for ( it = records.begin( ); it != records.end( ); it++ ) {
 		//Record record = records[i];
-        notifyKeepAlive();
-        vTaskDelay(pdMS_TO_TICKS(20));
-        //save_files_before_pwd();
-        //vTaskDelay(pdMS_TO_TICKS(100));
 
 		Record* record = (Record*) *it;
 		if (record->upload == 0) {
-			int ret = uploadRecord(gen_msgId(), record);
+	        notifyKeepAlive();
+	        vTaskDelay(pdMS_TO_TICKS(20));
+
+	        int ret = uploadRecord(gen_msgId(), record);
+			if (g_is_uploading_data == 1) {
+				g_is_auto_uploading = 2;
+				return -2;
+			}
 			if (ret != 0) {
-				LOGD("register/opendoor: upload records fail with ret %d", ret);
+				LOGD("register/opendoor: upload records fail with ret %d\r\n", ret);
 				if (fret == 0) {
 					fret = ret;
 				}
 				break;
 			} else {
-				LOGD("register/opendoor: upload records success");
+				LOGD("register/opendoor: upload records success\r\n");
 			}
 		}
 	}
 	records = dbmanager->getAllUnuploadRecord();
-	LOGD("------------------- opendoor: upload record and image success");
+	LOGD("------------------- opendoor: upload record and image success\r\n");
 	// 第三步，上传未上传的开门记录以及图片, 开门图片最后
 	//for (int i = 0; i < recordNum; i++) {
 	for ( it = records.begin( ); it != records.end( ); it++ ) {
 		//Record record = records[i];
 
-        notifyKeepAlive();
-        vTaskDelay(pdMS_TO_TICKS(20));
-        //save_files_before_pwd();
-        //vTaskDelay(pdMS_TO_TICKS(100));
-
 		Record* record = (Record*) *it;
 
-		LOGD("---------------------- opendoor: upload record id %d g_uploading_id %d", record->ID, g_uploading_id);
+		LOGD("---------------------- opendoor: upload record id %d g_uploading_id %d\r\n", record->ID, g_uploading_id);
 		if ((record->upload == 0 || record->upload == 1) && g_uploading_id != record->ID) {
-			int ret = uploadRecordImage(record, false);
+	        notifyKeepAlive();
+	        vTaskDelay(pdMS_TO_TICKS(20));
+
+	        int ret = uploadRecordImage(record, false);
+			if (g_is_uploading_data == 1) {
+				g_is_auto_uploading = 2;
+				return -2;
+			}
 			if (ret != 0) {
-				LOGD("opendoor: upload record and image fail with ret %d", ret);
+				LOGD("opendoor: upload record and image fail with ret %d\r\n", ret);
 				if (fret == 0) {
 					fret = ret;
 				}
 				break;
 			} else {
-				LOGD("opendoor: upload record and image success");
+				LOGD("opendoor: upload record and image success\r\n");
 			}
 		}
 	}
-    g_is_uploading_data = 0;
+    g_is_auto_uploading = 0;
 	return fret;
 }
 
