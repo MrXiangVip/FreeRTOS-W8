@@ -1333,6 +1333,25 @@ int cmdRequestMqttUpload(int id) {
     return 0;
 }
 
+int Uart5_SendDeinitCameraMsg(void)
+{
+    QMsg *pQMsgCamera;
+    /* Camera */
+    pQMsgCamera             = (QMsg *)pvPortMalloc(sizeof(QMsg));
+    if (NULL == pQMsgCamera) {
+        LOGE("[ERROR]: pQMsg pvPortMalloc failed\r\n");
+        return -1;
+    }
+    pQMsgCamera->id         = QMSG_CMD;
+    pQMsgCamera->msg.cmd.id = QCMD_DEINIT_CAMERA;
+    int status =  Camera_SendQMsg((void *)&pQMsgCamera);
+
+    if (status) {
+        vPortFree(pQMsgCamera);
+    }
+    return 0;
+}
+
 static void uart5_QMsg_task(void *pvParameters) {
     BaseType_t ret;
     QMsg *pQMsg;
@@ -1387,6 +1406,7 @@ static void uart5_QMsg_task(void *pvParameters) {
                     StrToHex(g_uu_id.UID, (char *) username, sizeof(g_uu_id.UID));
 
                     cmdRegResultNotifyReq(g_uu_id, g_reging_flg);
+                    Uart5_SendDeinitCameraMsg();
                     if (g_reging_flg == REG_STATUS_FAILED) {
                         CloseLcdBackground();
                         vTaskDelay(pdMS_TO_TICKS(200));
@@ -1416,6 +1436,7 @@ static void uart5_QMsg_task(void *pvParameters) {
 
                     if (pQMsg->msg.val) {//success
                         LOGD("User face recognize succuss!\r\n");
+						Uart5_SendDeinitCameraMsg();
                         //LOGD("gFaceInfo.name is %s!\n", gFaceInfo.name);
                         LOGD("pQMsg->msg.info.name is %s!\n", pQMsg->msg.info.name);
                         char name[64];
@@ -1430,6 +1451,7 @@ static void uart5_QMsg_task(void *pvParameters) {
                         LOGD("User face recognize failed %d times\r\n", recognize_times);
                         if (recognize_times > 100) {
                             recognize_times = 0;
+							Uart5_SendDeinitCameraMsg();
                             cmdCloseFaceBoardReq();//关主控电源
                             CloseLcdBackground();
                             break;
