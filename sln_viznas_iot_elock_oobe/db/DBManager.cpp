@@ -103,7 +103,8 @@ list<Record*> DBManager::readRecordFromFile(char *filePath){
     } else {
         memset(buf, 0, fsize);
         fatfs_read(filePath, buf, 0, fsize);
-        LOGD("file size %d ,%s \r\n", fsize, buf);
+        //LOGD("file size %d ,%s \r\n", fsize, buf);
+        LOGD("file size %d\r\n", fsize);
 
         cJSON *jsonroot = cJSON_Parse(buf);
         //4. 解析数组成员是json对象的数组ObjArr
