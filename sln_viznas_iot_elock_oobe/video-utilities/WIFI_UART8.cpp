@@ -109,6 +109,8 @@ int g_priority = 0;
 // wifi是否已自动连接
 static int g_is_wifi_connected = 0;
 
+static int g_is_shutdown = 0;
+
 DBManager *dbmanager = NULL;
 
 MqttInstructionPool mqtt_instruction_pool;
@@ -126,6 +128,9 @@ DTC_BSS static StaticTask_t s_MqttTaskTCB;
 
 DTC_BSS static StackType_t Uart8MsgHandleTaskStack[UART8MSGHANDLETASK_STACKSIZE];
 DTC_BSS static StaticTask_t s_Uart8MsgHandleTaskTCB;
+
+DTC_BSS static StackType_t Uart8UploadDataTaskStack[UART8UPLOADDATATASK_STACKSIZE];
+DTC_BSS static StaticTask_t s_Uart8UploadDataTaskTCB;
 #endif
 
 static int at_cmd_mode = AT_CMD_MODE_INACTIVE;
@@ -1475,7 +1480,6 @@ static void msghandle_task(void *pvParameters)
     LOGD("%s start...\r\n", logTag);
 	int count = 0;
 
-    bool mqtt_upload_records_run = false;
     int is_online_handled = 0;	// g_is_online只处理一次
 
     char *pub_topic = NULL;
@@ -1484,33 +1488,19 @@ static void msghandle_task(void *pvParameters)
     memset(wifi_rssi, '\0', sizeof(wifi_rssi));
     wifi_rssi[0] = '0';
     int MAX_COUNT = 5;
+    int TIMEOUT_COUNT = 30;
 	//mqtt_init_done = 1;
     do {
         vTaskDelay(pdMS_TO_TICKS(1000));
 
-        if((boot_mode == BOOT_MODE_NORMAL) || (boot_mode == BOOT_MODE_REMOTE)) {
-            if (g_has_more_download_data == 0 && g_has_more_upload_data == 1) {
-                if ((mqtt_init_done == 1) && (g_priority == 0) && (bPubOasisImage == false)) {
-                    if (mqtt_upload_records_run == false) {
-                        LOGD("----------------- g_priority == 0");
-                        int ret = uploadRecords();
-                        mqtt_upload_records_run = true;
-                    }
-                    g_has_more_upload_data = 0;
-                }
-            }
-        }else {
-            g_has_more_upload_data = 0;
-        }
-
         if (count % 30 == 0) {
-            if (mqtt_init_done == 1) {
-                update_rssi();
-            }
+			if (g_has_more_upload_data == 0 && g_is_uploading_data == 0) {
+				update_rssi();
+			}
         }
 
         if(count % MAX_COUNT == 0) {
-            if ((mqtt_init_done == 1) && (bPubOasisImage == false)) {
+            if ((mqtt_init_done == 1) && (bPubOasisImage == false) && (g_is_uploading_data == 0)) {
                 char *msgId = gen_msgId();
                 // sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"btmac\\\":\\\"%s\\\"\\,\\\"wifi_rssi\\\":%s\\,\\\"battery\\\":%d\\,\\\"version\\\":\\\"%s\\\"}", msgId, btWifiConfig.wifi_mac, btWifiConfig.bt_mac, wifi_rssi, battery_level, getFirmwareVersion());
                 sprintf(pub_msg,
@@ -1541,19 +1531,44 @@ static void msghandle_task(void *pvParameters)
                     // 没有更多上传数据
                     if (g_command_executed) {
                         // 如果远程开锁完成或者其他指令执行完成，并且上传也执行完成了
-                        notifyCommandExecuted(0);
+                        if(g_is_shutdown == 0) {
+                        	g_is_shutdown = 1;
+							CloseLcdBackground();
+							notifyCommandExecuted(0);
+							vTaskDelay(pdMS_TO_TICKS(100));
+							save_files_before_pwd();
+                        }
                         // } else if (g_shutdown_notified == 0) {
                     } else { // if (g_shutdown_notified == 0) {
                         // 如果没有收到指令执行完成的状况，可以尝试通知MCU下电，MCU根据是否是远程开锁决定是否下电
-                        notifyShutdown();
+							notifyShutdown();
                     }
                     g_shutdown_notified = 1;
                 } else if (count % 10 == 0) {
                     // 每隔10s发送一次心跳，确保不会随意下电
-                    LOGD("need to keep alive\r\n");
+                    LOGD("need to keep alive1\r\n");
                     notifyKeepAlive();
+                    vTaskDelay(pdMS_TO_TICKS(20));
                 }
-            }
+			} else if (count % 10 == 0) {
+				// 每隔10s发送一次心跳，确保不会随意下电
+				LOGD("need to keep alive2\r\n");
+				notifyKeepAlive();
+                vTaskDelay(pdMS_TO_TICKS(20));
+			}
+        } else if (g_is_online == 0) {
+            // 30秒，如果还没有连接上后台，可以下电
+			if (count >= TIMEOUT_COUNT) {
+				// TODO: 后续可以使用下电指令来代替
+				// notifyShutdown();
+				if(g_is_shutdown == 0) {
+					g_is_shutdown = 1;
+					CloseLcdBackground();
+					notifyCommandExecuted(0);
+					vTaskDelay(pdMS_TO_TICKS(100));
+					save_files_before_pwd();
+				}
+			}
         }
         count++;
 
@@ -1572,6 +1587,38 @@ static void msghandle_task(void *pvParameters)
     LOGD("\r\n%s end...\r\n", logTag);
 }
 
+static void uploaddata_task(void *pvParameters)
+{
+    char const *logTag = "[UART8_WIFI]:uploaddata_task-";
+    LOGD("%s start...\r\n", logTag);
+    bool mqtt_upload_records_run = false;
+
+    do {
+        vTaskDelay(pdMS_TO_TICKS(1000));
+
+        if((boot_mode == BOOT_MODE_NORMAL) || (boot_mode == BOOT_MODE_REMOTE)) {
+            if (g_has_more_download_data == 0 && g_has_more_upload_data == 1) {
+                if ((mqtt_init_done == 1) && (g_priority == 0) && (bPubOasisImage == false)) {
+                    if (mqtt_upload_records_run == false) {
+                        LOGD("----------------- g_priority == 0");
+                        int ret = uploadRecords();
+                        mqtt_upload_records_run = true;
+                    }
+                    g_has_more_upload_data = 0;
+                }else {
+                    LOGD("mqtt_init_done is %d, g_priority is %d, bPubOasisImage is %d\r\n", mqtt_init_done, g_priority, bPubOasisImage);
+                }
+            }else {
+                LOGD("g_has_more_download_data is %d, g_has_more_upload_data is %d\r\n", g_has_more_download_data, g_has_more_upload_data);
+            }
+        }else {
+            g_has_more_upload_data = 0;
+        }
+
+    } while (1);
+    vTaskDelete(NULL);
+    LOGD("\r\n%s end...\r\n", logTag);
+}
 
 int WIFI_UART8_Start()
 {
@@ -1640,6 +1687,17 @@ int WIFI_UART8_Start()
     	while (1);
     }
 #endif
+
+#if (configSUPPORT_STATIC_ALLOCATION == 1)
+    if (NULL == xTaskCreateStatic(uploaddata_task, "uploaddata_task", UART8UPLOADDATATASK_STACKSIZE, NULL, UART8UPLOADDATATASK_PRIORITY,
+                                            Uart8UploadDataTaskStack, &s_Uart8UploadDataTaskTCB))
+#else
+    if (xTaskCreate(uploaddata_task, "uploaddata_task", UART8UPLOADDATATASK_STACKSIZE, NULL, UART8UPLOADDATATASK_PRIORITY, NULL) != pdPASS)
+#endif
+    {
+    	LOGD("%s failed to create uploaddata_task\r\n", logTag);
+    	while (1);
+    }
 
     LOGD("%s started...\r\n", logTag);
     return 0;
