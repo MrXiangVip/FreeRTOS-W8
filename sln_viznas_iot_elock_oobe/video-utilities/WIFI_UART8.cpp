@@ -430,7 +430,7 @@ static void mqttinit_task(void *pvParameters) {
             update_need_reset("false");
         }
     }else {
-        int result3 = run_at_cmd("ATE0", 1, 1200);
+        int result3 = run_at_cmd("ATE0", 2, 1200);
     }
 
 #if	0
@@ -1547,6 +1547,7 @@ static void msghandle_task(void *pvParameters)
                 } else if (count % 10 == 0) {
                     // 每隔10s发送一次心跳，确保不会随意下电
                     LOGD("need to keep alive1\r\n");
+                    //LOGD("g_has_more_upload_data is %d, g_is_uploading_data is %d\r\n", g_has_more_upload_data, g_is_uploading_data);
                     notifyKeepAlive();
                     vTaskDelay(pdMS_TO_TICKS(20));
                 }
@@ -1606,10 +1607,10 @@ static void uploaddata_task(void *pvParameters)
                     }
                     g_has_more_upload_data = 0;
                 }else {
-                    LOGD("mqtt_init_done is %d, g_priority is %d, bPubOasisImage is %d\r\n", mqtt_init_done, g_priority, bPubOasisImage);
+                    //LOGD("mqtt_init_done is %d, g_priority is %d, bPubOasisImage is %d\r\n", mqtt_init_done, g_priority, bPubOasisImage);
                 }
             }else {
-                LOGD("g_has_more_download_data is %d, g_has_more_upload_data is %d\r\n", g_has_more_download_data, g_has_more_upload_data);
+                //LOGD("g_has_more_download_data is %d, g_has_more_upload_data is %d\r\n", g_has_more_download_data, g_has_more_upload_data);
             }
         }else {
             g_has_more_upload_data = 0;
