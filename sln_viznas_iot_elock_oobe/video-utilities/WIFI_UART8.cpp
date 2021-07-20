@@ -67,16 +67,6 @@ uint8_t recv_buffer8[1];
 #define MAX_MSG_LINES           20
 #define MAX_MSG_LEN_OF_LINE     256
 
-
-#define AT_CMD_RESULT_OK 		0
-#define AT_CMD_RESULT_ERROR 	1
-#define AT_CMD_RESULT_TIMEOUT 	2
-#define AT_CMD_RESULT_BUSY		3
-#define AT_CMD_RESULT_UNDEF	    4
-
-#define AT_CMD_MODE_INACTIVE	0
-#define AT_CMD_MODE_ACTIVE 	    1
-
 #define MQTT_AT_LEN             128
 #define MQTT_AT_LONG_LEN        256
 #define MQTT_MAC_LEN            32
@@ -90,6 +80,7 @@ static int current_recv_line = 0;
 static int current_recv_line_len = 0;
 static int current_handle_line = 0;
 int mqtt_init_done = 0;
+static int at_is_running = 0;
 // 本次开机心跳序列
 static int g_heartbeat_index = 0;
 // 是否已经确认服务器在线
@@ -204,6 +195,18 @@ int run_at_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
         at_cmd_mode = AT_CMD_MODE_INACTIVE;
         return -1;
     }
+    if (at_is_running >= 1) {
+        LOGD("AT cmd is running %d so can't run %s\r\n", at_is_running, cmd);
+        at_is_running++;
+        if (at_is_running > 10) {
+            // 防止死锁，10s无论如何解锁
+            at_is_running = 0;
+        }
+        LOGD("AT cmd return %d %d\r\n", -5, AT_CMD_RESULT_BUSY);
+        return AT_CMD_RESULT_BUSY;
+    }
+    at_is_running = 1;
+
 	char at_cmd[MQTT_AT_LEN];
 	memset(at_cmd, '\0', MQTT_AT_LEN);
 	sprintf(at_cmd, "%s\r\n", cmd);
@@ -211,6 +214,7 @@ int run_at_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
 	for (int i = 0; i < retry_times; i++) {
 		if (kStatus_Success != LPUART_RTOS_Send(&handle8, (uint8_t *)at_cmd, strlen(at_cmd))) {
 			LOGD("Failed to run command %s\r\n", cmd);
+            at_is_running = 0;
 			return -1;
 		} else {
 			LOGD("Succeed to run command %s\r\n", cmd);
@@ -225,6 +229,7 @@ int run_at_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
 			if (AT_CMD_RESULT_OK == at_cmd_result || AT_CMD_RESULT_ERROR == at_cmd_result) {
 				at_cmd_mode = AT_CMD_MODE_INACTIVE;
 				LOGD("run command %s %s\r\n", cmd, at_cmd_result ? AT_CMD_RESULT_OK : "OK", "ERROR");
+                at_is_running = 0;
 				return at_cmd_result;
 			}
 			if (timeout_usec >= cmd_timeout_usec) {
@@ -235,6 +240,7 @@ int run_at_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
 //		xEventGroupSetBits(handle8.rxEvent, RTOS_LPUART_RX_TIMEOUT);
 	}
 	LOGD("run command %s timeout end\r\n", cmd);
+    at_is_running = 0;
 	return AT_CMD_RESULT_TIMEOUT;
 }
 
@@ -245,6 +251,18 @@ int run_at_long_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
         at_cmd_mode = AT_CMD_MODE_INACTIVE;
         return -1;
     }
+    if (at_is_running >= 1) {
+        LOGD("AT long cmd is running %d so can't run %s\r\n", at_is_running, cmd);
+        at_is_running++;
+        if (at_is_running > 10) {
+            // 防止死锁，10s无论如何解锁
+            at_is_running = 0;
+        }
+        LOGD("AT long cmd return %d %d\r\n", -5, (-5));
+        return AT_CMD_RESULT_BUSY;
+    }
+    at_is_running = 1;
+
     //char at_long_cmd[MQTT_AT_LONG_LEN];
     memset(at_long_cmd, '\0', MQTT_AT_LONG_LEN);
     sprintf(at_long_cmd, "%s\r\n", cmd);
@@ -254,6 +272,7 @@ int run_at_long_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
         if (kStatus_Success != LPUART_RTOS_Send(&handle8, (uint8_t *)at_long_cmd, strlen(at_long_cmd))) {
             //LOGD("Failed to run long command %s\r\n", cmd);
             LOGD("Failed to run long command\r\n");
+            at_is_running = 0;
             return -1;
         } else {
             //LOGD("Succeed to run long command %s\r\n", cmd);
@@ -270,6 +289,7 @@ int run_at_long_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
                 at_cmd_mode = AT_CMD_MODE_INACTIVE;
                 //LOGD("run long command %s %s\r\n", cmd, at_cmd_result ? AT_CMD_RESULT_OK : "OK", "ERROR");
                 LOGD("run long command %s\r\n", at_cmd_result ? AT_CMD_RESULT_OK : "OK", "ERROR");
+                at_is_running = 0;
                 return at_cmd_result;
             }
             if (timeout_usec >= cmd_timeout_usec) {
@@ -282,6 +302,7 @@ int run_at_long_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
     }
     //LOGD("run long command %s timeout end\r\n", cmd);
     LOGD("run long command timeout end\r\n");
+    at_is_running = 0;
     return AT_CMD_RESULT_TIMEOUT;
 }
 
@@ -298,13 +319,27 @@ int run_at_raw_cmd(char const *cmd, char *data, int data_len, int retry_times, i
     //LOGD("start AT raw data %s\r\n", data);
 
     ret = run_at_cmd(cmd, retry_times, cmd_timeout_usec);
-    vTaskDelay(pdMS_TO_TICKS(20));
+
+    if (at_is_running >= 1) {
+        LOGD("AT raw cmd is running %d so can't run %s\r\n", at_is_running, cmd);
+        at_is_running++;
+        if (at_is_running > 10) {
+            // 防止死锁，10s无论如何解锁
+            at_is_running = 0;
+        }
+        LOGD("AT raw cmd return %d %d\r\n", -5, (-5));
+        return AT_CMD_RESULT_BUSY;
+    }
+    at_is_running = 1;
+
+    vTaskDelay(pdMS_TO_TICKS(2));
 
     if(ret == 0) {
         for (int i = 0; i < retry_times; i++) {
             if (kStatus_Success != LPUART_RTOS_Send(&handle8, (uint8_t *) data, data_len)) {
                 //LOGD("Failed to run long command %s\r\n", cmd);
                 LOGD("Failed to run raw command\r\n");
+                at_is_running = 0;
                 return -1;
             } else {
                 //LOGD("Succeed to run long command %s\r\n", cmd);
@@ -321,6 +356,7 @@ int run_at_raw_cmd(char const *cmd, char *data, int data_len, int retry_times, i
                     at_cmd_mode = AT_CMD_MODE_INACTIVE;
                     //LOGD("run long command %s %s\r\n", cmd, at_cmd_result ? AT_CMD_RESULT_OK : "OK", "ERROR");
                     LOGD("run long raw %s\r\n", at_cmd_result ? AT_CMD_RESULT_OK : "OK", "ERROR");
+                    at_is_running = 0;
                     return at_cmd_result;
                 }
                 if (timeout_usec >= cmd_timeout_usec) {
@@ -333,6 +369,7 @@ int run_at_raw_cmd(char const *cmd, char *data, int data_len, int retry_times, i
     }
     //LOGD("run long command %s timeout end\r\n", cmd);
     LOGD("run long raw timeout end\r\n");
+    at_is_running = 0;
 
     return AT_CMD_RESULT_TIMEOUT;
 }
@@ -461,7 +498,7 @@ static void mqttinit_task(void *pvParameters) {
     //result = quickConnectMQTT(mqttConfig.client_id, "7CDFA102AB68", "0000000000000000", mqttConfig.server_ip,
     //                          mqttConfig.server_port, pub_topic_last_will, lwtMsg);
     notifyMqttConnected(result);
-    if (result < 0) {
+    if (result != 0) {
         LOGD("--------- Failed to connect to MQTT\n");
         vTaskDelete(NULL);
         return;
@@ -478,7 +515,7 @@ static void mqttinit_task(void *pvParameters) {
     vTaskDelay(pdMS_TO_TICKS(200));
     char *sub_topic_cmd = get_sub_topic_cmd();
     result = quickSubscribeMQTT(sub_topic_cmd);
-    if (result < 0) {
+    if (result != 0) {
         notifyHeartBeat(CODE_FAILURE);
         //freePointer(&sub_topic_cmd);
         LOGD("--------- Failed to subscribe topic\n");
@@ -1190,7 +1227,10 @@ static int handle_line()
 				} else if (strncmp((const char*)recv_msg_lines[current_handle_line], ">+MQTTPUB:OK", 12) == 0 || strncmp((const char*)recv_msg_lines[current_handle_line], "+MQTTPUB:OK", 11) == 0) {
 					at_cmd_result = AT_CMD_RESULT_OK;
 					LOGD("raw data sent OK\r\n");
-				}else if (strncmp((const char*)recv_msg_lines[current_handle_line], MQTT_CWJAP, MQTT_CWJAP_SIZE) == 0) {
+				} else if (strncmp((const char*)recv_msg_lines[current_handle_line], ">+MQTTPUB:ERROR", 15) == 0 || strncmp((const char*)recv_msg_lines[current_handle_line], "+MQTTPUB:ERROR", 14) == 0) {
+                    at_cmd_result = AT_CMD_RESULT_ERROR;
+                    LOGD("raw data sent ERROR\r\n");
+                }else if (strncmp((const char*)recv_msg_lines[current_handle_line], MQTT_CWJAP, MQTT_CWJAP_SIZE) == 0) {
                     LOGD("\r\n----------------- RUN COMMAND CWJAP ---------- \r\n");
                     char *second = (char *) strstr((const char *) recv_msg_lines[current_handle_line], MQTT_CWJAP);
                     // TODO: 确认是否有OK
@@ -1267,7 +1307,8 @@ static int handle_line()
 				}else if (strncmp((const char*)recv_msg_lines[current_handle_line], "+MQTTSUBRECV:", 13) == 0) {
 					LOGD("####receive subscribe message from mqtt server %s \r\n", (const char*)recv_msg_lines[current_handle_line]);
                     int ret = analyzeMQTTMsgInternal((char*)recv_msg_lines[current_handle_line]);
-                }else if (strncmp((const char*)recv_msg_lines[current_handle_line], "+MQTTDISCONNECTED:0", 19) == 0 && mqtt_init_done == 1) {
+                }else if (((strncmp((const char*)recv_msg_lines[current_handle_line], MQTT_DISCONNECT, MQTT_DISCONNECT_SIZE) == 0) ||
+                        (strncmp((const char*)recv_msg_lines[current_handle_line], MQTT_RAW_DISCONNECT, MQTT_RAW_DISCONNECT_SIZE) == 0)) && (mqtt_init_done == 1)) {
                     LOGD("###receive disconnect message from wifi_module \r\n");
                     g_has_more_upload_data = 0;
                     g_has_more_download_data = 0;

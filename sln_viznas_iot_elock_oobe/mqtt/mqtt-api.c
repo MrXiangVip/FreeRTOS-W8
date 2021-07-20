@@ -20,7 +20,7 @@ static char cmd[MQTT_MAX_LEN];
 static int sendATCmd(const char *cmd) {
 	//LOGD("--- send AT CMD %s\n", cmd);
 	int res = run_at_cmd(cmd, 2, 8000);
-	while (res == -5) {
+	while (res == AT_CMD_RESULT_BUSY) {
 		//sleep(1);
         vTaskDelay(pdMS_TO_TICKS(1000));
 		res = run_at_cmd(cmd, 2, 8000);
@@ -31,7 +31,7 @@ static int sendATCmd(const char *cmd) {
 static int sendATLongCmd(const char *cmd) {
     //LOGD("--- send AT Long CMD %s\n", cmd);
     int res = run_at_long_cmd(cmd, 2, 8000);
-    while (res == -5) {
+    while (res == AT_CMD_RESULT_BUSY) {
         //sleep(1);
         vTaskDelay(pdMS_TO_TICKS(1000));
         res = run_at_long_cmd(cmd, 2, 8000);
@@ -154,12 +154,13 @@ int publishMQTT(int linkId, const char* topic, const char* data, int qos, int re
 
 // 发布MQTT主题
 int publishRawMQTT(int linkId, const char* topic, char* data, int data_len, int qos, int retain) {
-	char cmd[MQTT_MAX_LEN];
+	//char cmd[MQTT_MAX_LEN];
 	sprintf(cmd, "AT+MQTTPUBRAW=%d,\"%s\",%d,%d,%d", linkId, topic, data_len, qos, retain);
 
-	LOGD("--- send AT CMD %s\r\n", cmd);
+	//LOGD("--- send AT Raw CMD %s\r\n", cmd);
 	int res = run_at_raw_cmd(cmd, data, data_len, 2, 15000);
-	while (res == -5) {
+
+	while (res == AT_CMD_RESULT_BUSY) {
 		//sleep(1);
         vTaskDelay(pdMS_TO_TICKS(1000));
 		res = run_at_raw_cmd(cmd, data, data_len, 2, 15000);

@@ -19,11 +19,6 @@
 #define DEFAULT_CMD_TIMEOUT_USEC 1000000
 #define DEFAULT_RETRY_TIME 3
 
-#define AT_CMD_NONE 0
-#define AT_CMD_SENT 1
-#define AT_CMD_OK 2
-#define AT_CMD_ERROR 3
-#define AT_CMD_TIMEOUT 4
 
 #include "board_rt106f_elock.h"
 
