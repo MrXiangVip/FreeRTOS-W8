@@ -16,6 +16,18 @@
 #include "fsl_common.h"
 #include "pin_mux.h"
 
+#if defined(FSL_RTOS_FREE_RTOS)
+#include "FreeRTOS.h"
+#include "task.h"
+#endif
+
+/*! @brief get current runing environment is ISR or not */
+#ifdef __CA7_REV
+#define IS_RUNNING_IN_ISR() SystemGetIRQNestingLevel()
+#else
+#define IS_RUNNING_IN_ISR() __get_IPSR()
+#endif /* __CA7_REV */
+
 #if FLASH_TYPE == QSPI_FLASH
 /*******************************************************************************
  * Definitions
@@ -67,6 +79,12 @@ static status_t flexspi_nor_wait_bus_busy(FLEXSPI_Type *base)
 
     do
     {
+#if EXCLUSIVE_FLASH_BY_FILE_SYSTEM && defined(FSL_RTOS_FREE_RTOS)
+    	if (!IS_RUNNING_IN_ISR())
+    	{
+    	    vTaskDelay(pdMS_TO_TICKS(2));
+    	}
+#endif
         status = FLEXSPI_TransferBlocking(base, &flashXfer);
 
         if (status != kStatus_Success)

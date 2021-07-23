@@ -9,6 +9,7 @@
 #ifndef __USB_DISK_CARD_H__
 #define __USB_DISK_CARD_H__ 1
 
+#include "fsl_nor_disk.h"
 /*******************************************************************************
 * Definitions
 ******************************************************************************/
@@ -28,12 +29,14 @@
 /*buffer size for sd card example. the larger the buffer size ,the faster the data transfer speed is ,*/
 /*the block size should be multiple of 512, the least value is 512*/
 
-#define USB_DEVICE_MSC_WRITE_BUFF_SIZE (512 * 8U)
-#define USB_DEVICE_MSC_READ_BUFF_SIZE (512 * 8U)
+#define USB_DEVICE_MSC_WRITE_BUFF_SIZE (FATFS_SECTOR_SIZE )
+#define USB_DEVICE_MSC_READ_BUFF_SIZE (FATFS_SECTOR_SIZE )
 
 
-#define USB_DEVICE_SDCARD_BLOCK_SIZE_POWER (9U)
-#define USB_DEVICE_MSC_ADMA_TABLE_WORDS (8U)
+#define USB_DEVICE_SDCARD_BLOCK_SIZE (FATFS_SECTOR_SIZE)
+
+//#define USB_DEVICE_MSC_ADMA_TABLE_WORDS (8U)
+
 typedef struct _usb_msc_buffer_struct
 {
     uint32_t offset; /*!< Offset of the block need to access*/
