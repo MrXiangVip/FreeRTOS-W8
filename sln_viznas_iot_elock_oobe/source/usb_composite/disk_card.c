@@ -25,6 +25,10 @@
 #include <stdlib.h>
 
 #include "composite.h"
+#include "fsl_nor_disk.h"
+#include "fsl_shell.h"
+#include "sln_cli.h"
+extern QueueHandle_t g_UsbShellQueue;
 /*******************************************************************************
 * Definitions
 ******************************************************************************/
@@ -58,9 +62,6 @@ usb_device_mode_parameters_header_struct_t g_ModeParametersHeader = {
 USB_DMA_NONINIT_DATA_ALIGN(USB_DATA_ALIGN_SIZE) uint32_t g_mscReadRequestBuffer[USB_DEVICE_MSC_READ_BUFF_SIZE >> 2];
 
 USB_DMA_NONINIT_DATA_ALIGN(USB_DATA_ALIGN_SIZE) uint32_t g_mscWriteRequestBuffer[USB_DEVICE_MSC_WRITE_BUFF_SIZE >> 2];
-
-uint8_t g_DiskWriteBuffer[USB_DEVICE_MSC_WRITE_BUFF_SIZE*64];
-volatile uint32_t g_DiskWriteBufferIndex = 0;
 
 #if ((defined(USB_DEVICE_CONFIG_USE_TASK) && (USB_DEVICE_CONFIG_USE_TASK > 0)) && \
      (defined(USB_DEVICE_MSC_USE_WRITE_TASK) && (USB_DEVICE_MSC_USE_WRITE_TASK > 0)))
@@ -214,7 +215,7 @@ void USB_DeviceMscWriteTask(void)
     if (NULL != temp)
     {
         errorCode = SD_WriteBlocks(usbDeviceMscCard, temp->buffer, temp->offset,
-                                   temp->size/USB_DEVICE_SDCARD_BLOCK_SIZE);
+                                   temp->size >> USB_DEVICE_SDCARD_BLOCK_SIZE_POWER);
         USB_BmEnterCritical(&usbOsaCurrentSr);
         USB_DeviceMscAddBufferToHead(temp);
         USB_BmExitCritical(usbOsaCurrentSr);
@@ -301,27 +302,26 @@ usb_status_t USB_DeviceMscCallback(class_handle_t handle, uint32_t event, void *
 #if !EXCLUSIVE_FLASH_BY_FILE_SYSTEM
             	{
                 // need lock with database operate
-					errorCode = nor_disk_write(NORDISK, lba->buffer, lba->offset, lba->size/USB_DEVICE_SDCARD_BLOCK_SIZE);
+					errorCode = nor_disk_write(NORDISK, lba->buffer, lba->offset, lba->size >> USB_DEVICE_SDCARD_BLOCK_SIZE_POWER);
 					remote_change_fs = 1;
             	}
 #else
                 {
 
-                	void* buffer;
-                	extern int DiskWrite_PushReq(void* buffer, uint32_t offset, uint32_t num);
-                	if (g_DiskWriteBufferIndex + lba->size <= sizeof(g_DiskWriteBuffer))
-					{
-						memcpy(&g_DiskWriteBuffer[g_DiskWriteBufferIndex],lba->buffer,lba->size);
-						buffer = &g_DiskWriteBuffer[g_DiskWriteBufferIndex];
-						g_DiskWriteBufferIndex += lba->size;
-					}else
-					{
-						memcpy(&g_DiskWriteBuffer[0],lba->buffer,lba->size);
-						buffer = &g_DiskWriteBuffer[0];
-						g_DiskWriteBufferIndex = lba->size;
-					}
-                	DiskWrite_PushReq(buffer,lba->offset,lba->size/USB_DEVICE_SDCARD_BLOCK_SIZE);
-                	errorCode = kStatus_Success;
+					BaseType_t HigherPriorityTaskWoken = pdFALSE;
+					UsbShellCmdQueue_t queueMsg;
+				    queueMsg.argc               = 3;
+				    queueMsg.shellContextHandle = NULL;
+				    queueMsg.shellCommand       = SHELL_EV_FFI_CLI_DISK_WRITE;
+				    sprintf(queueMsg.argv[0],"%u",(uint32_t)lba->buffer);
+				    sprintf(queueMsg.argv[1],"%u",(uint32_t)lba->offset);
+				    sprintf(queueMsg.argv[2],"%u",(uint32_t)lba->size);
+
+					xQueueSendToBackFromISR(g_UsbShellQueue, (void *)&queueMsg, &HigherPriorityTaskWoken);
+					portYIELD_FROM_ISR(HigherPriorityTaskWoken);
+
+					remote_change_fs = 1;
+					errorCode = kStatus_Success;
 
                 }
 #endif
@@ -362,7 +362,7 @@ usb_status_t USB_DeviceMscCallback(class_handle_t handle, uint32_t event, void *
             lba->buffer = (uint8_t *)&g_mscReadRequestBuffer[0];
 
             /*read the data from disk, then store these data to the read buffer*/
-            errorCode = nor_disk_read(NORDISK, lba->buffer, lba->offset, lba->size/USB_DEVICE_SDCARD_BLOCK_SIZE);
+            errorCode = nor_disk_read(NORDISK, lba->buffer, lba->offset, lba->size >> USB_DEVICE_SDCARD_BLOCK_SIZE_POWER);
 
             if (kStatus_Success != errorCode)
             {

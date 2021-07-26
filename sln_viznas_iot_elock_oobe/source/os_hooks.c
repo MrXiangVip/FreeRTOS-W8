@@ -9,78 +9,6 @@
 
 #include "FreeRTOS.h"
 #include "task.h"
-#include "fsl_nor_disk.h"
-//#include "diskio.h"
-
-extern uint8_t remote_change_fs;
-#define DISK_WRITE_CONTEXT_REQ_NUM 128
-typedef struct{
-	void* buffer;
-	uint32_t sec_offset;
-	uint32_t sec_num;
-
-}DiskWriteReq_t;
-
-typedef struct _DiskWriteContext_t
-{
-	DiskWriteReq_t reqs[DISK_WRITE_CONTEXT_REQ_NUM];
-	int req_head;
-	int req_tail;
-}DiskWriteContext_t;
-
-
-__attribute__((section(".dtc_data, \"aw\", %nobits @"))) DiskWriteContext_t g_DiskWriteContext =
-{
-		.req_head = 0,
-		.req_tail = 0
-};
-
-
-int DiskWrite_PushReq(void* buffer, uint32_t offset, uint32_t num)
-{
-	int ret;
-	uint32_t mask = DisableGlobalIRQ();
-	if ((g_DiskWriteContext.req_tail + 1)%DISK_WRITE_CONTEXT_REQ_NUM == g_DiskWriteContext.req_head)
-	{
-		ret = 0;
-	}
-	else
-	{
-		g_DiskWriteContext.reqs[g_DiskWriteContext.req_tail].buffer = buffer;
-		g_DiskWriteContext.reqs[g_DiskWriteContext.req_tail].sec_offset = offset;
-		g_DiskWriteContext.reqs[g_DiskWriteContext.req_tail].sec_num = num;
-
-		g_DiskWriteContext.req_tail = (g_DiskWriteContext.req_tail+1)%DISK_WRITE_CONTEXT_REQ_NUM;
-		ret = 1;
-	}
-	EnableGlobalIRQ(mask);
-
-	return ret;
-
-}
-
-int DiskWrite_PopReq(void** pBuffer, uint32_t *pOffset, uint32_t *pNum)
-{
-	int ret;
-	uint32_t mask = DisableGlobalIRQ();
-	if (g_DiskWriteContext.req_head != g_DiskWriteContext.req_tail)
-	{
-		*pBuffer = g_DiskWriteContext.reqs[g_DiskWriteContext.req_head].buffer;
-		*pOffset = g_DiskWriteContext.reqs[g_DiskWriteContext.req_head].sec_offset;
-		*pNum = g_DiskWriteContext.reqs[g_DiskWriteContext.req_head].sec_num;
-
-		g_DiskWriteContext.req_head = (g_DiskWriteContext.req_head+1)%DISK_WRITE_CONTEXT_REQ_NUM;
-		ret = 1;
-	}else
-	{
-		ret = 0;
-	}
-	EnableGlobalIRQ(mask);
-
-	return ret;
-}
-
-
 
 /**
  * @brief Warn if stack overflow is detected.
@@ -195,19 +123,4 @@ void vApplicationGetTimerTaskMemory(StaticTask_t **ppxTimerTaskTCBBuffer,
      * Note that, as the array is necessarily of type StackType_t,
      * configTIMER_TASK_STACK_DEPTH is specified in words, not bytes. */
     *pulTimerTaskStackSize = configTIMER_TASK_STACK_DEPTH;
-}
-
-
-void vApplicationIdleHook( void )
-{
-   void* buf;
-   uint32_t offset;
-   uint32_t num;
-
-   while (DiskWrite_PopReq(&buf,&offset,&num))
-   {
-	   nor_disk_write(NORDISK, buf, offset, num);
-	   remote_change_fs = 1;
-
-   }
 }
