@@ -70,7 +70,7 @@ bool DBManager::saveRecordToFile(list<Record*> recordList,char *filePath){
     cJSON_AddItemToObject(jsonroot, "ObjInfo", ObjArr);
     cjson_str = cJSON_Print(jsonroot);
 
-    LOGD("-----2.将json格式数据存文件-----\r\n");
+    LOGD("-----2.将json格式数据存文件----%d 条记录--\r\n", cJSON_GetArraySize(ObjArr));
 #ifdef  FIX_SIZE
     
     memset(buf, 0, sizeof(buf));
@@ -131,7 +131,7 @@ list<Record*> DBManager::readRecordFromFile(char *filePath){
                 record->upload = cJSON_GetObjectItem(SubObj, "upload")->valueint;
 
                 recordList.push_back(record);
-                LOGD("i: [%d] id:%d, uuid:%s, time_stamp:%d\r\n", i, record->ID, record->UUID, record->time_stamp);
+                LOGD("i: [%d] id:%d, uuid:%s, time_stamp:%d ,upload:%d\r\n", i, record->ID, record->UUID, record->time_stamp, record->upload);
             }
         }
 
