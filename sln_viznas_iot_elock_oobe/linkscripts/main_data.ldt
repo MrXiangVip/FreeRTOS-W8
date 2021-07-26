@@ -1,5 +1,0 @@
-*(.text*)
-*startup_*.o (.after_vectors.*)
-. = ALIGN(${text_align});
-*(.rodata .rodata.* .constdata .constdata.*)
-*(.data*)

@@ -1,2 +1,0 @@
-*startup_*.o (.rodata .rodata.* .constdata .constdata.*)
-. = ALIGN(${text_align});

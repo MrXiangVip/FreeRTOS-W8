@@ -3,5 +3,4 @@
         *flexspi_qspi_flash_ops.o(.text*)
         *fsl_flexspi.o(.text*)
         *sln_flash.o(.text*)
-        *startup_*.o(.text*)
 </#if>
