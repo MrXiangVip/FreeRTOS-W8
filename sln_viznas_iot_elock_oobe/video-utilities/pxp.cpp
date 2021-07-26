@@ -411,7 +411,15 @@ static int PXP_SendFResMsg(QMsg* msg)
     }
     memcpy(pFResMsg,msg,sizeof(*msg));
     pFResMsg->id = QMSG_PXP_FACEREC;
-    return Camera_SendQMsg((void *)&pFResMsg);
+
+    int ret = Camera_SendQMsg((void *)&pFResMsg);
+
+    if (ret)
+    {
+    	vPortFree(pFResMsg);
+    }
+
+    return ret;
 }
 
 /* send msg to Camera Task by PXP task to signal that frame for display is done */
@@ -424,7 +432,14 @@ static int PXP_SendDResMsg(void)
         return -1;
     }
     pDResMsg->id = QMSG_PXP_DISPLAY;
-    return Camera_SendQMsg((void *)&pDResMsg);
+
+    int ret = Camera_SendQMsg((void *)&pDResMsg);
+
+	if (ret)
+	{
+		vPortFree(pDResMsg);
+	}
+    return ret;
 }
 
 static void PXP_Task(void *param)

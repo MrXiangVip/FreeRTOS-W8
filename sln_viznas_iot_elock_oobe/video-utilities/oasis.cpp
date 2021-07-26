@@ -418,7 +418,7 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
 
             //save face into jpeg
             //void util_crop(unsigned char* src, int srcw, int srch, unsigned char* dst, int dstw, int dsth, int top, int left, int elemsize);
-            if (para->faceBoxRGB != NULL)
+            if ((para->faceBoxRGB != NULL) && (recResult == OASIS_REC_RESULT_KNOWN_FACE))
             {
             	int w = para->faceBoxRGB->rect[2] - para->faceBoxRGB->rect[0] + 1;
             	int h = para->faceBoxRGB->rect[3] - para->faceBoxRGB->rect[1] + 1;
@@ -502,7 +502,7 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
             }
             VIZN_EnrolmentEvent(gApiHandle, face_info);
 
-            if (para->faceBoxRGB != NULL)
+            if ((para->faceBoxRGB != NULL) && ((res == OASIS_REG_RESULT_OK) || (res == OASIS_REG_RESULT_DUP)))
             {
                 int w = para->faceBoxRGB->rect[2] - para->faceBoxRGB->rect[0] + 1;
                 int h = para->faceBoxRGB->rect[3] - para->faceBoxRGB->rect[1] + 1;
