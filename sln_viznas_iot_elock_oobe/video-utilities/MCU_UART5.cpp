@@ -428,7 +428,7 @@ int cmdBootModeRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
         	Display_Start();
             Oasis_Start();
 
-            Display_Update((uint32_t)wave_logo_v3);
+            //Display_Update((uint32_t)wave_logo_v3);
         }
     }
     return 0;
