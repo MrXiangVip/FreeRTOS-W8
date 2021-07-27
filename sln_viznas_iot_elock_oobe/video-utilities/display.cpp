@@ -288,7 +288,7 @@ void Display_Init_Task(void *param)
 #else
     //Display_Update((uint32_t)nxp_facemanager);
 #endif
-    vTaskDelay(500);//logo display time
+    vTaskDelay(100);//logo display time
 
     xEventGroupSetBits(g_SyncVideoEvents, 1 << SYNC_VIDEO_DISPLAY_INIT_BIT);
 
