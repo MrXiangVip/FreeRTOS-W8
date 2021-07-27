@@ -1407,7 +1407,7 @@ int uploadRecords() {
 				if (fret == 0) {
 					fret = ret;
 				}
-				break;
+				//break;
 			} else {
 				LOGD("register: upload record and image success\r\n");
 			}
@@ -1435,7 +1435,7 @@ int uploadRecords() {
 				if (fret == 0) {
 					fret = ret;
 				}
-				break;
+				//break;
 			} else {
 				LOGD("register/opendoor: upload records success\r\n");
 			}
@@ -1465,7 +1465,7 @@ int uploadRecords() {
 				if (fret == 0) {
 					fret = ret;
 				}
-				break;
+				//break;
 			} else {
 				LOGD("opendoor: upload record and image success\r\n");
 			}
