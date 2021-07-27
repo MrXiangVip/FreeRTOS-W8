@@ -1027,8 +1027,9 @@ int cmdWifiSSIDProc(unsigned char nMessageLen, const unsigned char *pszMessage) 
         memcpy(wifi_ssid, pszMessage, nMessageLen);
 
         // 保存设置到系统配置文件
-        LOGD("wifi ssid : <%s>.\n", wifi_ssid);
+        LOGD("wifi ssid : <%s>.\r\n", wifi_ssid);
         update_wifi_ssid(wifi_ssid);
+		update_need_reconnect("true");
         //read_config("./config.ini");
 
         ret = SUCCESS;
@@ -1050,8 +1051,9 @@ int cmdWifiPwdProc(unsigned char nMessageLen, const unsigned char *pszMessage) {
         memcpy(wifi_pwd, pszMessage, nMessageLen);
 
         // 保存设置到系统配置文件
-        LOGD("wifi pwd : <%s>.\n", wifi_pwd);
+        LOGD("wifi pwd : <%s>.\r\n", wifi_pwd);
         update_wifi_pwd(wifi_pwd);
+		update_need_reconnect("true");
         //read_config("./config.ini");
         ret = SUCCESS;
     }
