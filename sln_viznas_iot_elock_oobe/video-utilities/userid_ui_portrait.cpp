@@ -647,8 +647,10 @@ static void UIInfo_UpdateFaceInfo2(uint16_t *pBufferAddr, QUIInfoMsg* infoMsg)
 
         case 1 << kEvents_API_Layer_RecFailed:
         {
-            sprintf(tstring, "Recognition Timeout");
+#if	0
+        	sprintf(tstring, "Recognition Timeout");
             draw_text(tstring, CAMERA_SURFACE_SHIFT + 10, 10, 0x0, RGB565_RED, OPENSANS16, pBufferAddr);
+#endif
         }
         break;
         default:
@@ -892,7 +894,7 @@ void UIInfo_Update(uint16_t *pBufferAddr, QUIInfoMsg* infoMsg, uint8_t p_Display
     }
     if (p_DisplayInterfaceMode == DISPLAY_INTERFACE_INFOBAR)
     {
-        UIInfo_UpdateOasisState(pBufferAddr);
+        //UIInfo_UpdateOasisState(pBufferAddr);
         //UIInfo_UpdateBottomInfoBar(pBufferAddr, infoMsg, appType);
         UIInfo_UpdateBottomInfoBarV2(pBufferAddr, infoMsg, appType);
     }
