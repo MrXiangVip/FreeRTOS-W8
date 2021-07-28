@@ -131,7 +131,7 @@ list<Record*> DBManager::readRecordFromFile(char *filePath){
                 record->upload = cJSON_GetObjectItem(SubObj, "upload")->valueint;
 
                 recordList.push_back(record);
-                LOGD("i: [%d] id:%d, uuid:%s, time_stamp:%d ,upload:%d\r\n", i, record->ID, record->UUID, record->time_stamp, record->upload);
+                LOGD("i: [%d] id:%d, uuid:%s, action %d, time_stamp:%d, upload:%d\r\n", i, record->ID, record->UUID, record->action, record->time_stamp, record->upload);
             }
         }
 
@@ -251,7 +251,6 @@ bool  DBManager::updateRecordByID(Record *record)
 bool  DBManager::updateLastRecordStatus(int status, long currTime)
 {
     LOGD("更新最后一条记录\r\n");
-
     return  true;
 }
 
