@@ -993,6 +993,15 @@ int cmdDeleteUserReqProcByHead(unsigned char nHead, unsigned char nMessageLen, c
         //ret =DBManager::getInstance()->clearUser();
         // 清空操作记录
         ret = DBManager::getInstance()->clearRecord();
+
+        vizn_api_status_t status;
+        status = VIZN_DelUser(NULL);
+        if (kStatus_API_Layer_Success == status) {
+            ret = SUCCESS;
+        } else {
+            ret = FAILED;
+        }
+        DB_Save(0);
     } else {
         // 删除单个用户 和其操作记录
         LOGD("delete single user start");
@@ -1002,9 +1011,23 @@ int cmdDeleteUserReqProcByHead(unsigned char nHead, unsigned char nMessageLen, c
         //ret = DBManager::getInstance()->deleteUserByUUID( strUUID );
         //删除用户的操作记录
         ret = DBManager::getInstance()->deleteRecordByUUID(strUUID);
+
+        memset(username, 0, sizeof(username));
+        HexToStr(username, uu_id.UID, sizeof(uu_id.UID));
+        username[16] = '\0';//NXP的人脸注册API的username最大只能16byte
+        LOGD("=====UUID<len:%d>:%s.\n", sizeof(username), username);
+
+        vizn_api_status_t status;
+        status = VIZN_DelUser(NULL, username);
+        if (kStatus_API_Layer_Success == status) {
+            ret = SUCCESS;
+        } else {
+            ret = FAILED;
+        }
+        DB_Save(0);
     }
 
-    LOGD("delete uuid : <0x%08x>, <0x%08x> result %d nHead 0x%2x.\n", uu_id.tUID.H, uu_id.tUID.L, ret, nHead);
+    LOGD("delete uuid : <0x%08x>, <0x%08x> result %d nHead 0x%2x.\r\n", uu_id.tUID.H, uu_id.tUID.L, ret, nHead);
     if (nHead == HEAD_MARK_MQTT) {
         cmdCommRsp2MqttByHead(HEAD_MARK_MQTT, CMD_FACE_DELETE_USER, ret);
     } else {
@@ -1240,7 +1263,7 @@ int ProcMessage(
             break;
         }
         case CMD_FACE_DELETE_USER: {
-            cmdDeleteUserReqProcByHead(HEAD_MARK, nMessageLen, pszMessage);
+            cmdDeleteUserReqProcByHead(/*HEAD_MARK*/HEAD_MARK_MQTT, nMessageLen, pszMessage);
             break;
         }
         case CMD_REQ_RESUME_FACTORY: {
