@@ -696,7 +696,7 @@ static void UIInfo_DrawFocusRectV2(uint16_t* pAsBufferAddr, QUIInfoMsg* infoMsg)
     			}
     		}
     	}
-    } else if(Oasis_GetState()== OASIS_STATE_FACE_REC_START) {
+    } else if((Oasis_GetState()== OASIS_STATE_FACE_REC_START) || (Oasis_GetState()== OASIS_STATE_FACE_REC_STOP)) {
     	uint16_t *pIcon = NULL;
     	int img_idx = (logindex) % 4;
     	if (img_idx == 0) {

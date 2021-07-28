@@ -1408,14 +1408,17 @@ static void uart5_QMsg_task(void *pvParameters) {
                     StrToHex(g_uu_id.UID, (char *) username, sizeof(g_uu_id.UID));
 
                     cmdRegResultNotifyReq(g_uu_id, g_reging_flg);
-                    Uart5_SendDeinitCameraMsg();
                     if (g_reging_flg == REG_STATUS_FAILED) {
                         CloseLcdBackground();
+                        vTaskDelay(pdMS_TO_TICKS(1000));
+                        Uart5_SendDeinitCameraMsg();
                         vTaskDelay(pdMS_TO_TICKS(200));
                         cmdCloseFaceBoardReq();
                     } else {
                         //shut_down = true;
                         CloseLcdBackground();
+                        vTaskDelay(pdMS_TO_TICKS(1000));
+                        Uart5_SendDeinitCameraMsg();
                         vTaskDelay(pdMS_TO_TICKS(200));
                         save_files_before_pwd();
                         vTaskDelay(pdMS_TO_TICKS(100));
@@ -1438,6 +1441,8 @@ static void uart5_QMsg_task(void *pvParameters) {
 
                     if (pQMsg->msg.val) {//success
                         LOGD("User face recognize succuss!\r\n");
+                        CloseLcdBackground();
+                        vTaskDelay(pdMS_TO_TICKS(1000));
 						Uart5_SendDeinitCameraMsg();
                         //LOGD("gFaceInfo.name is %s!\n", gFaceInfo.name);
                         LOGD("pQMsg->msg.info.name is %s!\n", pQMsg->msg.info.name);
@@ -1447,15 +1452,15 @@ static void uart5_QMsg_task(void *pvParameters) {
                         StrToHex(g_uu_id.UID, name, sizeof(g_uu_id.UID));
 
                         cmdOpenDoorReq(g_uu_id);
-                        CloseLcdBackground();
                     } else {//failed
                         recognize_times++;
                         LOGD("User face recognize failed %d times\r\n", recognize_times);
                         if (recognize_times > 100) {
                             recognize_times = 0;
+                            CloseLcdBackground();
+                            vTaskDelay(pdMS_TO_TICKS(1000));
 							Uart5_SendDeinitCameraMsg();
                             cmdCloseFaceBoardReq();//关主控电源
-                            CloseLcdBackground();
                             break;
                         }
 
