@@ -740,6 +740,7 @@ int cmdWifiOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessag
 }
 
 int save_files_before_pwd() {
+    LOGD("开始保存config, db, jpg 文件 \r\n");
     if (saving_file == false) {
         DB_Save(0);
         save_json_config_file();
@@ -751,6 +752,7 @@ int save_files_before_pwd() {
         DBManager::getInstance()->flushRecordList();
     }
     Oasis_WriteJpeg();
+    LOGD("保存config, db, jpg 文件结束 \r\n");
 
     return 0;
 }

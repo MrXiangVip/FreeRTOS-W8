@@ -97,6 +97,7 @@ int fatfs_write(const char *file_name, const char *buf, int offset, int bytes)
         FATFS_PRINTF(("\r\nClose file failed.\r\n"));
         return -1;
     }
+    FATFS_PRINTF(("\r\nWrite End:%s.\r\n", file_name));
 
     return 0;
 }
@@ -114,7 +115,7 @@ int fatfs_write_append(const char *file_name, const char *buf, int bytes)
         }
         else
         {
-            FATFS_PRINTF(("Open file failed: %d.\r\n", error));
+            FATFS_PRINTF(("Open file %s failed: %d.\r\n", file_name, error));
             return -1;
         }
     }
@@ -245,7 +246,7 @@ int fatfs_getsize(char *file_name)
         }
         else
         {
-            FATFS_PRINTF(("Open file failed: %d.\r\n", error));
+            FATFS_PRINTF(("Open file  %s failed: %d.\r\n", file_name, error));
             return -1;
         }
     }
