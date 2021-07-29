@@ -2509,6 +2509,8 @@ void BOARD_IniteLockDispPins(void)
 
     /* Initialize GPIO functionality on GPIO_EMC_41 (pin C7) BL_PWM*/
     GPIO_PinInit(GPIO3, 27U, &gpio_pin_config);
+
+    PJDisp_TurnOffBacklight();
 }
 
 #else

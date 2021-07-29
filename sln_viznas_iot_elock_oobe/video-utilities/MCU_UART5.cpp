@@ -425,6 +425,7 @@ int cmdBootModeRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
     if((boot_mode == BOOT_MODE_NORMAL) || (boot_mode == BOOT_MODE_REG)) {
         if(oasis_task_start == false) {
         	oasis_task_start = true;
+        	OpenLcdBackground();
         	Display_Start();
             Oasis_Start();
 
