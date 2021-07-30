@@ -69,19 +69,17 @@ bool DBManager::saveRecordToFile(list<Record*> recordList,char *filePath){
     //4.3 ObjArr加入到jsonroot
     cJSON_AddItemToObject(jsonroot, "ObjInfo", ObjArr);
     cjson_str = cJSON_Print(jsonroot);
-
-    LOGD("-----2.将json格式数据存文件----%d 条记录--\r\n", cJSON_GetArraySize(ObjArr));
+    if(cjson_str!=NULL){
+		LOGD("-----2.将json格式数据存文件----%d 条记录--\r\n", cJSON_GetArraySize(ObjArr));
 #ifdef  FIX_SIZE
-    
-    memset(buf, 0, sizeof(buf));
-    memcpy(buf, cjson_str, strlen(cjson_str));
-    fatfs_write( filePath, buf, 0, MAX_BYTE);
-
+		memset(buf, 0, sizeof(buf));
+		memcpy(buf, cjson_str, strlen(cjson_str));
+		fatfs_write( filePath, buf, 0, MAX_BYTE);
 #else
-
-	fatfs_write( filePath, cjson_str, 0, strlen(cjson_str));
+		fatfs_write( filePath, cjson_str, 0, strlen(cjson_str));
 #endif
-    vPortFree(cjson_str);
+		vPortFree(cjson_str);
+    }
     cJSON_Delete(jsonroot);
     LOGD("----- 保存记录文件结束-----\r\n");
     return true;
@@ -102,40 +100,45 @@ list<Record*> DBManager::readRecordFromFile(char *filePath){
         return recordList;
     } else {
         memset(buf, 0, fsize);
-        fatfs_read(filePath, buf, 0, fsize);
-        //LOGD("file size %d ,%s \r\n", fsize, buf);
-        LOGD("file size %d\r\n", fsize);
+        int status = fatfs_read(filePath, buf, 0, fsize);
+        //LOGD("status %d file size %d ,%s \r\n", status, fsize, buf);
+        LOGD("status %d file size %d\r\n", status, fsize);
 
-        cJSON *jsonroot = cJSON_Parse(buf);
-        //4. 解析数组成员是json对象的数组ObjArr
-        LOGD("------2.将json 格式数据组织成链表---------\r\n");
-        cJSON *ObjArr = cJSON_GetObjectItem(jsonroot, "ObjInfo");
-        if (cJSON_IsArray(ObjArr)) {
-            ArrLen = cJSON_GetArraySize(ObjArr);
-            LOGD("ObjArr Len: %d\r\n", ArrLen);
-            for (int i = 0; i < ArrLen; i++) {
-                cJSON *SubObj = cJSON_GetArrayItem(ObjArr, i);
-                if (NULL == SubObj) {
-                    continue;
-                }
+        if (status == 0)
+        {
+			cJSON *jsonroot = cJSON_Parse(buf);
+			//4. 解析数组成员是json对象的数组ObjArr
+			LOGD("------2.将json 格式数据组织成链表---------\r\n");
+			cJSON *ObjArr = cJSON_GetObjectItem(jsonroot, "ObjInfo");
+			if (cJSON_IsArray(ObjArr)) {
+				ArrLen = cJSON_GetArraySize(ObjArr);
+				LOGD("ObjArr Len: %d\r\n", ArrLen);
+				for (int i = 0; i < ArrLen; i++) {
+					cJSON *SubObj = cJSON_GetArrayItem(ObjArr, i);
+					if (NULL == SubObj) {
+						continue;
+					}
 
-                Record *record = (Record *) pvPortMalloc(sizeof(Record));
-                record->ID = i;
-                strcpy(record->UUID, cJSON_GetObjectItem(SubObj, "UUID")->valuestring);
-                record->action = cJSON_GetObjectItem(SubObj, "action")->valueint;
-                record->time_stamp = cJSON_GetObjectItem(SubObj, "time_stamp")->valuedouble;
-                record->status = cJSON_GetObjectItem(SubObj, "status")->valueint;
-                strcpy(record->image_path , cJSON_GetObjectItem(SubObj, "image_path")->valuestring);
-                record->power = cJSON_GetObjectItem(SubObj, "power")->valueint;
-                record->power2 = cJSON_GetObjectItem(SubObj, "power2")->valueint;
-                record->upload = cJSON_GetObjectItem(SubObj, "upload")->valueint;
+					Record *record = (Record *) pvPortMalloc(sizeof(Record));
+					record->ID = i;
+					strcpy(record->UUID, cJSON_GetObjectItem(SubObj, "UUID")->valuestring);
+					record->action = cJSON_GetObjectItem(SubObj, "action")->valueint;
+					record->time_stamp = cJSON_GetObjectItem(SubObj, "time_stamp")->valuedouble;
+					record->status = cJSON_GetObjectItem(SubObj, "status")->valueint;
+					strcpy(record->image_path , cJSON_GetObjectItem(SubObj, "image_path")->valuestring);
+					record->power = cJSON_GetObjectItem(SubObj, "power")->valueint;
+					record->power2 = cJSON_GetObjectItem(SubObj, "power2")->valueint;
+					record->upload = cJSON_GetObjectItem(SubObj, "upload")->valueint;
 
-                recordList.push_back(record);
-                LOGD("i: [%d] id:%d, uuid:%s, action %d, time_stamp:%d, upload:%d\r\n", i, record->ID, record->UUID, record->action, record->time_stamp, record->upload);
-            }
+					recordList.push_back(record);
+					LOGD("i: [%d] id:%d, uuid:%s, action %d, time_stamp:%d, upload:%d\r\n", i, record->ID, record->UUID, record->action, record->time_stamp, record->upload);
+				}
+			}
+
+			cJSON_Delete(jsonroot);
+        }else {
+        	 LOGD("readRecordFromFile status = %d \r\n", status);
         }
-
-        cJSON_Delete(jsonroot);
     }
 
 
@@ -159,6 +162,12 @@ int DBManager::addRecord(Record *record){
     LOGD("增加操作记录 %d  最大记录限制到 %d\r\n", id, max_size);
     if( id >= MAX_COLUMN ){
         record->ID=id;
+        Record record0;
+		int ret = getRecordByID(0, &record0);
+		if (ret == 0) {
+			LOGD("record0.image_path is %s\r\n", record0.image_path);
+			fatfs_delete(record0.image_path);
+		}
         recordList.pop_front();
         recordList.push_back( record );
     } else{
