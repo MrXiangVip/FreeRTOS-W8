@@ -25,6 +25,7 @@
 
 #include "toojpeg.h"
 #include "fatfs_op.h"
+#include "fsl_log.h"
 
 /*******************************************************************************
  * Definitions
@@ -301,7 +302,8 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
             break;
         case OASISLT_EVT_QUALITY_CHK_COMPLETE:
         {
-            UsbShell_Printf("[OASIS]:quality chk res:%d\r\n", para->qualityResult);
+            //UsbShell_Printf("[OASIS]:quality chk res:%d\r\n", para->qualityResult);
+            LOGD("[OASIS]:quality chk res:%d\r\n", para->qualityResult);
 
             gui_info.irLive  = para->reserved[5];
             gui_info.front   = para->reserved[1];
@@ -313,34 +315,43 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
             Camera_GetPWM(LED_IR,&gui_info.irPwm);
             Camera_GetPWM(LED_WHITE,&gui_info.rgbPwm);
 
-            UsbShell_DbgPrintf(VERBOSE_MODE_L2,"[irBrightness]:%d\r\n",gui_info.irBrightness);
-            UsbShell_DbgPrintf(VERBOSE_MODE_L2,"[rgbBrightness]:%d\r\n",gui_info.rgbBrightness);
+            //UsbShell_DbgPrintf(VERBOSE_MODE_L2,"[irBrightness]:%d\r\n",gui_info.irBrightness);
+            LOGD("[irBrightness]:%d\r\n",gui_info.irBrightness);
+            //UsbShell_DbgPrintf(VERBOSE_MODE_L2,"[rgbBrightness]:%d\r\n",gui_info.rgbBrightness);
+            LOGD("[rgbBrightness]:%d\r\n",gui_info.rgbBrightness);
             if (para->qualityResult == OASIS_QUALITY_RESULT_FACE_OK)
             {
-                UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]:ok!\r\n");
+                //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]:ok!\r\n");
+                LOGD("[EVT]:ok!\r\n");
             }
             else if (OASIS_QUALITY_RESULT_FACE_SIDE_FACE == para->qualityResult)
             {
-                UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]:side face!\r\n");
+                //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]:side face!\r\n");
+                LOGD("[EVT]:side face!\r\n");
             }
             else if (para->qualityResult == OASIS_QUALITY_RESULT_FACE_TOO_SMALL)
             {
-                UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]:Small Face!\r\n");
+                //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]:Small Face!\r\n");
+                LOGD("[EVT]:Small Face!\r\n");
             }
             else if (para->qualityResult == OASIS_QUALITY_RESULT_FACE_BLUR)
             {
-                UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]: Blurry Face!\r\n");
+                //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]: Blurry Face!\r\n");
+                LOGD("[EVT]: Blurry Face!\r\n");
             }
             else if (para->qualityResult == OASIS_QUALITY_RESULT_FAIL_LIVENESS_IR)
             {
-                UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]: IR Fake Face!\r\n");
+                //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]: IR Fake Face!\r\n");
+                LOGD("[EVT]: IR Fake Face!\r\n");
             }
             else if (para->qualityResult == OASIS_QUALITY_RESULT_FAIL_LIVENESS_RGB)
             {
-                UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]: RGB Fake Face!\r\n");
+                //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]: RGB Fake Face!\r\n");
+                LOGD("[EVT]: RGB Fake Face!\r\n");
             }else if (para->qualityResult == OASIS_QUALITY_RESULT_FAIL_BRIGHTNESS_DARK
                   || para->qualityResult == OASIS_QUALITY_RESULT_FAIL_BRIGHTNESS_OVEREXPOSURE) {
-                UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]: Face Brightness unfit!\r\n");
+                //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]: Face Brightness unfit!\r\n");
+                LOGD("[EVT]: Face Brightness unfit!\r\n");
             }
         }
         break;
@@ -400,17 +411,20 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
             if (recResult == OASIS_REC_RESULT_KNOWN_FACE)
             {
                 std::string name;
-                UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[OASIS]:face id:%d\r\n", id);
+                //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[OASIS]:face id:%d\r\n", id);
+                LOGD("[OASIS]:face id:%d\r\n", id);
                 DB_GetName(id, name);
                 memcpy(gui_info.name, name.c_str(), name.size());
                 face_info.recognize = true;
                 face_info.name      = std::string(name);
-                UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[OASIS]:face id:%d name:%s\r\n", id, gui_info.name);
+                //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[OASIS]:face id:%d name:%s\r\n", id, gui_info.name);
+                LOGD("[OASIS]:face id:%d name:%s\r\n", id, gui_info.name);
             }
             else
             {
                 // face is not recognized, do nothing
-                UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[OASIS]:face unrecognized\r\n");
+                //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[OASIS]:face unrecognized\r\n");
+                LOGD("[OASIS]:face unrecognized\r\n");
                 face_info.recognize = false;
             }
 
@@ -453,7 +467,8 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
 
             	s_dataSizeInJpeg = 0;
             	auto ok = TooJpeg::writeJpeg(Oasis_WriteJpegBuffer, resized, OASIS_JPEG_IMG_WIDTH, OASIS_JPEG_IMG_HEIGHT);
-            	UsbShell_Printf("[OASIS]:TooJpeg ret:%d file size:%d\r\n", ok,s_dataSizeInJpeg);
+            	//UsbShell_Printf("[OASIS]:TooJpeg ret:%d file size:%d\r\n", ok,s_dataSizeInJpeg);
+            	LOGD("[OASIS]:TooJpeg ret:%d file size:%d\r\n", ok,s_dataSizeInJpeg);
             	vPortFree(resized);
 
                 oasis_flag = 2;
@@ -478,7 +493,8 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
         {
             unsigned id              = para->faceID;
             OASISLTRegisterRes_t res = para->regResult;
-            UsbShell_Printf("[OASIS]:registration complete:%d\r\n", res);
+            //UsbShell_Printf("[OASIS]:registration complete:%d\r\n", res);
+            LOGD("[OASIS]:registration complete:%d\r\n", res);
             face_info.enrolment_result = res;
             memset(gui_info.name, 0x0, sizeof(gui_info.name));
             if ((res == OASIS_REG_RESULT_OK) || (res == OASIS_REG_RESULT_DUP))
@@ -537,7 +553,8 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
 
                 s_dataSizeInJpeg = 0;
                 auto ok = TooJpeg::writeJpeg(Oasis_WriteJpegBuffer, resized, OASIS_JPEG_IMG_WIDTH, OASIS_JPEG_IMG_HEIGHT);
-                UsbShell_Printf("[OASIS]:TooJpeg ret:%d file size:%d\r\n", ok,s_dataSizeInJpeg);
+                //UsbShell_Printf("[OASIS]:TooJpeg ret:%d file size:%d\r\n", ok,s_dataSizeInJpeg);
+                LOGD("[OASIS]:TooJpeg ret:%d file size:%d\r\n", ok,s_dataSizeInJpeg);
                 vPortFree(resized);
 
                 oasis_flag = 1;
@@ -562,10 +579,14 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
         Oasis_SendFaceInfoMsg(gui_info);
         if (evt == OASISLT_EVT_REC_COMPLETE || evt == OASISLT_EVT_REG_COMPLETE)
         {
-            UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]:sim:[%d]\r\n", para->reserved[0]);
-            UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]:FF[%d][%d]\r\n", para->reserved[1], para->reserved[2]);
-            UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]:Blur[%d][%d]\r\n", para->reserved[3], para->reserved[4]);
-            UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]:Liveness[%d][%d]\r\n", para->reserved[5], para->reserved[6]);
+            //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]:sim:[%d]\r\n", para->reserved[0]);
+            LOGD("[EVT]:sim:[%d]\r\n", para->reserved[0]);
+            //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]:FF[%d][%d]\r\n", para->reserved[1], para->reserved[2]);
+            LOGD("[EVT]:FF[%d][%d]\r\n", para->reserved[1], para->reserved[2]);
+            //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]:Blur[%d][%d]\r\n", para->reserved[3], para->reserved[4]);
+            LOGD("[EVT]:Blur[%d][%d]\r\n", para->reserved[3], para->reserved[4]);
+            //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]:Liveness[%d][%d]\r\n", para->reserved[5], para->reserved[6]);
+            LOGD("[EVT]:Liveness[%d][%d]\r\n", para->reserved[5], para->reserved[6]);
         }
 		if(evt == OASISLT_EVT_REC_COMPLETE) {
 			Uart5_GetFaceRecResult((uint8_t)face_info.recognize);
@@ -580,11 +601,14 @@ static int GetRegisteredFacesHandler(uint16_t *face_ids, void **faces, uint32_t 
     /*caller ask for the total records numbers*/
     if (*size == 0)
     {
+        LOGD("GetRegisteredFacesHandler return 0\r\n");
         DB_Count((int*)size);
         return 0;
     }
 
     DB_GetID_FeaturePointers(face_ids,faces,*size);
+    //UsbShell_Printf("GetRegisteredFacesHandler size is %d\r\n", *size);
+    LOGD("GetRegisteredFacesHandler size is %d\r\n", *size);
 
     return 0;
 }
@@ -601,8 +625,9 @@ static int AddNewFaceHandler(uint16_t *face_id, void *face,void* snapshot, int s
     {
         if (status == kStatus_API_Layer_EnrolmentAddNewFace_NoMemory)
         {
-            UsbShell_Printf("Maximum number of users reached\r\n");
-        }
+            //UsbShell_Printf("Maximum number of users reached\r\n");
+            LOGD("Maximum number of users reached\r\n");
+       }
         ret = -1;
     }
     return ret;
@@ -652,7 +677,8 @@ static void Oasis_PWMControl(uint8_t led, uint8_t curPWM, uint8_t direction)
             pwm = curPWM - pwm_interval;
 
     }
-    UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[LED:%d][curPWM:%d]\r\n", led, curPWM);
+    //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[LED:%d][curPWM:%d]\r\n", led, curPWM);
+    LOGD("[LED:%d][curPWM:%d]\r\n", led, curPWM);
     Camera_QMsgSetPWM(led, pwm);
 }
 
@@ -686,13 +712,15 @@ static void Oasis_LedControl(cfg_led_t ledID,uint8_t direction, uint8_t enableRG
 
     uint8_t pwm;
     Camera_GetPWM(ledID,&pwm);
-    UsbShell_DbgPrintf(VERBOSE_MODE_L2,"Oasis_LedControl,led:%d dir:%d pwm:%d\r\n",ledID, direction, pwm);
+    //UsbShell_DbgPrintf(VERBOSE_MODE_L2,"Oasis_LedControl,led:%d dir:%d pwm:%d\r\n",ledID, direction, pwm);
+    LOGD("Oasis_LedControl,led:%d dir:%d pwm:%d\r\n",ledID, direction, pwm);
     Oasis_PWMControl(ledID, pwm, direction);
 
     if (LED_WHITE == ledID && enableRGBModeCtrl)
     {
         uint8_t mode = Camera_GetRGBExposureMode();
-        UsbShell_Printf("[OASIS]:Oasis_LedControl mode %d",mode);
+        //UsbShell_Printf("[OASIS]:Oasis_LedControl mode %d",mode);
+        LOGD("[OASIS]:Oasis_LedControl mode %d",mode);
 		if (direction)
 		{
 			//Camera_QMsgSetPWM(LED_WHITE, pwm);
@@ -702,7 +730,8 @@ static void Oasis_LedControl(cfg_led_t ledID,uint8_t direction, uint8_t enableRG
 			//Camera_QMsgSetPWM(LED_WHITE,0);
 			mode = (mode > CAMERA_EXPOSURE_MODE_AUTO_LEVEL0)? (mode-1):CAMERA_EXPOSURE_MODE_AUTO_LEVEL0;
 		}
-        UsbShell_Printf("----> %d\r\n",mode);
+        //UsbShell_Printf("----> %d\r\n",mode);
+		LOGD("----> %d\r\n",mode);
 		Camera_SetRGBExposureMode(mode);
     }
 }
@@ -729,7 +758,8 @@ static void AdjustBrightnessHandler(uint8_t frame_idx, uint8_t direction, void* 
 
 static int Oasis_Printf(const char *formatString)
 {
-    UsbShell_DbgPrintf(VERBOSE_MODE_L2, formatString);
+    //UsbShell_DbgPrintf(VERBOSE_MODE_L2, formatString);
+    LOGD(formatString);
     return 0;
 }
 
@@ -754,7 +784,8 @@ static void Oasis_Task(void *param)
     ImageFrame_t *frames[]    = {&frameRGB, &frameIR, NULL};
 //    uint8_t reg_mode          = 0;
     uint8_t run_flag          = OASIS_DET_REC;
-    UsbShell_Printf("[OASIS DETECT]:running\r\n");
+    //UsbShell_Printf("[OASIS DETECT]:running\r\n");
+    LOGD("[OASIS DETECT]:running\r\n");
 
     // ask for the first frame
     clearFaceInfoMsg(&gui_info);
@@ -785,8 +816,9 @@ static void Oasis_Task(void *param)
                         int ret = OASISLT_run_extend(frames, run_flag, init_p->min_face, &gTimeStat);
                         if (ret)
                         {
-                            UsbShell_Printf("N:%d %d\r\n", ret, g_OASISLT_heap_debug);
-                            while (1)
+                            //UsbShell_Printf("N:%d %d\r\n", ret, g_OASISLT_heap_debug);
+                            LOGD("N:%d %d\r\n", ret, g_OASISLT_heap_debug);
+                           while (1)
                                 ;
                         }
                         Oasis_SendFaceDetReqMsg(s_FaceRecBuf.dataIR, s_FaceRecBuf.dataRGB);
@@ -826,7 +858,8 @@ static void Oasis_Task(void *param)
                 			strlen(rxQMsg->msg.cmd.data.add_face.new_face_name) + 1);
                 	uint16_t face_id;
                 	OASISLTRegisterRes_t ret = OASISLT_registration_by_feature(rxQMsg->msg.cmd.data.add_face.feature,NULL,0,&face_id,&gTimeStat);
-                	UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[OASIS]:add new face by FEA, ret:%d!\r\n",ret);
+                	//UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[OASIS]:add new face by FEA, ret:%d!\r\n",ret);
+                	LOGD("[OASIS]:add new face by FEA, ret:%d!\r\n",ret);
                 	vPortFree(rxQMsg->msg.cmd.data.add_face.feature);
 
 
@@ -875,7 +908,8 @@ static void Oasis_Task(void *param)
                 {
                     uint8_t pwm  = 0;
                     s_lockstatus = 1;
-                    UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[OASIS]:QMSG_FACEREC_START!\r\n");
+                    //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[OASIS]:QMSG_FACEREC_START!\r\n");
+                    LOGD("[OASIS]:QMSG_FACEREC_START!\r\n");
                     VIZN_GetPulseWidth(NULL, LED_IR, &pwm);
                     Camera_QMsgSetPWM(LED_IR, pwm);
 
@@ -1011,7 +1045,8 @@ int Oasis_Start()
 
         if (s_InitPara.mem_pool == NULL)
         {
-            UsbShell_Printf("[ERROR]: Unable to allocate memory for oasis mem pool\r\n");
+            //UsbShell_Printf("[ERROR]: Unable to allocate memory for oasis mem pool\r\n");
+            LOGD("[ERROR]: Unable to allocate memory for oasis mem pool\r\n");
             ret = -3;
             goto error_cases;
         }else
@@ -1031,12 +1066,14 @@ int Oasis_Start()
 
     if (gFaceDetMsgQ == NULL)
     {
-        UsbShell_Printf("[ERROR]:xQueueCreate facedet queue\r\n");
+        //UsbShell_Printf("[ERROR]:xQueueCreate facedet queue\r\n");
+        LOGD("[ERROR]:xQueueCreate facedet queue\r\n");
         ret = -5;
         goto error_cases;
     }
 
-    UsbShell_Printf("[OASIS]:starting\r\n");
+    //UsbShell_Printf("[OASIS]:starting\r\n");
+    LOGD("[OASIS]:starting\r\n");
 
 #if (configSUPPORT_STATIC_ALLOCATION == 1)
     if (NULL == xTaskCreateStatic(Oasis_Task, "Oasis Task", OASISDETTASK_STACKSIZE, &s_InitPara, OASISDETTASK_PRIORITY,
@@ -1046,12 +1083,14 @@ int Oasis_Start()
         pdPASS)
 #endif
     {
-        UsbShell_Printf("[ERROR]:oasis Task created failed\r\n");
+        //UsbShell_Printf("[ERROR]:oasis Task created failed\r\n");
+        LOGD("[ERROR]:oasis Task created failed\r\n");
         ret = -6;
         goto error_cases;
     }
 
-    UsbShell_Printf("[OASIS]:started\r\n");
+    //UsbShell_Printf("[OASIS]:started\r\n");
+    LOGD("[OASIS]:started\r\n");
 
 error_cases:
     if (ret != 0)
@@ -1113,12 +1152,14 @@ int Oasis_SendQMsg(void *msg)
 
 		if (ret != pdPASS)
 		{
-			UsbShell_Printf("[ERROR]:Oasis_SendQMsg failed\r\n");
+			//UsbShell_Printf("[ERROR]:Oasis_SendQMsg failed\r\n");
+			LOGD("[ERROR]:Oasis_SendQMsg failed\r\n");
 			return -1;
 		}
     }else
     {
-    	UsbShell_Printf("[ERROR]:Oasis_SendQMsg queue is NULL!\r\n");
+    	//UsbShell_Printf("[ERROR]:Oasis_SendQMsg queue is NULL!\r\n");
+    	LOGD("[ERROR]:Oasis_SendQMsg queue is NULL!\r\n");
     	return -2;
     }
 
