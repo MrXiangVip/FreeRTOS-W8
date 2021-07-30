@@ -145,11 +145,19 @@ lpuart_rtos_handle_t handle8;
 struct _lpuart_handle t_handle8;
 
 lpuart_rtos_config_t lpuart_config8 = {
-    .baudrate    = 115200,
+    .baudrate    = 921600,
     .parity      = kLPUART_ParityDisabled,
     .stopbits    = kLPUART_OneStopBit,
     .buffer      = background_buffer8,
     .buffer_size = sizeof(background_buffer8),
+};
+
+lpuart_rtos_config_t lpuart_config8_wifi = {
+        .baudrate    = 921600,
+        .parity      = kLPUART_ParityDisabled,
+        .stopbits    = kLPUART_OneStopBit,
+        .buffer      = background_buffer8,
+        .buffer_size = sizeof(background_buffer8),
 };
 
 static int handle_line();
@@ -436,22 +444,29 @@ static void mqttinit_task(void *pvParameters) {
     }
 
 #if	0
-    result = run_at_cmd("AT+UART_CUR=921600,8,1,0,1", 1, 1000);
+    vTaskDelay(pdMS_TO_TICKS(300));
+    //result = run_at_cmd("AT+UART_CUR=921600,8,1,0,1", 1, 1000);
+    //result = run_at_cmd("AT+UART_DEF=2000000,8,1,0,0", 2, 5000);
+    //result = run_at_cmd("AT+UART_DEF=115200,8,1,0,0", 2, 5000);
+    result = run_at_cmd("AT+UART_DEF=921600,8,1,0,0", 2, 5000);
     if (result == 0) {
         // 关闭WIFI串口
         LOGD("%s 1\r\n", __FUNCTION__);
-    	vTaskDelete(NULL);
-        LOGD("%s 2\r\n", __FUNCTION__);
+    	//vTaskDelete(NULL);
 
         //result = LPUART_RTOS_Deinit(&handle8);
-        LOGD("%s 3\r\n", __FUNCTION__);
         // 打开WIFI串口
-        result = LPUART_RTOS_Init(&handle8, &t_handle8, &lpuart_config8_921600);
+        result = LPUART_RTOS_Init(&handle8, &t_handle8, &lpuart_config8_wifi);
         if (result < 0) {
             LOGD("open serial port %s failed!\n", "UART8");
+        	vTaskDelete(NULL);
             return;
         }
         LOGD("open serial port %s with B921600\n", "UART8");
+    	vTaskDelete(NULL);
+
+    	vTaskDelay(pdMS_TO_TICKS(1000));
+
         return;
     }
     LOGD("--------- connect to URART8\n");
