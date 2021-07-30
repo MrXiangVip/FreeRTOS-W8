@@ -34,6 +34,7 @@ void BOARD_InitHardware(void)
     BOARD_BootClockRUN();
     BOARD_InitPins();
 #if RTVISION_BOARD
+
     BOARD_InitFlash();
     BOARD_InitBluetooth();
     BOARD_InitWifi();

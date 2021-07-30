@@ -34,7 +34,7 @@ void SLN_Flash_Init(void);
  * @param data Data to set in destination memory
  * @param len  Lentght of Data to written to destination memory
  */
-void SLN_ram_memset(void *dst, uint8_t data, size_t len);
+//void SLN_ram_memset(void *dst, uint8_t data, size_t len);
 
 /*!
  * @brief Memcpy function executing from RAM
@@ -43,21 +43,21 @@ void SLN_ram_memset(void *dst, uint8_t data, size_t len);
  * @param src Pointer to source memory
  * @param len Length of Data to copied to destination memory
  */
-void SLN_ram_memcpy(void *dst, void *src, size_t len);
+//void SLN_ram_memcpy(void *dst, void *src, size_t len);
 
 /*!
  * @brief Disable IRQ executing from RAM
  *
  * @returns Primask value
  */
-uint32_t SLN_ram_disable_irq(void);
+//uint32_t SLN_ram_disable_irq(void);
 
 /*!
  * @brief Enable IRQ executing from RAM
  *
  * @param priMask Primask value returned from previous SLN_ram_disable_irq call
  */
-void SLN_ram_enable_irq(uint32_t priMask);
+//void SLN_ram_enable_irq(uint32_t priMask);
 
 /*!
  * @brief Disable data cache function executing from RAM
@@ -103,7 +103,7 @@ status_t SLN_Erase_Sector(uint32_t address);
  * @returns Status of the write operation
  *     kStatus_Success in case of success or a negative value in case of error
  */
-int32_t SLN_Write_Sector(uint32_t address, uint8_t *buf, uint32_t len);
+int32_t SLN_Write_Sector(uint32_t address, uint8_t *buf);
 
 /*!
  * @brief Write a buffer to flash

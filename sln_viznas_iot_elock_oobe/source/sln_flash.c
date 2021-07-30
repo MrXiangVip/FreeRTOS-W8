@@ -43,30 +43,33 @@ size_t safe_strlen(const char *ptr, size_t max)
 }
 #endif
 
-void SLN_ram_memset(void *dst, uint8_t data, size_t len)
+static void SLN_ram_memset(void *dst, uint8_t data, size_t len)
 {
-    uint8_t *ptr = (uint8_t *)dst;
+//    uint8_t *ptr = (uint8_t *)dst;
+//
+//    while (len)
+//    {
+//        *ptr++ = data;
+//        len--;
+//    }
 
-    while (len)
-    {
-        *ptr++ = data;
-        len--;
-    }
+    memset(dst,data,len);
 }
 
-void SLN_ram_memcpy(void *dst, void *src, size_t len)
+static void SLN_ram_memcpy(void *dst, void *src, size_t len)
 {
-    uint8_t *ptrDst = (uint8_t *)dst;
-    uint8_t *ptrSrc = (uint8_t *)src;
-
-    while (len)
-    {
-        *ptrDst++ = *ptrSrc++;
-        len--;
-    }
+//    uint8_t *ptrDst = (uint8_t *)dst;
+//    uint8_t *ptrSrc = (uint8_t *)src;
+//
+//    while (len)
+//    {
+//        *ptrDst++ = *ptrSrc++;
+//        len--;
+//    }
+	memcpy(dst,src,len);
 }
 
-uint32_t SLN_ram_disable_irq(void)
+static uint32_t SLN_ram_disable_irq(void)
 {
     uint32_t regPrimask = 0;
 
@@ -78,29 +81,40 @@ uint32_t SLN_ram_disable_irq(void)
     __ASM volatile("cpsid i" : : : "memory");
 #else
 
-    if (xTaskGetSchedulerState() == taskSCHEDULER_NOT_STARTED || s_fileLock == NULL)
+    if (xTaskGetSchedulerState() == taskSCHEDULER_NOT_STARTED
+    		|| s_fileLock == NULL
+			|| __get_IPSR())
     {
 
     }else
     {
-    	xSemaphoreTake(s_fileLock, portMAX_DELAY);
+    	if (uxTaskPriorityGet(NULL) == tskIDLE_PRIORITY)
+    	{
+    		while (xSemaphoreTake(s_fileLock, 0) != pdTRUE);
+    	}else
+    	{
+    		xSemaphoreTake(s_fileLock, portMAX_DELAY);
+    	}
     }
 #endif
 
     return regPrimask;
 }
 
-void SLN_ram_enable_irq(uint32_t priMask)
+static void SLN_ram_enable_irq(uint32_t priMask)
 {
 #if !EXCLUSIVE_FLASH_BY_FILE_SYSTEM
     __ASM volatile("MSR primask, %0" : : "r"(priMask) : "memory");
 #else
-    if (xTaskGetSchedulerState() == taskSCHEDULER_NOT_STARTED || s_fileLock == NULL)
+    if (xTaskGetSchedulerState() == taskSCHEDULER_NOT_STARTED
+    		|| s_fileLock == NULL
+    		|| __get_IPSR())
     {
 
     }
     else
     {
+
     	xSemaphoreGive(s_fileLock);
     }
 #endif
@@ -192,10 +206,6 @@ void SLN_Flash_Init(void)
 		s_fileLock = xSemaphoreCreateMutex();
 		assert(s_fileLock != NULL);
     }
-    else
-    {
-    	return;
-    }
 #endif
 
     irqState = SLN_ram_disable_irq();
@@ -235,12 +245,12 @@ status_t SLN_Write_Flash_Page(uint32_t address, uint8_t *data, uint32_t len)
 
     SLN_ram_memcpy(s_tempPage, data, len);
 
-    //DCACHE_CleanByRange(s_tempPage,sizeof(s_tempPage));
+    DCACHE_CleanByRange(s_tempPage,sizeof(s_tempPage));
 
     /* Program page. */
     status = flexspi_nor_flash_page_program_with_buffer(FLEXSPI, address, (void *)s_tempPage);
 
-    //DCACHE_InvalidateByRange(SLN_Flash_Get_Read_Address(address),FLASH_PAGE_SIZE);
+    DCACHE_InvalidateByRange(SLN_Flash_Get_Read_Address(address),FLASH_PAGE_SIZE);
 
     SLN_ram_enable_d_cache();
 
@@ -252,6 +262,7 @@ status_t SLN_Write_Flash_Page(uint32_t address, uint8_t *data, uint32_t len)
     return status;
 }
 
+#if 1
 static status_t SLN_Write_Flash_Page2(uint32_t address, uint8_t *data, uint32_t len)
 {
     status_t status = 0;
@@ -263,10 +274,10 @@ static status_t SLN_Write_Flash_Page2(uint32_t address, uint8_t *data, uint32_t 
 
     SLN_ram_memcpy(s_tempPage, data, len);
 
-    //DCACHE_CleanByRange(s_tempPage,sizeof(s_tempPage));
+    DCACHE_CleanByRange(s_tempPage,sizeof(s_tempPage));
     /*Program page. */
     status = flexspi_nor_flash_page_program_with_buffer(FLEXSPI, address, (void *)s_tempPage);
-    //DCACHE_InvalidateByRange(SLN_Flash_Get_Read_Address(address),FLASH_PAGE_SIZE);
+    DCACHE_InvalidateByRange(SLN_Flash_Get_Read_Address(address),FLASH_PAGE_SIZE);
 
     return status;
 }
@@ -279,45 +290,52 @@ static status_t SLN_Erase_Sector2(uint32_t address)
     status = flexspi_nor_flash_erase_sector(FLEXSPI, address);
 
     /* Do software reset. */
-    FLEXSPI_SoftwareReset(FLEXSPI);
+//    FLEXSPI_SoftwareReset(FLEXSPI);
 
     return status;
 }
 
-int32_t SLN_Write_Sector(uint32_t address, uint8_t *buf, uint32_t len)
+//always write one sector data
+int32_t SLN_Write_Sector(uint32_t address, uint8_t *buf)
 {
     int32_t status     = kStatus_Success;
     uint32_t pageCount = 0;
-    uint32_t pageMod   = 0;
-    uint32_t toCopy    = 0;
+//    uint32_t pageMod   = 0;
+//    uint32_t toCopy    = 0;
     uint32_t irqState;
+    int32_t need_erase = 0;
 
     irqState = SLN_ram_disable_irq();
 
     SLN_ram_disable_d_cache();
 
-    status = SLN_Erase_Sector2(address);
+    uint32_t* buff = (uint32_t*)SLN_Flash_Get_Read_Address(address);
+
+    for (int i = 0;i< SECTOR_SIZE/4;i++)
+    {
+    	if (buff[i] != 0xFFFFFFFFUL)
+    	{
+    		need_erase = 1;
+    	}
+    }
+
+    if (need_erase)
+    {
+    	status = SLN_Erase_Sector2(address);
+    }
 
     if (kStatus_Success == status)
     {
         // Adjust total write length to fit in sector
-        len = (SECTOR_SIZE < len) ? SECTOR_SIZE : len;
-
-        pageCount = len / FLASH_PAGE_SIZE;
-        pageMod   = len % FLASH_PAGE_SIZE;
-
-        if (pageMod)
-        {
-            pageCount++;
-        }
+        pageCount = SECTOR_SIZE / FLASH_PAGE_SIZE;
 
         do
         {
             // How much should we copy? SLN_Write_Flash_Page will fill end of page with ones.
-            toCopy = (len > FLASH_PAGE_SIZE) ? FLASH_PAGE_SIZE : len;
+//            toCopy = (len > FLASH_PAGE_SIZE) ? FLASH_PAGE_SIZE : len;
 
             // Write a page worth of data to NVM
-            status = SLN_Write_Flash_Page2(address, (uint8_t *)buf, toCopy);
+            status = SLN_Write_Flash_Page2(address, (uint8_t *)buf, FLASH_PAGE_SIZE);
 
             if (kStatus_Success != status)
             {
@@ -326,7 +344,7 @@ int32_t SLN_Write_Sector(uint32_t address, uint8_t *buf, uint32_t len)
 
             address += FLASH_PAGE_SIZE; // Increment the destination NVM address
             buf += FLASH_PAGE_SIZE;     // Increment the source RAM address
-            len -= FLASH_PAGE_SIZE;     // Decrement the total length
+//            len -= FLASH_PAGE_SIZE;     // Decrement the total length
         } while (--pageCount);
     }
 
@@ -339,6 +357,7 @@ int32_t SLN_Write_Sector(uint32_t address, uint8_t *buf, uint32_t len)
 
     return status;
 }
+#endif
 
 status_t SLN_Erase_Sector(uint32_t address)
 {
@@ -351,10 +370,10 @@ status_t SLN_Erase_Sector(uint32_t address)
 
     /* Erase sectors. */
     status = flexspi_nor_flash_erase_sector(FLEXSPI, address);
-    //DCACHE_InvalidateByRange(SLN_Flash_Get_Read_Address(address),SECTOR_SIZE);
+    DCACHE_InvalidateByRange(SLN_Flash_Get_Read_Address(address),SECTOR_SIZE);
 
     /* Do software reset. */
-    FLEXSPI_SoftwareReset(FLEXSPI);
+//    FLEXSPI_SoftwareReset(FLEXSPI);
 
     SLN_ram_enable_d_cache();
 
@@ -379,13 +398,13 @@ status_t SLN_Write_Flash_At_Address(uint32_t address, uint8_t *data)
     SLN_ram_disable_d_cache();
 
     /* Do software reset. */
-    FLEXSPI_SoftwareReset(FLEXSPI);
+//    FLEXSPI_SoftwareReset(FLEXSPI);
 
     SLN_ram_memcpy(s_tempPage, data, FLASH_PAGE_SIZE);
-    //DCACHE_CleanByRange(s_tempPage,FLASH_PAGE_SIZE);
+    DCACHE_CleanByRange(s_tempPage,FLASH_PAGE_SIZE);
     /*Program page. */
     status = flexspi_nor_flash_page_program_with_buffer(FLEXSPI, address, (void *)s_tempPage);
-    //DCACHE_InvalidateByRange(SLN_Flash_Get_Read_Address(address),FLASH_PAGE_SIZE);
+    DCACHE_InvalidateByRange(SLN_Flash_Get_Read_Address(address),FLASH_PAGE_SIZE);
 
     SLN_ram_enable_d_cache();
 
@@ -399,7 +418,10 @@ status_t SLN_Write_Flash_At_Address(uint32_t address, uint8_t *data)
 
 status_t SLN_Read_Flash_At_Address(uint32_t address, uint8_t *data, uint32_t size)
 {
+	//uint32_t irqState;
+	//irqState = SLN_ram_disable_irq();
     SLN_ram_memcpy(data, (void *)(FlexSPI_AMBA_BASE + address), size);
+    //SLN_ram_enable_irq(irqState);
 
     return kStatus_Success;
 }
