@@ -101,6 +101,8 @@ int g_priority = 0;
 static int g_is_auto_uploading = 0;
 // wifi是否已自动连接
 static int g_is_wifi_connected = 0;
+// 心跳是否立即执行
+static int g_heart_beat_executed = 0;
 
 static int g_is_shutdown = 0;
 
@@ -909,6 +911,7 @@ int SendMsgToMQTT(char *mqtt_payload, int len) {
                 int ret = quickPublishMQTTWithPriority(pub_topic, pub_msg, 1);
                 // notifyCommandExecuted(ret);
                 g_command_executed = 1;
+                g_heart_beat_executed = 1;
                 //freePointer(&pub_topic);
                 return 0;
             } else if ((int) (char) (mqtt_payload[1]) == 0x15 && (int) (char) (mqtt_payload[2]) == 0x01) {
@@ -950,10 +953,11 @@ int SendMsgToMQTT(char *mqtt_payload, int len) {
 						vTaskDelay(pdMS_TO_TICKS(100));
 					}
                     int ret = uploadRecordImage(&record, true);
-                    LOGD("uploadRecordImage end");
+                    LOGD("uploadRecordImage end\r\n");
                     // notifyCommandExecuted(ret);
                     g_is_uploading_data = 0;
                     g_command_executed = 1;
+                    g_heart_beat_executed = 1;
                     // TODO:
                 } else {
                 	LOGD("register/unlcok record is NULL");
@@ -961,21 +965,15 @@ int SendMsgToMQTT(char *mqtt_payload, int len) {
             } else if ((int) (char) (mqtt_payload[1]) == 0x14 && (int) (char) (mqtt_payload[2]) == 0x0f) {
                 // 开门记录上报指令
                 if ((int) (char) (mqtt_payload[2]) == 0x0f) {
-                	LOGD("unlock record upload to server\n");
-#if 1
+                	LOGD("unlock record upload to server\r\n");
                     char uid[17];
                     HexToStr(uid, (unsigned char *) (&mqtt_payload[3]), 8);
-                    LOGD("unlock record uid %s\n", uid);
-#else
-                    char uid[9];
-                    strncpy(uid, (char*)(&mqtt_payload[3]), 8);
-                    uid[8] = '\0';
-#endif
+                    LOGD("unlock record uid %s\r\n", uid);
                     int unlockType = (int) (char) mqtt_payload[11];
                     unsigned int unlockTime = (unsigned int) StrGetUInt32((unsigned char *) (&mqtt_payload[12]));
                     int batteryLevel = (int) mqtt_payload[16];
                     int unlockStatus = (int) (char) mqtt_payload[17];
-                    LOGD("unlock record uid %s, unlockType %d, unlockTime %u, batteryLevel %d, unlockStatus %d\n",
+                    LOGD("unlock record uid %s, unlockType %d, unlockTime %u, batteryLevel %d, unlockStatus %d\r\n",
                              uid, unlockType, unlockTime, batteryLevel, unlockStatus);
                     // sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"userId\\\":\\\"%s\\\"\\, \\\"unlockMethod\\\":%d\\,\\\"unlockTime\\\":%u\\,\\\"batteryPower\\\":%d\\,\\\"unlockState\\\":%d}", gen_msgId(), btWifiConfig.wifi_mac, uid, unlockType, unlockTime, batteryLevel, unlockStatus);
                     sprintf(pub_msg,
@@ -985,10 +983,11 @@ int SendMsgToMQTT(char *mqtt_payload, int len) {
                     int ret = quickPublishMQTTWithPriority(pub_topic, pub_msg, 1);
                     // notifyCommandExecuted(ret);
                     g_command_executed = 1;
+                    g_heart_beat_executed = 1;
                     //freePointer(&pub_topic);
                     return ret;
                 } else {
-                    LOGD("unlock record length is %d instead of 15\n", (int) (char) (mqtt_payload[2]));
+                    LOGD("unlock record length is %d instead of 15\r\n", (int) (char) (mqtt_payload[2]));
                 }
             } else {
             }
@@ -1290,7 +1289,7 @@ static int handle_line()
 int uploadRecord(char *msgId, Record *record) {
 	char pub_msg[MQTT_AT_LONG_LEN];
 	// int result = record->passed ? 0 : 1;
-	LOGD("upload record uid %s, type %d, time %d, batteryA %d, batteryB %d, result %d\n", record->UUID, record->action, record->time_stamp, record->power, record->power2, record->status);
+	LOGD("upload record uid %s, type %d, time %d, batteryA %d, batteryB %d, result %d, upload %d\n", record->UUID, record->action, record->time_stamp, record->power, record->power2, record->status, record->upload);
 	// sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"userId\\\":\\\"%s\\\"\\, \\\"type\\\":%d\\,\\\"time\\\":%u\\,\\\"batteryA\\\":%d\\,\\\"batteryB\\\":%d\\,\\\"result\\\":%d}", msgId, btWifiConfig.bt_mac, record->UID, record->type, record->time, record->power, record->power2, result);
 	sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"userId\\\":\\\"%s\\\"\\, \\\"type\\\":%d\\,\\\"time\\\":%d\\,\\\"batteryA\\\":%d\\,\\\"batteryB\\\":%d\\,\\\"result\\\":%d}", msgId, btWifiConfig.bt_mac, record->UUID, record->action, record->time_stamp, record->power, record->power2, record->status);
 	char *pub_topic = get_pub_topic_record_request();
@@ -1333,6 +1332,8 @@ int uploadRecordImage(Record *record, bool online) {
 				}
                 bOasisRecordUpload = true;
             }
+            LOGD("uploadRecordImage record->upload is %d\r\n", record->upload);
+
             dbmanager->updateRecordByID(record);
 
             freePointer(&pub_topic);
@@ -1500,7 +1501,7 @@ static void msghandle_task(void *pvParameters)
 			}
         }
 
-        if(count % MAX_COUNT == 0) {
+        if((count % MAX_COUNT == 0) || (g_heart_beat_executed == 1)) {
             if ((mqtt_init_done == 1) && (bPubOasisImage == false) && (g_is_uploading_data == 0)) {
                 char *msgId = gen_msgId();
                 // sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"btmac\\\":\\\"%s\\\"\\,\\\"wifi_rssi\\\":%s\\,\\\"battery\\\":%d\\,\\\"version\\\":\\\"%s\\\"}", msgId, btWifiConfig.wifi_mac, btWifiConfig.bt_mac, wifi_rssi, battery_level, getFirmwareVersion());
@@ -1512,6 +1513,9 @@ static void msghandle_task(void *pvParameters)
                 pub_topic = get_pub_topic_heart_beat();
                 //LOGD("%s pub_msg is %s\n", __FUNCTION__, pub_msg);
                 int ret = quickPublishMQTTWithPriority(pub_topic, pub_msg, 1);
+                if(g_heart_beat_executed == 1) {
+                	g_heart_beat_executed = 0;
+                }
             }
         }
 
