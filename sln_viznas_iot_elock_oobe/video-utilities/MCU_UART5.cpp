@@ -1518,6 +1518,15 @@ static void uart5_sync_task(void *pvParameters) {
     vTaskDelete(NULL);
 }
 
+
+enum{
+	UART5_RX_MSG_STATUS_WAITING_HEADER,
+	UART5_RX_MSG_STATUS_WAITING_LENGTH,
+	UART5_RX_MSG_STATUS_WAITING_DATA,
+
+};
+#define UART5_RX_MAX_DATA_PACKAGE_SIZE 32	//20
+
 static void uart5_task(void *pvParameters) {
     int error;
     size_t rcvlen = 0;
@@ -1529,7 +1538,8 @@ static void uart5_task(void *pvParameters) {
     unsigned char datalen = 0;
     uint8_t recv_buffer[64] = {0};
     char message_buffer[64] = {0};
-    uint8_t data_tmp;
+
+//    uint8_t data_tmp;
     LOGD("[uart5_task]:starting...\r\n");
     lpuart_config5.srcclk = DEMO_LPUART_CLK_FREQ;
     lpuart_config5.base = DEMO_LPUART;
@@ -1545,33 +1555,73 @@ static void uart5_task(void *pvParameters) {
 
     /* Receive user input and send it back to terminal. */
     do {
-        //LOGD("[uart5_task]:Recv New Msg ...\r\n");
-        memset(recv_buffer, 0, sizeof(recv_buffer));
-        msglen = 0;
-        while (1) {
-            error = LPUART_RTOS_Receive(&handle5, &data_tmp, 1, &rcvlen);
-            if (error == kStatus_LPUART_RxHardwareOverrun) {
-                /* Notify about hardware buffer overrun */
-                LOGD("[uart5_task]:Hardware buffer overrun!\r\n");
-                //vTaskSuspend(NULL);
-            } else if (error == kStatus_LPUART_RxRingBufferOverrun) {
-                /* Notify about ring buffer overrun */
-                LOGD("[uart5_task]:Ring buffer overrun!\r\n");
-                //vTaskSuspend(NULL);
-            } else if (error == kStatus_Success) {
-                //LOGD("[uart5_task]:<0x%02x>	", data_tmp);
-                recv_buffer[msglen] = data_tmp;
-                msglen++;
 
-                if (HEAD_MARK == recv_buffer[0]) {
-                    if ((msglen >= 5) && (msglen == recv_buffer[2] + 5)) {
-                        break;
-                    }
-                } else {//如果不是以HEAD_MARK开头的消息则自动丢弃
-                    memset(recv_buffer, 0, sizeof(recv_buffer));
-                    msglen = 0;
-                }
-            }
+        LOGD("[uart5_task]:Recv New Msg ...\r\n");
+        memset(recv_buffer, 0, sizeof(recv_buffer));
+        uint8_t rx_status = UART5_RX_MSG_STATUS_WAITING_HEADER;
+        msglen = 0;
+        uint8_t req_len = 0;
+
+        while (1) {
+        	switch(rx_status)
+        	{
+        	case UART5_RX_MSG_STATUS_WAITING_HEADER:
+        		req_len = 1;
+                error = LPUART_RTOS_Receive(&handle5, &recv_buffer[0], req_len, &rcvlen);
+                break;
+        	case UART5_RX_MSG_STATUS_WAITING_LENGTH:
+        		req_len = 2;
+        		error = LPUART_RTOS_Receive(&handle5, &recv_buffer[1], req_len, &rcvlen);
+        		break;
+        	case UART5_RX_MSG_STATUS_WAITING_DATA:
+        		req_len = recv_buffer[2] + 2;
+        		error = LPUART_RTOS_Receive(&handle5, &recv_buffer[3], req_len, &rcvlen);
+        		break;
+        	default:
+        		assert(0);
+        	}
+
+        	if (error == kStatus_Success)
+        	{
+        		LOGD("[uart5_task]:receive return!\r\n");
+        		if (req_len != rcvlen)
+        		{
+        			LOGD("[uart5_task]:part of data received, expect:%d received:%d!\r\n",req_len,rcvlen);
+					rx_status = UART5_RX_MSG_STATUS_WAITING_HEADER;
+
+
+        		}else if (UART5_RX_MSG_STATUS_WAITING_HEADER == rx_status)
+        		{
+        			if (HEAD_MARK != recv_buffer[0]) {
+        				LOGD("[uart5_task]:wrong header received, expect:0x%x received:0x%x!\r\n",HEAD_MARK,recv_buffer[0]);
+						rx_status = UART5_RX_MSG_STATUS_WAITING_HEADER;
+        			}else
+        			{
+        				rx_status = UART5_RX_MSG_STATUS_WAITING_LENGTH;
+        			}
+        		}else if (UART5_RX_MSG_STATUS_WAITING_LENGTH == rx_status)
+        		{
+        			if (recv_buffer[2] > UART5_RX_MAX_DATA_PACKAGE_SIZE)
+        			{
+        				LOGD("[uart5_task]:wrong msg length received, length:%d\r\n",recv_buffer[2]);
+						rx_status = UART5_RX_MSG_STATUS_WAITING_HEADER;
+        			}else
+        			{
+        				rx_status = UART5_RX_MSG_STATUS_WAITING_DATA;
+        			}
+        		}else
+        		{
+        			//a whole package received
+        			msglen = rcvlen + 3;
+        			break;
+        		}
+
+        	}else
+        	{
+        		LOGD("[uart5_task]:LPUART_RTOS_Receive error:%d sts:%d!\r\n",error,rx_status);
+        		rx_status = UART5_RX_MSG_STATUS_WAITING_HEADER;
+        		continue;
+        	}
         }
 
         if (msglen > 0) {
@@ -1770,12 +1820,20 @@ int Uart5_GetFaceRecResult(uint8_t result) {
 }
 
 static int Uart5_SendQMsg(void *msg) {
-    if (shut_down) {
-        return 0;
-    }
     BaseType_t ret;
 
-    ret = xQueueSend(Uart5MsgQ, msg, (TickType_t) 0);
+    if (shut_down) {
+        return -3;
+    }
+
+    if (Uart5MsgQ)
+    {
+        ret = xQueueSend(Uart5MsgQ, msg, (TickType_t) 0);
+    }else
+    {
+    	LOGE("[ERROR]:Uart5MsgQ is NULL\r\n");
+    	return -2;
+    }
 
     if (ret != pdPASS) {
         LOGE("[ERROR]:Uart5_SendQMsg failed %d\r\n", ret);

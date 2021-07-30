@@ -34,7 +34,7 @@ extern "C" {
 #define MQTT_PWD_LEN 			8	// MQTT pwd 最大长度
 #define MQTT_SVR_URL_LEN_MAX	63	// mqtt server url 最大长度
 
-#define UART5_MSG_Q_COUNT 	5
+#define UART5_MSG_Q_COUNT 	10
 #define RT106F_MAX_WORKTIME		10
 
 #define HEADMARK_LEN		1  
