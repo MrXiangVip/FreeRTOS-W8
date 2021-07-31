@@ -347,7 +347,7 @@ int run_at_raw_cmd(char const *cmd, char *data, int data_len, int retry_times, i
     vTaskDelay(pdMS_TO_TICKS(2));
 
     if(ret == 0) {
-        for (int i = 0; i < retry_times; i++) {
+        for (int i = 0; i < 1; i++) {
             if (kStatus_Success != LPUART_RTOS_Send(&handle8, (uint8_t *) data, data_len)) {
                 //LOGD("Failed to run long command %s\r\n", cmd);
                 LOGD("Failed to run raw command\r\n");
@@ -1312,7 +1312,7 @@ int uploadRecord(char *msgId, Record *record) {
 		//usleep(500000);	// 睡眠0.5s
 		vTaskDelay(pdMS_TO_TICKS(500));
 	}
-    LOGD("%s pub_topic is %s, pub_msg is %s\r\n", __FUNCTION__, pub_topic, pub_msg);
+    //LOGD("%s pub_topic is %s, pub_msg is %s\r\n", __FUNCTION__, pub_topic, pub_msg);
 	int ret = quickPublishMQTT(pub_topic, pub_msg);
 	if (ret == 0) {
 		record->upload = 1;
