@@ -1471,7 +1471,7 @@ static void uart5_QMsg_task(void *pvParameters) {
                         vTaskDelay(pdMS_TO_TICKS(1000));
 						Uart5_SendDeinitCameraMsg();
                         //LOGD("gFaceInfo.name is %s!\n", gFaceInfo.name);
-                        LOGD("pQMsg->msg.info.name is %s!\n", pQMsg->msg.info.name);
+                        LOGD("pQMsg->msg.info.name is %s!\r\n", pQMsg->msg.info.name);
                         char name[64];
                         //memcpy(name, gFaceInfo.name.c_str(), gFaceInfo.name.size());
                         memcpy(name, pQMsg->msg.info.name, 64);
@@ -1556,7 +1556,7 @@ static void uart5_task(void *pvParameters) {
     /* Receive user input and send it back to terminal. */
     do {
 
-        LOGD("[uart5_task]:Recv New Msg ...\r\n");
+        //LOGD("[uart5_task]:Recv New Msg ...\r\n");
         memset(recv_buffer, 0, sizeof(recv_buffer));
         uint8_t rx_status = UART5_RX_MSG_STATUS_WAITING_HEADER;
         msglen = 0;
@@ -1583,7 +1583,7 @@ static void uart5_task(void *pvParameters) {
 
         	if (error == kStatus_Success)
         	{
-        		LOGD("[uart5_task]:receive return!\r\n");
+        		//LOGD("[uart5_task]:receive return!\r\n");
         		if (req_len != rcvlen)
         		{
         			LOGD("[uart5_task]:part of data received, expect:%d received:%d!\r\n",req_len,rcvlen);
