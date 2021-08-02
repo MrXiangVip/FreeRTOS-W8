@@ -89,7 +89,9 @@ int main(void)
     //SysState_Init();
 
     uart_shell_init();
+#if	USB_OTG_SUPPORT != 0
     USB_CompositeInit();
+#endif
 
     DB_Init();
     init_config();
