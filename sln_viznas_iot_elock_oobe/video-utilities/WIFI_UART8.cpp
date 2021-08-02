@@ -1344,6 +1344,7 @@ int uploadRecordImage(Record *record, bool online) {
             	ret = uploadRecord(msgId, record);
             	if (ret == 0) {
 					record->upload = 2;
+					fatfs_delete(record->image_path);
 				}
                 bOasisRecordUpload = true;
             }

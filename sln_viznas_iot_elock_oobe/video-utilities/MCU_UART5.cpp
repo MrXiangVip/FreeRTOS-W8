@@ -713,6 +713,7 @@ int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
         dbManager->addRecord(record);
 
         Oasis_SetOasisFileName(record->image_path);
+		Oasis_WriteJpeg();
 
         int ID = DBManager::getInstance()->getLastRecordID();
         LOGD("开锁成功, 更新数据库状态.请求MQTT上传本次开门的记录 \n");
@@ -752,7 +753,7 @@ int save_files_before_pwd() {
         saving_db = true;
         DBManager::getInstance()->flushRecordList();
     }
-    Oasis_WriteJpeg();
+    //Oasis_WriteJpeg();
     LOGD("保存config, db, jpg 文件结束 \r\n");
 
     return 0;
@@ -1424,6 +1425,7 @@ static void uart5_QMsg_task(void *pvParameters) {
                         DBManager::getInstance()->addRecord(record);
 
                         Oasis_SetOasisFileName(record->image_path);
+                        Oasis_WriteJpeg();
 //                        g_face.WriteJPG(image_path, faceBuf.color_buf, CAM_HEIGHT,CAM_WIDTH, 3, 50);
 //                        log_info("保存 UID<%s> 注册图片到 path<%s>!\n", record.UID, image_path);
                     } else {//failed
