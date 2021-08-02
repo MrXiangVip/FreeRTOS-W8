@@ -986,7 +986,7 @@ int cmdDeleteUserReqProcByHead(unsigned char nHead, unsigned char nMessageLen, c
         memcpy(&uu_id, pszMessage, nMessageLen);
     }
 
-    LOGD("delete uuid : <0x%08x>, <0x%08x>.\n", uu_id.tUID.H, uu_id.tUID.L);
+    LOGD("delete uuid : <0x%08x>, <0x%08x>.\r\n", uu_id.tUID.H, uu_id.tUID.L);
     if (uu_id.tUID.H == 0xFFFFFFFF && uu_id.tUID.L == 0xFFFFFFFF) {
         // 清空所有用户 和操作记录
         char strUUID[20] = {0};
@@ -1017,7 +1017,7 @@ int cmdDeleteUserReqProcByHead(unsigned char nHead, unsigned char nMessageLen, c
         memset(username, 0, sizeof(username));
         HexToStr(username, uu_id.UID, sizeof(uu_id.UID));
         username[16] = '\0';//NXP的人脸注册API的username最大只能16byte
-        LOGD("=====UUID<len:%d>:%s.\n", sizeof(username), username);
+        LOGD("=====UUID<len:%d>:%s.\r\n", sizeof(username), username);
 
         vizn_api_status_t status;
         status = VIZN_DelUser(NULL, username);
@@ -1103,7 +1103,7 @@ int cmdMqttParamSetProc(unsigned char nMessageLen, const unsigned char *pszMessa
         memcpy(mqtt_user, pszMessage, MQTT_USER_LEN);
         memset(mqtt_pwd, 0, sizeof(mqtt_pwd));
         memcpy(mqtt_pwd, pszMessage + MQTT_USER_LEN, MQTT_PWD_LEN);
-        LOGD("mqtt_user<0x%02x%02x%02x%02x%02x%02x>,mqtt_pwd<0x%02x%02x%02x%02x%02x%02x%02x%02x>!\n", \
+        LOGD("mqtt_user<0x%02x%02x%02x%02x%02x%02x>,mqtt_pwd<0x%02x%02x%02x%02x%02x%02x%02x%02x>!\r\n", \
         mqtt_user[0], mqtt_user[1], mqtt_user[2], mqtt_user[3], mqtt_user[4], mqtt_user[5], \
                 mqtt_pwd[0], mqtt_pwd[1], mqtt_pwd[2], mqtt_pwd[3], mqtt_pwd[4], mqtt_pwd[5], mqtt_pwd[6], mqtt_pwd[7]);
 
@@ -1114,7 +1114,7 @@ int cmdMqttParamSetProc(unsigned char nMessageLen, const unsigned char *pszMessa
         HexToStr(mqtt_pwd_tmp, mqtt_pwd, MQTT_PWD_LEN);
         update_mqtt_opt(mqtt_user_tmp, mqtt_pwd_tmp);
         //read_config("./config.ini");
-        LOGD("mqtt user :<%s>, mqtt_pwd:<%s>.\n", mqtt_user_tmp, mqtt_pwd_tmp);
+        LOGD("mqtt user :<%s>, mqtt_pwd:<%s>.\r\n", mqtt_user_tmp, mqtt_pwd_tmp);
 
         //system("sync");
         ret = SUCCESS;
@@ -1157,7 +1157,7 @@ int cmdBTInfoRptProc(unsigned char nMessageLen, const unsigned char *pszMessage)
         // 保存设置到系统配置文件
         update_bt_info(bt_ver_tmp, bt_mac_tmp);
         //read_config("./config.ini");
-        LOGD("bt_ver :<%s>, bt_mac:<%s>.\n", bt_ver_tmp, bt_mac_tmp);
+        LOGD("bt_ver :<%s>, bt_mac:<%s>.\r\n", bt_ver_tmp, bt_mac_tmp);
 
         //system("sync");
         ret = SUCCESS;
@@ -1180,7 +1180,7 @@ int cmdMqttSvrURLProc(unsigned char nMessageLen, const unsigned char *pszMessage
         memcpy(MqttSvr_Url, pszMessage, nMessageLen);
 
         // 保存设置到系统配置文件
-        LOGD("MqttSvr_Url : <%s>.\n", MqttSvr_Url);
+        LOGD("MqttSvr_Url : <%s>.\r\n", MqttSvr_Url);
         update_MqttSvr_opt(MqttSvr_Url);
         //read_config("./config.ini");
 
@@ -1222,13 +1222,37 @@ int cmdCommRsp2MqttByHead(unsigned char nHead, unsigned char CmdId, uint8_t ret)
     unsigned short cal_crc16 = CRC16_X25((uint8_t *) szBuffer, MsgLen + sizeof(MESSAGE_HEAD));
     memcpy((uint8_t *) pop, &cal_crc16, sizeof(cal_crc16));
 
-    LOGD("%s send to 0x%02x cmd 0x%02x result %d\n", __FUNCTION__, nHead, CmdId, ret);
+    LOGD("%s send to 0x%02x cmd 0x%02x result %d\r\n", __FUNCTION__, nHead, CmdId, ret);
     //���Ϳ�����Ӧ��wifi��ص�mqttģ��
     SendMsgToMQTT(szBuffer, iBufferSize + CRC16_LEN);
 
     return 0;
 }
 
+// 主控接收指令: wifi 网络时间同步响应
+int cmdWifiTimeSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessage)
+{
+    LOGD("网络时间同步响应 \r\n");
+	uint8_t ret = SUCCESS;	
+
+	ret = StrGetUInt8( pszMessage );
+
+	{
+		cmdCommRsp2Mqtt(CMD_WIFI_TIME_SYNC, ret);
+	}
+	
+	return 0;
+}
+
+//MCU->106F->MQTT:  WIFI 同步订单时间响应
+int cmdWifiOrderTimeSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessage)
+{
+    uint8_t ret = StrGetUInt8( pszMessage );
+    LOGD("远程同步订单请求  %d \r\n", (uint8_t )nMessageLen);
+
+	cmdCommRsp2Mqtt(CMD_ORDER_TIME_SYNC, ret);
+	return 0;
+}
 int ProcMessage(
         unsigned char nCommand,
         unsigned char nMessageLen,
@@ -1288,7 +1312,16 @@ int ProcMessage(
             cmdMqttParamSetProc(nMessageLen, pszMessage);
             break;
         }
-
+		case CMD_WIFI_TIME_SYNC:	
+		{
+			cmdWifiTimeSyncRsp(nMessageLen, pszMessage);
+			break;
+		}	
+		case CMD_ORDER_TIME_SYNC:
+		{
+			cmdWifiOrderTimeSyncRsp(nMessageLen, pszMessage);
+			break;
+		}
         case CMD_WIFI_OPEN_DOOR: {
             cmdWifiOpenDoorRsp(nMessageLen, pszMessage);
             break;
