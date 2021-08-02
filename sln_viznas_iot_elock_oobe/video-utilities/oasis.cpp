@@ -114,8 +114,8 @@ void util_crop(unsigned char* src, int srcw, int srch, unsigned char* dst, int d
 }
 #endif
 
-#define OASIS_JPEG_IMG_WIDTH (60)		//50
-#define OASIS_JPEG_IMG_HEIGHT (80)		//50
+#define OASIS_JPEG_IMG_WIDTH (90)		//50 60
+#define OASIS_JPEG_IMG_HEIGHT (120)		//50 80
 static uint8_t s_tmpBuffer4Jpeg[OASIS_JPEG_IMG_WIDTH*OASIS_JPEG_IMG_HEIGHT*3];
 static uint32_t s_dataSizeInJpeg = 0;
 
@@ -148,7 +148,8 @@ void Oasis_WriteJpeg()
 {
     if((oasis_flag == 1) || ((oasis_flag == 2) && (bOasisRecordUpload == false))) {
         int ret = fatfs_write(oasis_filename, (char *) s_tmpBuffer4Jpeg, 0, s_dataSizeInJpeg);
-        UsbShell_Printf("[OASIS]:%s saved ret:%d\r\n", oasis_filename, ret);
+        //UsbShell_Printf("[OASIS]:%s saved ret:%d\r\n", oasis_filename, ret);
+        LOGD("[OASIS]:%s saved ret:%d\r\n", oasis_filename, ret);
     }
 }
 
