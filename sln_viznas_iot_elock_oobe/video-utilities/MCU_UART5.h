@@ -176,10 +176,10 @@ typedef struct userInfo_data_t
 int MCU_UART5_Start();
 
 //send qMsg to uart5 task when face register over		
-int  Uart5_GetFaceRegResult(uint8_t result);
+int  Uart5_GetFaceRegResult(uint8_t result, char *pszMessage);
 
 //send qMsg to uart5 task when face recognize over			
-int  Uart5_GetFaceRecResult(uint8_t result);
+int  Uart5_GetFaceRecResult(uint8_t result, char *pszMessage);
 
 //从oasis_rt106f_elcok.cpp中获取识别或者注册时的face_info
 void Set_curFaceInfo(char *name, bool recognize, bool enrolment, int rt);

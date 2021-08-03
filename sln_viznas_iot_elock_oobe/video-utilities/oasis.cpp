@@ -590,9 +590,9 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
             LOGD("[EVT]:Liveness[%d][%d]\r\n", para->reserved[5], para->reserved[6]);
         }
 		if(evt == OASISLT_EVT_REC_COMPLETE) {
-			Uart5_GetFaceRecResult((uint8_t)face_info.recognize);
+		    Uart5_GetFaceRecResult((uint8_t)face_info.recognize, gui_info.name);
 		}else if(evt == OASISLT_EVT_REG_COMPLETE) {
-			Uart5_GetFaceRegResult((uint8_t)face_info.enrolment);	
+		    Uart5_GetFaceRegResult((uint8_t)face_info.enrolment, gui_info.name);
 		}
     }
 }

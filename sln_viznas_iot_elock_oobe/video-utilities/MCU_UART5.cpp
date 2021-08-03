@@ -1819,7 +1819,7 @@ int MCU_UART5_Start() {
 }
 
 //send qMsg to uart5 task when face register over		
-int Uart5_GetFaceRegResult(uint8_t result) {
+int Uart5_GetFaceRegResult(uint8_t result, char *pszMessage) {
     int status;
     QMsg *pQMsg = (QMsg *) pvPortMalloc(sizeof(QMsg));
     if (NULL == pQMsg) {
@@ -1828,6 +1828,7 @@ int Uart5_GetFaceRegResult(uint8_t result) {
     }
     pQMsg->id = QMSG_FACEREC_ADDNEWFACE;
     pQMsg->msg.val = result;
+    memcpy(pQMsg->msg.info.name, pszMessage, sizeof(pQMsg->msg.info.name));
     status = Uart5_SendQMsg((void *) &pQMsg);
 
     if (status) {
@@ -1838,7 +1839,7 @@ int Uart5_GetFaceRegResult(uint8_t result) {
 }
 
 //send qMsg to uart5 task when face recognize over			
-int Uart5_GetFaceRecResult(uint8_t result) {
+int Uart5_GetFaceRecResult(uint8_t result, char *pszMessage) {
     int status;
     QMsg *pQMsg = (QMsg *) pvPortMalloc(sizeof(QMsg));
     if (NULL == pQMsg) {
@@ -1847,6 +1848,7 @@ int Uart5_GetFaceRecResult(uint8_t result) {
     }
     pQMsg->id = QMSG_FACEREC_RECFACE;
     pQMsg->msg.val = result;
+    memcpy(pQMsg->msg.info.name, pszMessage, sizeof(pQMsg->msg.info.name));
     status = Uart5_SendQMsg((void *) &pQMsg);
 
     if (status) {
@@ -1882,7 +1884,7 @@ static int Uart5_SendQMsg(void *msg) {
 
 //从oasis_rt106f_elcok.cpp中获取识别或者注册时的face_info
 void Set_curFaceInfo(char *name, bool recognize, bool enrolment, int rt) {
-    LOGD(">>>name<%s>, recognize<%d>, enrolment<%d>, rt<%d>\n", name, recognize, enrolment, rt);
+    LOGD(">>>name<%s>, recognize<%d>, enrolment<%d>, rt<%d>\r\n", name, recognize, enrolment, rt);
     gFaceInfo.name = std::string(name);
     gFaceInfo.recognize = recognize;
     gFaceInfo.enrolment = enrolment;
