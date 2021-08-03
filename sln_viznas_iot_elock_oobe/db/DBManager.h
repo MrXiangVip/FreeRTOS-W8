@@ -17,7 +17,7 @@
 //记录最大column
 #define MAX_COLUMN 200
 //记录最大字节数
-#define MAX_BYTE (200*100)
+#define MAX_BYTE (200*200)
 
 #define FIX_SIZE   1
 typedef unsigned char byte;
