@@ -28,7 +28,7 @@ typedef struct {
     int ID;
     char UUID[20];
     int action;       //  操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁
-    char image_path[64];
+    char image_path[16];	//64
     int     status;   // 0,操作成功 1,操作失败.
     long    time_stamp; //时间戳 从1970年开始的秒数
     int     power;    // 电池电量

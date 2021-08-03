@@ -688,7 +688,7 @@ int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
         HexToStr(username, g_uu_id.UID, sizeof(g_uu_id.UID));
         strcpy(record->UUID, username);
         record->action = 3;//  操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁
-        char image_path[64];
+        char image_path[16];
         record->status = 0; // 0,操作成功 1,操作失败.
         record->time_stamp = ws_systime; //时间戳 从1970年开始的秒数
         if(power == 255 ) {
@@ -706,7 +706,8 @@ int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
 
         record->upload = 0; //   0代表没上传 1代表记录上传图片未上传 2代表均已
         memset(image_path, 0, sizeof(image_path)); // 对注册成功的用户保存一张压缩过的jpeg图片
-        snprintf(image_path, sizeof(image_path), "REC_%d_%d_%s.jpg", 0, record->time_stamp, record->UUID);
+        //snprintf(image_path, sizeof(image_path), "REC_%d_%d_%s.jpg", 0, record->time_stamp, record->UUID);
+        snprintf(image_path, sizeof(image_path), "C%d", record->time_stamp);
         memcpy(record->image_path, image_path, sizeof(image_path));//image_path
 
         DBManager *dbManager = DBManager::getInstance();
@@ -1418,7 +1419,7 @@ static void uart5_QMsg_task(void *pvParameters) {
     BaseType_t ret;
     QMsg *pQMsg;
     int recognize_times = 0;
-    char image_path[64] = {0};
+    char image_path[16] = {0};
 
     while (1) {
         //LOGD("uart5_QMsg_task()  -> xQueueReceive()!\n");
@@ -1447,8 +1448,9 @@ static void uart5_QMsg_task(void *pvParameters) {
                         record->action = 0;// 0 代表注册
                         record->time_stamp = ws_systime;//当前时间
                         memset(image_path, 0, sizeof(image_path)); // 对注册成功的用户保存一张压缩过的jpeg图片
-                        snprintf(image_path, sizeof(image_path), "REG_%d_%d_%s.jpg", g_reging_flg, record->time_stamp,
-                                 record->UUID);
+                        //snprintf(image_path, sizeof(image_path), "REG_%d_%d_%s.jpg", g_reging_flg, record->time_stamp,
+                        //         record->UUID);
+                        snprintf(image_path, sizeof(image_path), "G%d", record->time_stamp);
                         memcpy(record->image_path, image_path, sizeof(image_path));//image_path
                         record->status = SUCCESS;// 本次注册成功
                         record->power = -1;//当前电池电量
