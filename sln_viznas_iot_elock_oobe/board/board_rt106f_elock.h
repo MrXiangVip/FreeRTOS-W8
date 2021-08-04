@@ -495,8 +495,8 @@ extern "C" {
 #define PWM2_SUPPORT	1
 #define USB_OTG_SUPPORT	1
 
-#define  PROJECT_VERSION  "W8_106F_V1.1.8"
-#define  FIRMWARE_VERSION  "FW_W8_c48d74_20210803_V1.1.8"
+#define  PROJECT_VERSION  "W8_106F_V1.1.9"
+#define  FIRMWARE_VERSION  "FW_W8_f3dee1_20210804_V1.1.9"
 
 /*******************************************************************************
  * API
