@@ -119,8 +119,10 @@ DTC_BSS static StaticTask_t s_Uart5SyncTaskTCB;
 DTC_BSS static StackType_t Uart5QmsgTaskStack[UART5QMSGTASK_STACKSIZE];
 DTC_BSS static StaticTask_t s_Uart5QmsgTaskTCB;
 
+#if	0
 DTC_BSS static StackType_t Uart5LoopTaskStack[UART5LOOPTASK_STACKSIZE];
 DTC_BSS static StaticTask_t s_Uart5LoopTaskTCB;
+#endif
 #endif
 
 
@@ -714,7 +716,7 @@ int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
         dbManager->addRecord(record);
 
         Oasis_SetOasisFileName(record->image_path);
-		Oasis_WriteJpeg();
+		//Oasis_WriteJpeg();
 
         int ID = DBManager::getInstance()->getLastRecordID();
         LOGD("开锁成功, 更新数据库状态.请求MQTT上传本次开门的记录 \n");
@@ -742,6 +744,19 @@ int cmdWifiOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessag
     return 0;
 }
 
+int save_config_feature_file() {
+    LOGD("save config, feature start\r\n");
+    if (saving_file == false) {
+        DB_Save(0);
+        save_json_config_file();
+        saving_file = true;
+    }
+
+    LOGD("save config, feature end\r\n");
+
+    return 0;
+}
+
 int save_files_before_pwd() {
     LOGD("开始保存config, db, jpg 文件 \r\n");
     if (saving_file == false) {
@@ -754,7 +769,7 @@ int save_files_before_pwd() {
         saving_db = true;
         DBManager::getInstance()->flushRecordList();
     }
-    //Oasis_WriteJpeg();
+    Oasis_WriteJpeg();
     LOGD("保存config, db, jpg 文件结束 \r\n");
 
     return 0;
@@ -1460,7 +1475,7 @@ static void uart5_QMsg_task(void *pvParameters) {
                         DBManager::getInstance()->addRecord(record);
 
                         Oasis_SetOasisFileName(record->image_path);
-                        Oasis_WriteJpeg();
+                        //Oasis_WriteJpeg();
 //                        g_face.WriteJPG(image_path, faceBuf.color_buf, CAM_HEIGHT,CAM_WIDTH, 3, 50);
 //                        log_info("保存 UID<%s> 注册图片到 path<%s>!\n", record.UID, image_path);
                     } else {//failed
@@ -1483,7 +1498,8 @@ static void uart5_QMsg_task(void *pvParameters) {
                         vTaskDelay(pdMS_TO_TICKS(1000));
                         Uart5_SendDeinitCameraMsg();
                         vTaskDelay(pdMS_TO_TICKS(200));
-                        save_files_before_pwd();
+                        //save_files_before_pwd();
+                        save_config_feature_file();
                         vTaskDelay(pdMS_TO_TICKS(100));
 
                     	LOGD("注册成功,请求MQTT上传本次用户注册记录 \n");
