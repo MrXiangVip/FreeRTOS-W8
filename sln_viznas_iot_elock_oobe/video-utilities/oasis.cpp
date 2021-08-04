@@ -146,7 +146,7 @@ void Oasis_SetOasisFileName(const char *filename)
 
 void Oasis_WriteJpeg()
 {
-    if((oasis_flag == 1) || ((oasis_flag == 2) && (bOasisRecordUpload == false))) {
+    if(((oasis_flag == 1) || (oasis_flag == 2)) && (bOasisRecordUpload == false)) {
         int ret = fatfs_write(oasis_filename, (char *) s_tmpBuffer4Jpeg, 0, s_dataSizeInJpeg);
         //UsbShell_Printf("[OASIS]:%s saved ret:%d\r\n", oasis_filename, ret);
         LOGD("[OASIS]:%s saved ret:%d\r\n", oasis_filename, ret);
