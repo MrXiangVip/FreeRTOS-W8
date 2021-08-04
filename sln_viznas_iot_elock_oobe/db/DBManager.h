@@ -15,9 +15,9 @@
 
 #define RECORD_PATH "record"
 //记录最大column
-#define MAX_COLUMN 200
+#define MAX_COLUMN 100
 //记录最大字节数
-#define MAX_BYTE (200*200)
+#define MAX_BYTE (100*200)
 
 #define FIX_SIZE   1
 typedef unsigned char byte;
