@@ -4,10 +4,6 @@
 
 #include <cstring>
 #include "DBManager.h"
-#include <iostream>
-
-using namespace std;
-
 
 DBManager* DBManager::m_instance = NULL;
 list<Record*> DBManager::recordList ;
@@ -51,27 +47,32 @@ bool DBManager::saveRecordToFile(list<Record*> recordList,char *filePath){
     for ( it = recordList.begin( ); it != recordList.end( ); it++ ){
         Record  *tmpRecord = (Record*)*it;
         //保存未上传的记录
-        if( tmpRecord->upload != 2 ){
+        if( (tmpRecord->action_upload & 0xFF) != 2 ){
             cJSON * cObj = cJSON_CreateObject();
-            cJSON_AddNumberToObject(cObj, "ID", tmpRecord->ID);
-            cJSON_AddStringToObject(cObj, "UUID", tmpRecord->UUID);
-            cJSON_AddNumberToObject(cObj, "action", tmpRecord->action);
-            cJSON_AddNumberToObject(cObj, "time_stamp", tmpRecord->time_stamp);
-            cJSON_AddNumberToObject(cObj, "status", tmpRecord->status);
-            cJSON_AddStringToObject(cObj, "image_path", tmpRecord->image_path);
-            cJSON_AddNumberToObject(cObj, "power",  tmpRecord->power);
-            cJSON_AddNumberToObject(cObj, "power2", tmpRecord->power2);
-            cJSON_AddNumberToObject(cObj, "upload", tmpRecord->upload);
+            cJSON_AddNumberToObject(cObj, DB_KEY_ID, tmpRecord->ID);
+            cJSON_AddStringToObject(cObj, DB_KEY_UUID, tmpRecord->UUID);
+            //cJSON_AddNumberToObject(cObj, DB_KEY_ACTION, tmpRecord->action);
+            cJSON_AddNumberToObject(cObj, DB_KEY_TIME_STAMP, tmpRecord->time_stamp);
+            //cJSON_AddNumberToObject(cObj, DB_KEY_STATUS, tmpRecord->status);
+            cJSON_AddStringToObject(cObj, DB_KEY_IMAGE_PATH, tmpRecord->image_path);
+            cJSON_AddNumberToObject(cObj, DB_KEY_POWER,  tmpRecord->power);
+            //cJSON_AddNumberToObject(cObj, DB_KEY_POWER1,  tmpRecord->power);
+            //cJSON_AddNumberToObject(cObj, DB_KEY_POWER2, tmpRecord->power2);
+            //cJSON_AddNumberToObject(cObj, DB_KEY_UPLOAD, tmpRecord->upload);
+            cJSON_AddNumberToObject(cObj, DB_KEY_ACTION_UPLOAD, tmpRecord->action_upload);
             //4.2 把对象添加到数组
             cJSON_AddItemToArray(ObjArr, cObj);
         }
     }
     //4.3 ObjArr加入到jsonroot
-    cJSON_AddItemToObject(jsonroot, "ObjInfo", ObjArr);
-    cjson_str = cJSON_Print(jsonroot);
+    cJSON_AddItemToObject(jsonroot, DB_KEY_INFO, ObjArr);
+    //cjson_str = cJSON_Print(jsonroot);
+    cjson_str = cJSON_PrintUnformatted(jsonroot);
     if(cjson_str!=NULL){
 		LOGD("-----2.将json格式数据存文件----%d 条记录--\r\n", cJSON_GetArraySize(ObjArr));
 #ifdef  FIX_SIZE
+		//LOGD("%s sizeof(Record) is %d, strlen(cjson_str) is %d\r\n", __FUNCTION__, sizeof(Record), strlen(cjson_str));
+		//LOGD("%s cjson_str is %s \r\n", __FUNCTION__, cjson_str);
 		memset(buf, 0, sizeof(buf));
 		memcpy(buf, cjson_str, strlen(cjson_str));
 		fatfs_write( filePath, buf, 0, MAX_BYTE);
@@ -109,7 +110,7 @@ list<Record*> DBManager::readRecordFromFile(char *filePath){
 			cJSON *jsonroot = cJSON_Parse(buf);
 			//4. 解析数组成员是json对象的数组ObjArr
 			LOGD("------2.将json 格式数据组织成链表---------\r\n");
-			cJSON *ObjArr = cJSON_GetObjectItem(jsonroot, "ObjInfo");
+			cJSON *ObjArr = cJSON_GetObjectItem(jsonroot, DB_KEY_INFO);
 			if (cJSON_IsArray(ObjArr)) {
 				ArrLen = cJSON_GetArraySize(ObjArr);
 				LOGD("ObjArr Len: %d\r\n", ArrLen);
@@ -121,17 +122,20 @@ list<Record*> DBManager::readRecordFromFile(char *filePath){
 
 					Record *record = (Record *) pvPortMalloc(sizeof(Record));
 					record->ID = i;
-					strcpy(record->UUID, cJSON_GetObjectItem(SubObj, "UUID")->valuestring);
-					record->action = cJSON_GetObjectItem(SubObj, "action")->valueint;
-					record->time_stamp = cJSON_GetObjectItem(SubObj, "time_stamp")->valuedouble;
-					record->status = cJSON_GetObjectItem(SubObj, "status")->valueint;
-					strcpy(record->image_path , cJSON_GetObjectItem(SubObj, "image_path")->valuestring);
-					record->power = cJSON_GetObjectItem(SubObj, "power")->valueint;
-					record->power2 = cJSON_GetObjectItem(SubObj, "power2")->valueint;
-					record->upload = cJSON_GetObjectItem(SubObj, "upload")->valueint;
+					strcpy(record->UUID, cJSON_GetObjectItem(SubObj, DB_KEY_UUID)->valuestring);
+					//record->action = cJSON_GetObjectItem(SubObj, DB_KEY_ACTION)->valueint;
+					record->time_stamp = cJSON_GetObjectItem(SubObj, DB_KEY_TIME_STAMP)->valuedouble;
+					//record->status = cJSON_GetObjectItem(SubObj, DB_KEY_STATUS)->valueint;
+					strcpy(record->image_path , cJSON_GetObjectItem(SubObj, DB_KEY_IMAGE_PATH)->valuestring);
+					record->power = cJSON_GetObjectItem(SubObj, DB_KEY_POWER)->valueint;
+					//record->power1 = cJSON_GetObjectItem(SubObj, DB_KEY_POWER1)->valueint;
+					//record->power2 = cJSON_GetObjectItem(SubObj, DB_KEY_POWER2)->valueint;
+					//record->upload = cJSON_GetObjectItem(SubObj, DB_KEY_UPLOAD)->valueint;
+					record->action_upload = cJSON_GetObjectItem(SubObj, DB_KEY_ACTION_UPLOAD)->valueint;
 
 					recordList.push_back(record);
-					LOGD("i: [%d] id:%d, uuid:%s, action %d, time_stamp:%d, upload:%d\r\n", i, record->ID, record->UUID, record->action, record->time_stamp, record->upload);
+					//LOGD("i: [%d] id:%d, uuid:%s, action %d, time_stamp:%d, upload:%d\r\n", i, record->ID, record->UUID, record->action, record->time_stamp, record->upload);
+					LOGD("i: [%d] id:%d, uuid:%s, time_stamp:%d, action_upload:%d\r\n", i, record->ID, record->UUID, record->time_stamp, record->action_upload);
 				}
 			}
 
@@ -197,7 +201,7 @@ list<Record*>  DBManager::getAllUnuploadRecord()
     list <Record*>::iterator it;
     for ( it = recordList.begin( ); it != recordList.end( ); ) {
         Record *tmpRecord = (Record *) *it;
-        if( tmpRecord->upload == 2 ){
+        if( (tmpRecord->action_upload & 0xFF) == 2 ){
             it = recordList.erase(it);
         }else{
             it++;

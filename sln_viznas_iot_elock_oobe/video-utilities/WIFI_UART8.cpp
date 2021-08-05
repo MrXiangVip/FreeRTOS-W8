@@ -1304,9 +1304,23 @@ static int handle_line()
 int uploadRecord(char *msgId, Record *record) {
 	char pub_msg[MQTT_AT_LONG_LEN];
 	// int result = record->passed ? 0 : 1;
-	LOGD("upload record uid %s, type %d, time %d, batteryA %d, batteryB %d, result %d, upload %d\n", record->UUID, record->action, record->time_stamp, record->power, record->power2, record->status, record->upload);
+	short power = record->power;
+	short power1 = power / 256;
+	if(power1 == 255) {
+	    power1 = -1;
+	}
+	short power2 = power % 256;
+	if(power2 == 255) {
+	    power2 = -1;
+	}
+	short action_upload = record->action_upload;
+	short action = action_upload / 256;
+	short upload = action_upload % 256;
+	//LOGD("upload record uid %s, type %d, time %d, batteryA %d, batteryB %d, result %d, upload %d\n", record->UUID, record->action, record->time_stamp, record->power, record->power2, record->status, record->upload);
+	LOGD("upload record uid %s, type %d, time %d, batteryA %d, batteryB %d, result %d, upload %d\n", record->UUID, action, record->time_stamp, power1, power2, 0/*record->status*/, upload);
 	// sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"userId\\\":\\\"%s\\\"\\, \\\"type\\\":%d\\,\\\"time\\\":%u\\,\\\"batteryA\\\":%d\\,\\\"batteryB\\\":%d\\,\\\"result\\\":%d}", msgId, btWifiConfig.bt_mac, record->UID, record->type, record->time, record->power, record->power2, result);
-	sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"userId\\\":\\\"%s\\\"\\, \\\"type\\\":%d\\,\\\"time\\\":%d\\,\\\"batteryA\\\":%d\\,\\\"batteryB\\\":%d\\,\\\"result\\\":%d}", msgId, btWifiConfig.bt_mac, record->UUID, record->action, record->time_stamp, record->power, record->power2, record->status);
+	//sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"userId\\\":\\\"%s\\\"\\, \\\"type\\\":%d\\,\\\"time\\\":%d\\,\\\"batteryA\\\":%d\\,\\\"batteryB\\\":%d\\,\\\"result\\\":%d}", msgId, btWifiConfig.bt_mac, record->UUID, record->action, record->time_stamp, record->power, record->power2, record->status);
+	sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"userId\\\":\\\"%s\\\"\\, \\\"type\\\":%d\\,\\\"time\\\":%d\\,\\\"batteryA\\\":%d\\,\\\"batteryB\\\":%d\\,\\\"result\\\":%d}", msgId, btWifiConfig.bt_mac, record->UUID, action, record->time_stamp, power1, power2, 0/*record->status*/);
 	char *pub_topic = get_pub_topic_record_request();
 	while (g_priority != 0) {
 		//usleep(500000);	// 睡眠0.5s
@@ -1315,7 +1329,8 @@ int uploadRecord(char *msgId, Record *record) {
     //LOGD("%s pub_topic is %s, pub_msg is %s\r\n", __FUNCTION__, pub_topic, pub_msg);
 	int ret = quickPublishMQTT(pub_topic, pub_msg);
 	if (ret == 0) {
-		record->upload = 1;
+		//record->upload = 1;
+		record->action_upload = (record->action_upload & 0xFF00) + 1;
 		dbmanager->updateRecordByID(record);
 	}
 	// notifyCommandExecuted(ret);
@@ -1335,7 +1350,8 @@ int uploadRecordImage(Record *record, bool online) {
             int ret = uploadRecord(msgId, record);
             if (ret == 0) {
                 //ret = uploadRecord(msgId, record);
-                record->upload = 1;
+                //record->upload = 1;
+        		record->action_upload = (record->action_upload & 0xFF00) + 1;
             }
             // 第二步：传图片
             ret = pubOasisImage(pub_topic, msgId);
@@ -1343,11 +1359,13 @@ int uploadRecordImage(Record *record, bool online) {
             	// 第三步：再传记录
             	ret = uploadRecord(msgId, record);
             	if (ret == 0) {
-					record->upload = 2;
+					//record->upload = 2;
+					record->action_upload = (record->action_upload & 0xFF00) + 2;
 				}
                 bOasisRecordUpload = true;
             }
-            LOGD("uploadRecordImage record->upload is %d\r\n", record->upload);
+            //LOGD("uploadRecordImage record->upload is %d\r\n", record->upload);
+            LOGD("uploadRecordImage record->action_upload is 0x%X\r\n", record->action_upload);
 
             dbmanager->updateRecordByID(record);
 
@@ -1365,7 +1383,8 @@ int uploadRecordImage(Record *record, bool online) {
             int ret = uploadRecord(msgId, record);
             //int ret = pubImage(pub_topic, filename, msgId);
             if (ret == 0) {
-                record->upload = 1;
+                //record->upload = 1;
+            	record->action_upload = (record->action_upload & 0xFF00) + 1;
             }
             // 第二步：传图片
             ret = pubImage(pub_topic, filename, msgId);
@@ -1373,7 +1392,8 @@ int uploadRecordImage(Record *record, bool online) {
             	// 第三步：再传记录
 				ret = uploadRecord(msgId, record);
 				if (ret == 0) {
-					record->upload = 2;
+					//record->upload = 2;
+					record->action_upload = (record->action_upload & 0xFF00) + 2;
 					fatfs_delete(filename);
 				}
             }
@@ -1409,7 +1429,7 @@ int uploadRecords() {
 		//Record record = records[i];
 
 		LOGD("---------------------- register: upload record id %d g_uploading_id %d\r\n", record->ID, g_uploading_id);
-		if (record->upload == 0 && g_uploading_id != record->ID) {
+		if ((record->action_upload & 0xFF) == 0 && g_uploading_id != record->ID) {
 	        notifyKeepAlive();
 	        vTaskDelay(pdMS_TO_TICKS(20));
 
@@ -1437,7 +1457,7 @@ int uploadRecords() {
 		//Record record = records[i];
 
 		Record* record = (Record*) *it;
-		if (record->upload == 0) {
+		if ((record->action_upload & 0xFF) == 0) {
 	        notifyKeepAlive();
 	        vTaskDelay(pdMS_TO_TICKS(20));
 
@@ -1467,7 +1487,7 @@ int uploadRecords() {
 		Record* record = (Record*) *it;
 
 		LOGD("---------------------- opendoor: upload record id %d g_uploading_id %d\r\n", record->ID, g_uploading_id);
-		if ((record->upload == 0 || record->upload == 1) && g_uploading_id != record->ID) {
+		if (((record->action_upload & 0xFF) == 0 || (record->action_upload & 0xFF) == 1) && g_uploading_id != record->ID) {
 	        notifyKeepAlive();
 	        vTaskDelay(pdMS_TO_TICKS(20));
 

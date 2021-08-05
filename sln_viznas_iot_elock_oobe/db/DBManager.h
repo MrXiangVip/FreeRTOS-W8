@@ -5,35 +5,65 @@
 #ifndef DB_DBMANAGER_H
 #define DB_DBMANAGER_H
 
-#include <iostream>
 #include <list>
 #include "cJSON.h"
 #include "fsl_log.h"
 #include "fatfs_op.h"
 
 
-
 #define RECORD_PATH "record"
+
+#if 0
+#define DB_KEY_INFO         "ObjInfo"
+#define DB_KEY_ID		    "ID"
+#define DB_KEY_UUID		    "UUID"
+#define DB_KEY_ACTION	    "action"
+#define DB_KEY_TIME_STAMP   "time_stamp"
+#define DB_KEY_STATUS		"status"
+#define DB_KEY_IMAGE_PATH   "image_path"
+#define DB_KEY_POWER        "power"
+#define DB_KEY_POWER1       "power1"
+#define DB_KEY_POWER2       "power2"
+#define DB_KEY_UPLOAD       "upload"
+#define DB_KEY_ACTION_ULOAD "action_upload"
+#else
+#define DB_KEY_INFO         	"IF"
+#define DB_KEY_ID		    	"ID"
+#define DB_KEY_UUID		    	"UUID"
+#define DB_KEY_ACTION	    	"AC"
+#define DB_KEY_TIME_STAMP   	"TS"
+#define DB_KEY_STATUS			"ST"
+#define DB_KEY_IMAGE_PATH   	"IP"
+#define DB_KEY_POWER        	"P"
+#define DB_KEY_POWER1       	"P1"
+#define DB_KEY_POWER2       	"P2"
+#define DB_KEY_UPLOAD       	"UP"
+#define DB_KEY_ACTION_UPLOAD 	"AU"
+#endif
+
 //记录最大column
 #define MAX_COLUMN 100
 //记录最大字节数
 #define MAX_BYTE (100*200)
 
 #define FIX_SIZE   1
-typedef unsigned char byte;
+
 
 using namespace std;
 
 typedef struct {
     int ID;
     char UUID[20];
-    int action;       //  操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁
+    //int action;       //  操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁
     char image_path[16];	//64
-    int     status;   // 0,操作成功 1,操作失败.
+    //int     status;   // 0,操作成功 1,操作失败.(暂时不要,每次都是上传0)
     long    time_stamp; //时间戳 从1970年开始的秒数
-    int     power;    // 电池电量
-    int     power2;   // 电池电量
-    int     upload; //   0代表没上传 1代表记录上传图片未上传 2代表均已
+    short     power;    // 电池电量 高8位为power1, 低8位为power2
+    //int     power1;    // 电池电量
+    //int     power2;   // 电池电量
+    short	  action_upload;	//高8位为action, 操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁
+    							//低8位upload, 0代表没上传 1代表记录上传图片未上传 2代表均已
+    //int     upload; //   0代表没上传 1代表记录上传图片未上传 2代表均已
 } Record, *pRecord;
 
 class DBManager {
