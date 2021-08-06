@@ -124,6 +124,9 @@ DTC_BSS static StaticTask_t s_MqttTaskTCB;
 DTC_BSS static StackType_t Uart8MsgHandleTaskStack[UART8MSGHANDLETASK_STACKSIZE];
 DTC_BSS static StaticTask_t s_Uart8MsgHandleTaskTCB;
 
+DTC_BSS static StackType_t Uart8SendheartbeatTaskStack[UART8SENDHEARTBEATTASK_STACKSIZE];
+DTC_BSS static StaticTask_t s_Uart8SendheartbeatTaskTCB;
+
 DTC_BSS static StackType_t Uart8UploadDataTaskStack[UART8UPLOADDATATASK_STACKSIZE];
 DTC_BSS static StaticTask_t s_Uart8UploadDataTaskTCB;
 #endif
@@ -1511,6 +1514,8 @@ int uploadRecords() {
 	return fret;
 }
 
+int MAX_COUNT = 5;
+
 static void msghandle_task(void *pvParameters)
 {
     char const *logTag = "[UART8_WIFI]:msghandle_task-";
@@ -1519,12 +1524,8 @@ static void msghandle_task(void *pvParameters)
 
     int is_online_handled = 0;	// g_is_online只处理一次
 
-    char *pub_topic = NULL;
-    char pub_msg[MQTT_AT_LONG_LEN];
-    memset(pub_msg, '\0', MQTT_AT_LONG_LEN);
     memset(wifi_rssi, '\0', sizeof(wifi_rssi));
     wifi_rssi[0] = '0';
-    int MAX_COUNT = 5;
     int TIMEOUT_COUNT = 30;
 	//mqtt_init_done = 1;
     do {
@@ -1534,24 +1535,6 @@ static void msghandle_task(void *pvParameters)
 			if (g_has_more_upload_data == 0 && g_is_uploading_data == 0) {
 				update_rssi();
 			}
-        }
-
-        if((count % MAX_COUNT == 0) || (g_heart_beat_executed == 1)) {
-            if ((mqtt_init_done == 1) && (bPubOasisImage == false) && (g_is_uploading_data == 0)) {
-                char *msgId = gen_msgId();
-                // sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"btmac\\\":\\\"%s\\\"\\,\\\"wifi_rssi\\\":%s\\,\\\"battery\\\":%d\\,\\\"version\\\":\\\"%s\\\"}", msgId, btWifiConfig.wifi_mac, btWifiConfig.bt_mac, wifi_rssi, battery_level, getFirmwareVersion());
-                sprintf(pub_msg,
-                        "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"wifi_rssi\\\":%s\\,\\\"battery\\\":%d\\,\\\"index\\\":%d\\,\\\"version\\\":\\\"%s\\\"}",
-                        msgId, btWifiConfig.bt_mac, wifi_rssi, battery_level, g_heartbeat_index++,
-                        getFirmwareVersion());
-                freePointer(&msgId);
-                pub_topic = get_pub_topic_heart_beat();
-                //LOGD("%s pub_msg is %s\n", __FUNCTION__, pub_msg);
-                int ret = quickPublishMQTTWithPriority(pub_topic, pub_msg, 1);
-                if(g_heart_beat_executed == 1) {
-                	g_heart_beat_executed = 0;
-                }
-            }
         }
 
         // 如果后台已经有指令反馈，我们认为已经连接上后台了，这个时候，30s进行一次心跳
@@ -1623,6 +1606,43 @@ static void msghandle_task(void *pvParameters)
 ////    		memset(recv_msg_lines[current_handle_line], '\0', MAX_MSG_LEN_OF_LINE);
 //    		// TODO:end
 //    	}
+    } while (1);
+    vTaskDelete(NULL);
+    LOGD("\r\n%s end...\r\n", logTag);
+}
+
+static void send_heartbeat_task(void *pvParameters)
+{
+    char const *logTag = "[UART8_WIFI]:send_heartbeat_task-";
+    LOGD("%s start...\r\n", logTag);
+	int count = 0;
+
+    char *pub_topic = NULL;
+    char pub_msg[MQTT_AT_LONG_LEN];
+    do {
+        vTaskDelay(pdMS_TO_TICKS(1000));
+
+        if((count % MAX_COUNT == 0) || (g_heart_beat_executed == 1)) {
+            if ((mqtt_init_done == 1) && (bPubOasisImage == false) && (g_is_uploading_data == 0)) {
+                char *msgId = gen_msgId();
+                memset(pub_msg, '\0', MQTT_AT_LONG_LEN);
+                // sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"btmac\\\":\\\"%s\\\"\\,\\\"wifi_rssi\\\":%s\\,\\\"battery\\\":%d\\,\\\"version\\\":\\\"%s\\\"}", msgId, btWifiConfig.wifi_mac, btWifiConfig.bt_mac, wifi_rssi, battery_level, getFirmwareVersion());
+                sprintf(pub_msg,
+                        "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"wifi_rssi\\\":%s\\,\\\"battery\\\":%d\\,\\\"index\\\":%d\\,\\\"version\\\":\\\"%s\\\"}",
+                        msgId, btWifiConfig.bt_mac, wifi_rssi, battery_level, g_heartbeat_index++,
+                        getFirmwareVersion());
+                freePointer(&msgId);
+                pub_topic = get_pub_topic_heart_beat();
+                //LOGD("%s pub_msg is %s\n", __FUNCTION__, pub_msg);
+                int ret = quickPublishMQTTWithPriority(pub_topic, pub_msg, 1);
+                if(g_heart_beat_executed == 1) {
+                	g_heart_beat_executed = 0;
+                }
+            }
+        }
+
+        count++;
+
     } while (1);
     vTaskDelete(NULL);
     LOGD("\r\n%s end...\r\n", logTag);
@@ -1728,6 +1748,17 @@ int WIFI_UART8_Start()
     	while (1);
     }
 #endif
+
+#if (configSUPPORT_STATIC_ALLOCATION == 1)
+    if (NULL == xTaskCreateStatic(send_heartbeat_task, "send_heartbeat_task", UART8SENDHEARTBEATTASK_STACKSIZE, NULL, UART8SENDHEARTBEATTASK_PRIORITY,
+                                            Uart8SendheartbeatTaskStack, &s_Uart8SendheartbeatTaskTCB))
+#else
+    if (xTaskCreate(send_heartbeat_task, "send_heartbeat_task", UART8SENDHEARTBEATTASK_STACKSIZE, NULL, UART8SENDHEARTBEATTASK_PRIORITY, NULL) != pdPASS)
+#endif
+    {
+    	LOGD("%s failed to create send_heartbeat_task\r\n", logTag);
+    	while (1);
+    }
 
 #if (configSUPPORT_STATIC_ALLOCATION == 1)
     if (NULL == xTaskCreateStatic(uploaddata_task, "uploaddata_task", UART8UPLOADDATATASK_STACKSIZE, NULL, UART8UPLOADDATATASK_PRIORITY,
