@@ -1007,6 +1007,33 @@ int SendMsgToMQTT(char *mqtt_payload, int len) {
                 } else {
                     LOGD("unlock record length is %d instead of 15\r\n", (int) (char) (mqtt_payload[2]));
                 }
+            } else if ((int) (char) (mqtt_payload[1]) == CMD_MECHANICAL_LOCK) {
+                // 机械开锁记录
+                int id = (int) (mqtt_payload[3]);
+                // TODO:
+                LOGD("dbmanager->getRecord start id %d\r\n", id);
+                Record record;
+                int ret = dbmanager->getRecordByID(id, &record);
+                if (ret == 0) {
+                	LOGD("mechnical record is not NULL start upload record/image\r\n");
+                    g_uploading_id = record.ID;
+                    g_is_uploading_data = 1;
+					// 优先上传最新的记录
+					while (g_is_auto_uploading == 1) {
+						// 如果正在自动上传中，睡眠100ms继续等待
+						//usleep(100000);
+						vTaskDelay(pdMS_TO_TICKS(100));
+					}
+                    int ret = uploadRecordImage(&record, true);
+                    LOGD("uploadRecordImage end\r\n");
+                    // notifyCommandExecuted(ret);
+                    g_is_uploading_data = 0;
+                    g_command_executed = 1;
+                    g_heart_beat_executed = 1;
+                    // TODO:
+                } else {
+                	LOGD("mechnical record is NULL");
+                }
             } else {
             }
         }
@@ -1354,18 +1381,25 @@ int uploadRecordImage(Record *record, bool online) {
             if (ret == 0) {
                 //ret = uploadRecord(msgId, record);
                 //record->upload = 1;
-        		record->action_upload = (record->action_upload & 0xFF00) + 1;
+            	if((record->action_upload & 0xFF00) != 0xB00) {
+            		record->action_upload = (record->action_upload & 0xFF00) + 1;
+            	}else {
+            		record->action_upload = (record->action_upload & 0xFF00) + 2;
+            		bOasisRecordUpload = true;
+            	}
             }
             // 第二步：传图片
-            ret = pubOasisImage(pub_topic, msgId);
-            if (ret == 0) {
-            	// 第三步：再传记录
-            	ret = uploadRecord(msgId, record);
-            	if (ret == 0) {
-					//record->upload = 2;
-					record->action_upload = (record->action_upload & 0xFF00) + 2;
+            if((record->action_upload & 0xFF00) != 0xB00) {
+				ret = pubOasisImage(pub_topic, msgId);
+				if (ret == 0) {
+					// 第三步：再传记录
+					ret = uploadRecord(msgId, record);
+					if (ret == 0) {
+						//record->upload = 2;
+						record->action_upload = (record->action_upload & 0xFF00) + 2;
+					}
+					bOasisRecordUpload = true;
 				}
-                bOasisRecordUpload = true;
             }
             //LOGD("uploadRecordImage record->upload is %d\r\n", record->upload);
             LOGD("uploadRecordImage record->action_upload is 0x%X\r\n", record->action_upload);
@@ -1387,17 +1421,23 @@ int uploadRecordImage(Record *record, bool online) {
             //int ret = pubImage(pub_topic, filename, msgId);
             if (ret == 0) {
                 //record->upload = 1;
-            	record->action_upload = (record->action_upload & 0xFF00) + 1;
+            	if((record->action_upload & 0xFF00) != 0xB00) {
+            		record->action_upload = (record->action_upload & 0xFF00) + 1;
+            	}else {
+            		record->action_upload = (record->action_upload & 0xFF00) + 2;
+            	}
             }
             // 第二步：传图片
-            ret = pubImage(pub_topic, filename, msgId);
-            if(ret == 0) {
-            	// 第三步：再传记录
-				ret = uploadRecord(msgId, record);
-				if (ret == 0) {
-					//record->upload = 2;
-					record->action_upload = (record->action_upload & 0xFF00) + 2;
-					fatfs_delete(filename);
+            if((record->action_upload & 0xFF00) != 0xB00) {
+				ret = pubImage(pub_topic, filename, msgId);
+				if(ret == 0) {
+					// 第三步：再传记录
+					ret = uploadRecord(msgId, record);
+					if (ret == 0) {
+						//record->upload = 2;
+						record->action_upload = (record->action_upload & 0xFF00) + 2;
+						fatfs_delete(filename);
+					}
 				}
             }
 			dbmanager->updateRecordByID(record);
@@ -1657,7 +1697,7 @@ static void uploaddata_task(void *pvParameters)
     do {
         vTaskDelay(pdMS_TO_TICKS(1000));
 
-        if((boot_mode == BOOT_MODE_NORMAL) || (boot_mode == BOOT_MODE_REMOTE)) {
+        if((boot_mode == BOOT_MODE_NORMAL) || (boot_mode == BOOT_MODE_REMOTE) || (boot_mode == BOOT_MODE_MECHANICAL_LOCK)) {
             if (g_has_more_download_data == 0 && g_has_more_upload_data == 1) {
                 if ((mqtt_init_done == 1) && (g_priority == 0) && (bPubOasisImage == false)) {
                     if (mqtt_upload_records_run == false) {

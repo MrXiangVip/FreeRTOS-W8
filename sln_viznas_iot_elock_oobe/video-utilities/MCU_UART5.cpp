@@ -420,7 +420,7 @@ int cmdSysInitOKSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessa
 
 int cmdBootModeRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
     boot_mode = StrGetUInt8(pszMessage);
-    if (boot_mode >= 4) {
+    if (boot_mode > BOOT_MODE_MECHANICAL_LOCK) {
         boot_mode = BOOT_MODE_INVALID;
     }
     LOGD("boot_mode: %d\r\n", boot_mode);
@@ -708,6 +708,62 @@ int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
         dbManager->addRecord(record);
 
         Oasis_SetOasisFileName(record->image_path);
+		//Oasis_WriteJpeg();
+
+        int ID = DBManager::getInstance()->getLastRecordID();
+        LOGD("开锁成功, 更新数据库状态.请求MQTT上传本次开门的记录 \n");
+        cmdRequestMqttUpload(ID);
+    } else {
+        LOGD("开锁失败,不更新数据库状态. 不上传记录\n");
+    }
+
+    return 0;
+}
+
+// 主控接收指令:机械开锁响应
+int cmdMechicalLockRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
+    uint8_t ret = -1;
+    unsigned char *pop = NULL;
+    unsigned char szBuffer[32]={0};
+
+    // MCU到face_loop，0代表开锁成功，1代表开锁失败
+    memcpy(szBuffer, pszMessage, nMessageLen);
+
+    pop = szBuffer;
+
+    // MCU到face_loop，0代表开锁成功，1代表开锁失败
+    ret = StrGetUInt8(pszMessage);
+    // 如果开锁成功 更新数据库状态 ,请求mqtt上传本次操作记录。
+    if (ret == 0) {
+        //					xshx add
+        //char power_msg[32] = {0};
+        pop += 1;
+        uint8_t power = StrGetUInt8(pop);
+        pop += 1;
+        uint8_t  power2 = StrGetUInt8(pop);
+
+        Record *record = (Record *) pvPortMalloc(sizeof(Record));
+        HexToStr(username, g_uu_id.UID, sizeof(g_uu_id.UID));
+        strcpy(record->UUID, username);
+        //record->action = 3;//  操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁
+        char image_path[16];
+        //record->status = 0; // 0,操作成功 1,操作失败.
+        record->time_stamp = ws_systime; //时间戳 从1970年开始的秒数
+        record->power = power * 256 + power2;
+        //sprintf(power_msg, "{\\\"batteryA\\\":%d\\,\\\"batteryB\\\":%d}", record->power, record->power2);
+        //LOGD("power_msg is %s \r\n", power_msg);
+
+        //record->upload = 0; //   0代表没上传 1代表记录上传图片未上传 2代表均已
+        record->action_upload = 0xB00;
+        memset(image_path, 0, sizeof(image_path)); // 对注册成功的用户保存一张压缩过的jpeg图片
+        //snprintf(image_path, sizeof(image_path), "REC_%d_%d_%s.jpg", 0, record->time_stamp, record->UUID);
+        //snprintf(image_path, sizeof(image_path), "C%d", record->time_stamp);
+        //memcpy(record->image_path, image_path, sizeof(image_path));//image_path
+
+        DBManager *dbManager = DBManager::getInstance();
+        dbManager->addRecord(record);
+
+        //Oasis_SetOasisFileName(record->image_path);
 		//Oasis_WriteJpeg();
 
         int ID = DBManager::getInstance()->getLastRecordID();
@@ -1346,6 +1402,10 @@ int ProcMessage(
         case CMD_BOOT_MODE: {
             cmdBootModeRsp(nMessageLen, pszMessage);
             break;
+        }
+        case CMD_MECHANICAL_LOCK: {
+        	cmdMechicalLockRsp(nMessageLen, pszMessage);
+        	break;
         }
         default:
             LOGD("No effective cmd from MCU!\n");

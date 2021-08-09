@@ -76,6 +76,7 @@ extern "C" {
 #define CMD_BOOT_MODE                   0x82  //上报开机模式 (与其它命令有区别 06.21)
 #define CMD_WIFI_OPEN_DOOR				0x83	// 远程wifi开门
 #define CMD_WIFI_TIME_SYNC				0x8A	// 通过wifi设置系统时间
+#define CMD_MECHANICAL_LOCK				0x93	//机械开锁
 #define CMD_IRLIGHT_PWM_Req				0xE0	// 设置IR补光灯
 
 /*注册消息时响应类型*/
@@ -138,6 +139,7 @@ typedef enum
 	BOOT_MODE_REMOTE = 1,		// 长按--远程开锁模式
 	BOOT_MODE_BLE = 2,      	// 蓝牙设置
 	BOOT_MODE_REG = 3,			//蓝牙人脸注册
+	BOOT_MODE_MECHANICAL_LOCK = 0xB,	//机械锁模式
 	BOOT_MODE_INVALID = 0XFF,	//非法模式
 }BootMode_Status;
 
