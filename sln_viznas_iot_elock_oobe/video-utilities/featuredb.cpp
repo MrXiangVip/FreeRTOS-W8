@@ -560,6 +560,29 @@ int FeatureDB::reassign_feature()
     if (other_size > 0)
     {
         LOGD("Feature Map is broken!\r\n");
+        for (int i = 0; i < item_max; i++)
+        {
+            if (s_FeatureMap.magic[i] == FEATUREDATA_MAGIC_UNUSE)
+            {
+            }
+            else if (s_FeatureMap.magic[i] == FEATUREDATA_MAGIC_VALID)
+            {
+            }
+            else if (s_FeatureMap.magic[i] == FEATUREDATA_MAGIC_DELET)
+            {
+            }
+            else
+            {
+                s_FeatureMap.magic[i] = FEATUREDATA_MAGIC_UNUSE;
+                FeatureItem item_t;
+                memset(&item_t, FEATUREDATA_MAGIC_UNUSE, sizeof(item_t));
+#if SDRAM_DB
+                memset(&s_FeatureItem[i], FEATUREDATA_MAGIC_UNUSE, sizeof(item_t));
+#endif
+                unuse_size ++;
+            }
+        }
+        File_FacerecFsUpdateMap(&s_FeatureMap);
         return 0;
     }
 
