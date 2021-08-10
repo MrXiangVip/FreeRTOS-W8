@@ -273,7 +273,6 @@ int run_at_long_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
             // 防止死锁，10s无论如何解锁
             at_is_running = 0;
         }
-        LOGD("AT long cmd return %d %d\r\n", -5, (-5));
         return AT_CMD_RESULT_BUSY;
     }
     at_is_running = 1;
@@ -342,7 +341,6 @@ int run_at_raw_cmd(char const *cmd, char *data, int data_len, int retry_times, i
             // 防止死锁，10s无论如何解锁
             at_is_running = 0;
         }
-        LOGD("AT raw cmd return %d %d\r\n", -5, (-5));
         return AT_CMD_RESULT_BUSY;
     }
     at_is_running = 1;
