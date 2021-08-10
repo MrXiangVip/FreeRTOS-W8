@@ -780,8 +780,8 @@ static void Oasis_Task(void *param)
     BaseType_t ret;
     QMsg *rxQMsg              = NULL;
     OASISLTInitPara_t *init_p = (OASISLTInitPara_t *)param;
-    ImageFrame_t frameRGB     = {(short)init_p->height, (short)init_p->width, 0, NULL};
-    ImageFrame_t frameIR      = {(short)init_p->height, (short)init_p->width, 0, NULL};
+    ImageFrame_t frameRGB     = {(short)init_p->height, (short)init_p->width, OASIS_IMG_FORMAT_BGR888, NULL};
+    ImageFrame_t frameIR      = {(short)init_p->height, (short)init_p->width, OASIS_IMG_FORMAT_BGR888, NULL};
     ImageFrame_t *frames[]    = {&frameRGB, &frameIR, NULL};
 //    uint8_t reg_mode          = 0;
     uint8_t run_flag          = OASIS_DET_REC;
@@ -996,7 +996,7 @@ int Oasis_Start()
 
     memset(&s_InitPara, 0, sizeof(s_InitPara));
 
-    s_InitPara.img_format = OASIS_IMG_FORMAT_BGR888;
+    //s_InitPara.img_format = OASIS_IMG_FORMAT_BGR888;
 
     Oasis_SetImgType(&s_InitPara.img_type);
     Oasis_SetModelClass(&s_InitPara.mod_class);
