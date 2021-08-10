@@ -856,6 +856,8 @@ DEBUG_CONSOLE_FUNCTION_PREFIX status_t DbgConsole_Flush(void)
             if (taskSCHEDULER_RUNNING == xTaskGetSchedulerState())
             {
                 vTaskDelay(1);
+            }else{
+                return (status_t)kStatus_Fail;
             }
         }
         else
