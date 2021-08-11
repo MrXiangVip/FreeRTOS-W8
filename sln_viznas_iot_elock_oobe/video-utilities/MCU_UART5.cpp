@@ -436,6 +436,8 @@ int cmdBootModeRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
 
             //Display_Update((uint32_t)wave_logo_v3);
         }
+    }else if(boot_mode == BOOT_MODE_REMOTE) {
+    	cmdCommRsp2Mqtt(CMD_BOOT_MODE, boot_mode);
     }
     return 0;
 }
