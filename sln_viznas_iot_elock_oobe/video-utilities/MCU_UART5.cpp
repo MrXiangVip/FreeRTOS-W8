@@ -303,6 +303,7 @@ int SendMsgToMCU(unsigned char *MsgBuf, unsigned char MsgLen) {
 
 //主控发送测试指令:  开机同步请求
 int cmdSysInitOKSyncReq(const char *strVersion) {
+    LOGD(" 发送开机同步请求 \r\n");
     char szBuffer[32] = {0};
     int iBufferSize;
     char *pop = NULL;
@@ -335,6 +336,7 @@ int cmdSysInitOKSyncReq(const char *strVersion) {
 
 //主控接收指令:  开机同步响应
 int cmdSysInitOKSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
+    LOGD("接收开机同步响应 \r\n");
     unsigned char szBuffer[32] = {0};
 
     if ((nMessageLen < sizeof(szBuffer)) && nMessageLen == 4) {
@@ -419,6 +421,7 @@ int cmdSysInitOKSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessa
 }
 
 int cmdBootModeRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
+    LOGD("开机状态 \r\n");
     boot_mode = StrGetUInt8(pszMessage);
     if (boot_mode > BOOT_MODE_MECHANICAL_LOCK) {
         boot_mode = BOOT_MODE_INVALID;
@@ -485,6 +488,8 @@ int cmdReqResumeFactoryRsp(uint8_t ret) {
 
 //主控接收指令:  请求恢复出厂设置请求
 int cmdReqResumeFactoryProc(unsigned char nMessageLen, const unsigned char *pszMessage) {
+    LOGD("请求恢复出厂设置请求 \r\n");
+
     uint8_t ret = SUCCESS;
 
     CloseLcdBackground();
@@ -504,6 +509,7 @@ int cmdReqResumeFactoryProc(unsigned char nMessageLen, const unsigned char *pszM
 
 //主控返回响应指令: 用户注册
 int cmdUserRegRsp(uint8_t ret) {
+    LOGD("用户注册回复 \r\n");
     char szBuffer[32] = {0};
     int iBufferSize;
     char *pop = NULL;
@@ -537,6 +543,7 @@ int cmdUserRegRsp(uint8_t ret) {
 
 //主控接收指令:  用户注册请求
 int cmdUserRegReqProc(unsigned char nMessageLen, const unsigned char *pszMessage) {
+    LOGD("用户注册请求 \r\n");
     uint8_t ret = SUCCESS, len = 0;
     unsigned char szBuffer[32] = {0};
     unsigned char *pos = szBuffer;
@@ -561,6 +568,7 @@ int cmdUserRegReqProc(unsigned char nMessageLen, const unsigned char *pszMessage
     HexToStr(username, g_uu_id.UID, sizeof(g_uu_id.UID));
     username[16] = '\0';//NXP的人脸注册API的username最大只能16byte
     LOGD("=====UUID<len:%d>:%s.\r\n", sizeof(username), username);
+
 
     vizn_api_status_t status;
     status = VIZN_AddUser(NULL, username);
@@ -634,6 +642,7 @@ int cmdRegResultNotifyReq(uUID uu_id, uint8_t regResult) {
 
 //主控发送测试指令:  开门请求
 int cmdOpenDoorReq(uUID uu_id) {
+    LOGD("向mcu发送开门请求 \r\n \n");
     char szBuffer[32] = {0};
     int iBufferSize;
     char *pop = NULL;
@@ -779,6 +788,8 @@ int cmdMechicalLockRsp(unsigned char nMessageLen, const unsigned char *pszMessag
 
 // 主控接收指令:远程wifi开门响应
 int cmdWifiOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
+    LOGD("远程开门回复 \r\n");
+
     uint8_t ret = SUCCESS;
 
     ret = StrGetUInt8(pszMessage);
@@ -825,6 +836,7 @@ int save_files_before_pwd() {
 
 //主控发送: 关机请求
 int cmdCloseFaceBoardReq() {
+    LOGD("发送关机请求 \r\n");
     char szBuffer[32] = {0};
     int iBufferSize;
     char *pop = NULL;
@@ -973,6 +985,7 @@ void SysTimeSet(uint8_t year, uint8_t month, uint8_t day, uint8_t hour, uint8_t 
 
 //主控返回响应指令: 时间同步
 int cmdSetSysTimeSynRsp(uint8_t ret) {
+    LOGD("时间同步回复 \r\n");
     char szBuffer[128] = {0};
     int iBufferSize;
     char *pop = NULL;
@@ -1004,6 +1017,7 @@ int cmdSetSysTimeSynRsp(uint8_t ret) {
 
 //主控接收指令:  时间同步请求
 int cmdSetSysTimeSynProc(unsigned char nMessageLen, const unsigned char *pszMessage) {
+    LOGD("时间同步请求 \r\n");
     uint8_t year = 0, month = 0, day = 0, hour = 0, min = 0, sec = 0, i = 0;
     uint8_t ret = SUCCESS;
     if (nMessageLen == 6) {
@@ -1022,7 +1036,7 @@ int cmdSetSysTimeSynProc(unsigned char nMessageLen, const unsigned char *pszMess
     } else {
         ret = FAILED;
     }
-    LOGD("setTime:%04d-%02d-%02d %02d:%02d:%02d\n", 2000 + year, month, day, hour, min, sec);
+    LOGD("setTime:%04d-%02d-%02d %02d:%02d:%02d \r\n", 2000 + year, month, day, hour, min, sec);
 
     if ((month == 0 || month > 12) || (day == 0 || day > 31) || hour > 24 || min > 60 || sec > 60) {
         ret = FAILED;
@@ -1041,6 +1055,7 @@ int cmdSetSysTimeSynProc(unsigned char nMessageLen, const unsigned char *pszMess
 
 // 主控接收指令: 删除用户请求
 int cmdDeleteUserReqProcByHead(unsigned char nHead, unsigned char nMessageLen, const unsigned char *pszMessage) {
+    LOGD(" 删除用户请求 \r\n");
     uint8_t ret = FAILED;
     char szBuffer[32] = {0};
     uUID uu_id;
@@ -1108,6 +1123,8 @@ int cmdDeleteUserReqProcByHead(unsigned char nHead, unsigned char nMessageLen, c
 //串口接收消息处理
 // 主控接收指令: WIFI SSID 设置请求
 int cmdWifiSSIDProc(unsigned char nMessageLen, const unsigned char *pszMessage) {
+    LOGD("接收指令: WIFI SSID 设置 \r\n");
+
     uint8_t ret = FAILED;
     char wifi_ssid[WIFI_SSID_LEN_MAX + 1] = {0};
 
@@ -1130,8 +1147,10 @@ int cmdWifiSSIDProc(unsigned char nMessageLen, const unsigned char *pszMessage) 
     return 0;
 }
 
-// 主控接收指令: WIFI SSID 设置请求
+// 主控接收指令: WIFI 密码 设置请求
 int cmdWifiPwdProc(unsigned char nMessageLen, const unsigned char *pszMessage) {
+    LOGD("接收指令: WIFI 密码 设置 \r\n");
+
     uint8_t ret = FAILED;
     char wifi_pwd[WIFI_PWD_LEN_MAX + 1] = {0};
 
@@ -1155,6 +1174,7 @@ int cmdWifiPwdProc(unsigned char nMessageLen, const unsigned char *pszMessage) {
 
 // 主控接收指令: 设置MQTT 参数
 int cmdMqttParamSetProc(unsigned char nMessageLen, const unsigned char *pszMessage) {
+    LOGD("设置MQTT 参数  \r\n");
     uint8_t ret = FAILED;
     uint8_t mqtt_user[MQTT_USER_LEN + 1] = {0};
     uint8_t mqtt_pwd[MQTT_PWD_LEN + 1] = {0};
@@ -1194,6 +1214,7 @@ int cmdMqttParamSetProc(unsigned char nMessageLen, const unsigned char *pszMessa
 
 // 主控接收指令: 蓝牙模块状态信息上报
 int cmdBTInfoRptProc(unsigned char nMessageLen, const unsigned char *pszMessage) {
+    LOGD("主控接收指令: 蓝牙模块状态信息上报 \r\n");
     uint8_t ret = FAILED;
     uint8_t bt_ver = 0;
     uint8_t bt_mac[6] = {0};
@@ -1454,8 +1475,11 @@ int cmdRequestMqttUpload(int id) {
         }
         //判断MQTT是否可用
         if (mqtt_init_done == 1) {// 1 代表MQTT连接成功
-            LOGD("%s sendToMqtt", __func__);
+            LOGD("WIFI 连接成功,请求mqtt发送msg  \r\n");
             SendMsgToMQTT(szBuffer, iBufferSize + CRC16_LEN);
+            break;
+        }else{
+            LOGD("WIFI 未连接 \r\n");
             break;
         }
     }
@@ -1496,6 +1520,7 @@ static void uart5_QMsg_task(void *pvParameters) {
             //LOGD("%s pQMsg->id is %d!\r\n", __FUNCTION__, pQMsg->id);
             switch (pQMsg->id) {
                 case QMSG_FACEREC_ADDNEWFACE: {//处理人脸注册结果
+                    LOGD("处理人脸注册结果 %d\r\n", pQMsg->msg.val);
                     if (pQMsg->msg.val) {//success
                         if (gFaceInfo.enrolment && (OASIS_REG_RESULT_DUP == gFaceInfo.rt)) {//判断是否是重复注册
                             LOGD("User face duple register!\r\n");
@@ -1565,7 +1590,8 @@ static void uart5_QMsg_task(void *pvParameters) {
 
                 case QMSG_FACEREC_RECFACE: {//处理人脸识别结果
                     //LOGD("%s g_reging_flg is %d lcd_back_ground is %d\r\n", __FUNCTION__, g_reging_flg, lcd_back_ground);
-                    if ((boot_mode != BOOT_MODE_NORMAL) || (REG_STATUS_WAIT != g_reging_flg)
+                    LOGD("处理人脸识别结果 %d flg %d\r\n", pQMsg->msg.val, g_reging_flg);
+                    if ( (boot_mode != BOOT_MODE_NORMAL) || (REG_STATUS_WAIT != g_reging_flg)
                         || (lcd_back_ground == false))//如果正在注册流程，就过滤掉该识别结果
                     {
                         vPortFree(pQMsg);
@@ -1825,7 +1851,6 @@ int MCU_UART5_Start() {
 
     NVIC_SetPriority(LPUART5_IRQn, 5);
 
-    DBManager::getInstance();
     //创建uart5串口数据通信task
 #if (configSUPPORT_STATIC_ALLOCATION == 1)
     if (NULL == xTaskCreateStatic(uart5_task, "Uart5_task", UART5TASK_STACKSIZE, NULL, UART5TASK_PRIORITY,

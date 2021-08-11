@@ -1725,7 +1725,6 @@ int WIFI_UART8_Start()
     LOGD("%s starting...\r\n", logTag);
     NVIC_SetPriority(LPUART8_IRQn, 4);
 
-	dbmanager = DBManager::getInstance();
 //    if (xTaskCreate(uart8_task, "uart8_task", configMINIMAL_STACK_SIZE + 100, NULL, uart8_task_PRIORITY, NULL) != pdPASS)
 //    {
 //        PRINTF("Task creation failed!.\r\n");
