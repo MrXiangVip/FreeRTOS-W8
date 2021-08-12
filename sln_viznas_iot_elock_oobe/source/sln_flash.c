@@ -418,10 +418,10 @@ status_t SLN_Write_Flash_At_Address(uint32_t address, uint8_t *data)
 
 status_t SLN_Read_Flash_At_Address(uint32_t address, uint8_t *data, uint32_t size)
 {
-	//uint32_t irqState;
-	//irqState = SLN_ram_disable_irq();
+	uint32_t irqState;
+	irqState = SLN_ram_disable_irq();
     SLN_ram_memcpy(data, (void *)(FlexSPI_AMBA_BASE + address), size);
-    //SLN_ram_enable_irq(irqState);
+    SLN_ram_enable_irq(irqState);
 
     return kStatus_Success;
 }
