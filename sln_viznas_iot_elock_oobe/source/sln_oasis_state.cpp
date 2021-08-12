@@ -302,8 +302,9 @@ void Oasis_API_Enrolment(face_info_t face_info)
         if (face_info.enrolment_result == OASIS_REG_RESULT_CANCELED)
         {
             // Do nothing.
-        }
-        else
+        } else if(face_info.enrolment_result == OASIS_REG_RESULT_DB_OP_FAILED) {
+            StopRegistrationProcess(kEvents_API_Layer_RegNoMemory);
+        } else
         {
             StopRegistrationProcess(kEvents_API_Layer_RegFailed);
         }

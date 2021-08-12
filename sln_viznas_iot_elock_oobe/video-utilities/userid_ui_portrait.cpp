@@ -59,6 +59,7 @@
 #include <aw_reg_fail_v3.h>
 #include <aw_reg_succ_v3.h>
 #include <aw_welcome_v4.h>
+#include <aw_user_full.h>
 // 20201114 wavezgx end
 #include "MCU_UART5.h"
 #include "aw_wstime.h"
@@ -651,6 +652,20 @@ static void UIInfo_UpdateFaceInfo2(uint16_t *pBufferAddr, QUIInfoMsg* infoMsg)
         	sprintf(tstring, "Recognition Timeout");
             draw_text(tstring, CAMERA_SURFACE_SHIFT + 10, 10, 0x0, RGB565_RED, OPENSANS16, pBufferAddr);
 #endif
+        }
+        break;
+        case 1 << kEvents_API_Layer_RegNoMemory:
+        {
+            LOGD("%s kEvents_API_Layer_RegNoMemory\r\n", __FUNCTION__);
+            uint16_t *pIcon = (uint16_t *)aw_user_full;
+            for (int i = 0; i < 320; i++)
+            {
+                for (int j = 0; j < 240; j++)
+                {
+                    *(pBufferAddr + i*APP_AS_WIDTH + j) = *pIcon++;
+                }
+            }
+            CloseLcdBackground();
         }
         break;
         default:

@@ -32,7 +32,8 @@ typedef enum _vizn_events
     kEvents_API_Layer_DeregFailed,
     kEvents_API_Layer_RecSuccess,
     kEvents_API_Layer_RecCanceled,
-    kEvents_API_Layer_RecFailed
+    kEvents_API_Layer_RecFailed,
+    kEvents_API_Layer_RegNoMemory
 } vizn_events_t;
 
 typedef enum _vizn_api_status

@@ -949,7 +949,9 @@ vizn_api_status_t VIZN_EnrolmentAddNewFace(VIZN_api_client_t *clientHandle,
         {
             if (ret == DB_MGMT_NOSPACE)
             {
+                LOGD("%s DB_MGMT_NOSPACE kEvents_API_Layer_RegNoMemory\r\n", __FUNCTION__);
                 status = kStatus_API_Layer_EnrolmentAddNewFace_NoMemory;
+                StopRegistrationProcess(kEvents_API_Layer_RegNoMemory);
             }
             else
             {
