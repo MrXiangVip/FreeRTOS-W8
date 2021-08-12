@@ -1470,24 +1470,26 @@ int uploadRecords() {
 		//Record record = records[i];
 
 		LOGD("---------------------- register: upload record id %d g_uploading_id %d\r\n", record->ID, g_uploading_id);
-		if ((record->action_upload & 0xFF) == 0 && g_uploading_id != record->ID) {
-	        notifyKeepAlive();
-	        vTaskDelay(pdMS_TO_TICKS(20));
+		if(g_is_shutdown == 0) {
+		    if ((record->action_upload & 0xFF) == 0 && g_uploading_id != record->ID) {
+		        notifyKeepAlive();
+		        vTaskDelay(pdMS_TO_TICKS(20));
 
-	        int ret = uploadRecordImage(record, false);
-			if (g_is_uploading_data == 1) {
-				g_is_auto_uploading = 2;
-				return -2;
-			}
-			if (ret != 0) {
-				LOGD("register: upload record and image id %d fail with ret %d\r\n", record->ID, ret);
-				if (fret == 0) {
-					fret = ret;
-				}
-				//break;
-			} else {
-				LOGD("register: upload record and image success\r\n");
-			}
+		        int ret = uploadRecordImage(record, false);
+		        if (g_is_uploading_data == 1) {
+		            g_is_auto_uploading = 2;
+		            return -2;
+		        }
+		        if (ret != 0) {
+		            LOGD("register: upload record and image id %d fail with ret %d\r\n", record->ID, ret);
+		            if (fret == 0) {
+		                fret = ret;
+		            }
+		            //break;
+		        } else {
+		            LOGD("register: upload record and image success\r\n");
+		        }
+		    }
 		}
 	}
 	records = dbmanager->getAllUnuploadRecord();
@@ -1498,24 +1500,26 @@ int uploadRecords() {
 		//Record record = records[i];
 
 		Record* record = (Record*) *it;
-		if ((record->action_upload & 0xFF) == 0) {
-	        notifyKeepAlive();
-	        vTaskDelay(pdMS_TO_TICKS(20));
+		if(g_is_shutdown == 0) {
+		    if ((record->action_upload & 0xFF) == 0) {
+		        notifyKeepAlive();
+		        vTaskDelay(pdMS_TO_TICKS(20));
 
-	        int ret = uploadRecord(gen_msgId(), record);
-			if (g_is_uploading_data == 1) {
-				g_is_auto_uploading = 2;
-				return -2;
-			}
-			if (ret != 0) {
-				LOGD("register/opendoor: upload records fail with ret %d\r\n", ret);
-				if (fret == 0) {
-					fret = ret;
-				}
-				//break;
-			} else {
-				LOGD("register/opendoor: upload records success\r\n");
-			}
+		        int ret = uploadRecord(gen_msgId(), record);
+		        if (g_is_uploading_data == 1) {
+		            g_is_auto_uploading = 2;
+		            return -2;
+		        }
+		        if (ret != 0) {
+		            LOGD("register/opendoor: upload records fail with ret %d\r\n", ret);
+		            if (fret == 0) {
+		                fret = ret;
+		            }
+		            //break;
+		        } else {
+		            LOGD("register/opendoor: upload records success\r\n");
+		        }
+		    }
 		}
 	}
 	records = dbmanager->getAllUnuploadRecord();
@@ -1528,24 +1532,26 @@ int uploadRecords() {
 		Record* record = (Record*) *it;
 
 		LOGD("---------------------- opendoor: upload record id %d g_uploading_id %d\r\n", record->ID, g_uploading_id);
-		if (((record->action_upload & 0xFF) == 0 || (record->action_upload & 0xFF) == 1) && g_uploading_id != record->ID) {
-	        notifyKeepAlive();
-	        vTaskDelay(pdMS_TO_TICKS(20));
+		if(g_is_shutdown == 0) {
+		    if (((record->action_upload & 0xFF) == 0 || (record->action_upload & 0xFF) == 1) && g_uploading_id != record->ID) {
+		        notifyKeepAlive();
+		        vTaskDelay(pdMS_TO_TICKS(20));
 
-	        int ret = uploadRecordImage(record, false);
-			if (g_is_uploading_data == 1) {
-				g_is_auto_uploading = 2;
-				return -2;
-			}
-			if (ret != 0) {
-				LOGD("opendoor: upload record and image fail with ret %d\r\n", ret);
-				if (fret == 0) {
-					fret = ret;
-				}
-				//break;
-			} else {
-				LOGD("opendoor: upload record and image success\r\n");
-			}
+		        int ret = uploadRecordImage(record, false);
+		        if (g_is_uploading_data == 1) {
+		            g_is_auto_uploading = 2;
+		            return -2;
+		        }
+		        if (ret != 0) {
+		            LOGD("opendoor: upload record and image fail with ret %d\r\n", ret);
+		            if (fret == 0) {
+		                fret = ret;
+		            }
+		            //break;
+		        } else {
+		            LOGD("opendoor: upload record and image success\r\n");
+		        }
+		    }
 		}
 	}
     g_is_auto_uploading = 0;
@@ -1595,6 +1601,7 @@ static void msghandle_task(void *pvParameters)
                         if(g_is_shutdown == 0) {
                         	g_is_shutdown = 1;
 							CloseLcdBackground();
+							LOGD("need to notify command executed 1\r\n");
 							notifyCommandExecuted(0);
 							vTaskDelay(pdMS_TO_TICKS(100));
 							save_files_before_pwd();
@@ -1626,6 +1633,7 @@ static void msghandle_task(void *pvParameters)
 				if(g_is_shutdown == 0) {
 					g_is_shutdown = 1;
 					CloseLcdBackground();
+					LOGD("need to notify command executed 2\r\n");
 					notifyCommandExecuted(0);
 					vTaskDelay(pdMS_TO_TICKS(100));
 					save_files_before_pwd();
