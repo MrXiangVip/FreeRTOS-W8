@@ -1471,6 +1471,7 @@ int cmdRequestMqttUpload(int id) {
         //usleep(100000);//0.1秒
         vTaskDelay(pdMS_TO_TICKS(100));
         if (count++ > 150) {//如果超过15秒 还没有连接上则退出
+            LOGD("WIFI 未连接  \r\n")
             break;
         }
         //判断MQTT是否可用
