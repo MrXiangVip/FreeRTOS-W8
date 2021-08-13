@@ -106,7 +106,7 @@ static int g_heart_beat_executed = 0;
 
 static int g_is_shutdown = 0;
 
-DBManager *dbmanager = NULL;
+
 
 MqttInstructionPool mqtt_instruction_pool;
 int battery_level = -1;
@@ -955,9 +955,9 @@ int SendMsgToMQTT(char *mqtt_payload, int len) {
                 // 注册/开门记录
                 int id = (int) (mqtt_payload[3]);
                 // TODO:
-                LOGD("dbmanager->getRecord start id %d", id);
+                LOGD("DBManager::getInstance()->getRecord start id %d", id);
                 Record record;
-                int ret = dbmanager->getRecordByID(id, &record);
+                int ret = DBManager::getInstance()->getRecordByID(id, &record);
                 if (ret == 0) {
                 	LOGD("register/unlcok record is not NULL start upload record/image");
                     g_uploading_id = record.ID;
@@ -1009,9 +1009,9 @@ int SendMsgToMQTT(char *mqtt_payload, int len) {
                 // 机械开锁记录
                 int id = (int) (mqtt_payload[3]);
                 // TODO:
-                LOGD("dbmanager->getRecord start id %d\r\n", id);
+                LOGD("DBManager::getInstance()->getRecord start id %d\r\n", id);
                 Record record;
-                int ret = dbmanager->getRecordByID(id, &record);
+                int ret = DBManager::getInstance()->getRecordByID(id, &record);
                 if (ret == 0) {
                 	LOGD("mechnical record is not NULL start upload record/image\r\n");
                     g_uploading_id = record.ID;
@@ -1359,7 +1359,7 @@ int uploadRecord(char *msgId, Record *record) {
 	if (ret == 0) {
 		//record->upload = 1;
 		record->action_upload = (record->action_upload & 0xFF00) + 1;
-		dbmanager->updateRecordByID(record);
+        DBManager::getInstance()->updateRecordByID(record);
 	}
 	// notifyCommandExecuted(ret);
 	//freePointer(&pub_topic);
@@ -1402,7 +1402,7 @@ int uploadRecordImage(Record *record, bool online) {
             //LOGD("uploadRecordImage record->upload is %d\r\n", record->upload);
             LOGD("uploadRecordImage record->action_upload is 0x%X\r\n", record->action_upload);
 
-            dbmanager->updateRecordByID(record);
+            DBManager::getInstance()->updateRecordByID(record);
 
             freePointer(&pub_topic);
             freePointer(&msgId);
@@ -1438,7 +1438,7 @@ int uploadRecordImage(Record *record, bool online) {
 					}
 				}
             }
-			dbmanager->updateRecordByID(record);
+            DBManager::getInstance()->updateRecordByID(record);
 
             freePointer(&pub_topic);
             freePointer(&msgId);
@@ -1449,10 +1449,7 @@ int uploadRecordImage(Record *record, bool online) {
 }
 
 int uploadRecords() {
-	// DBManager *dbmanager = DBManager::getInstance();
-	if (dbmanager == NULL) {
-		return -1;
-	}
+
 	g_is_auto_uploading = 1;
 	if (g_is_uploading_data == 1) {
 		g_is_auto_uploading = 2;
@@ -1460,7 +1457,7 @@ int uploadRecords() {
 	}
 
 	int fret = 0;
-	list<Record*> records = dbmanager->getAllUnuploadRecord();
+	list<Record*> records = DBManager::getInstance()->getAllUnuploadRecord();
     LOGD("---------------------- register: upload record and image start\r\n");
 	// 第一步，只上传未上传的注册记录以及图片，涉及到可能存在的重复上传问题: 注册优先
     list <Record*>::iterator it;
@@ -1492,7 +1489,7 @@ int uploadRecords() {
 		    }
 		}
 	}
-	records = dbmanager->getAllUnuploadRecord();
+	records = DBManager::getInstance()->getAllUnuploadRecord();
 	LOGD("--------------------- register/opendoor: upload records only start\r\n");
 	// 第二步，只上传未上传的注册/开门记录，包括注册记录和开门记录: 记录次之
 	//for (int i = 0; i < recordNum; i++) {
@@ -1522,7 +1519,7 @@ int uploadRecords() {
 		    }
 		}
 	}
-	records = dbmanager->getAllUnuploadRecord();
+	records = DBManager::getInstance()->getAllUnuploadRecord();
 	LOGD("------------------- opendoor: upload record and image success\r\n");
 	// 第三步，上传未上传的开门记录以及图片, 开门图片最后
 	//for (int i = 0; i < recordNum; i++) {

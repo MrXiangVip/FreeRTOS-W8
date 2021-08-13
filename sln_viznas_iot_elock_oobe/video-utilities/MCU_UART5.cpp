@@ -715,8 +715,7 @@ int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
         snprintf(image_path, sizeof(image_path), "C%d", record->time_stamp);
         memcpy(record->image_path, image_path, sizeof(image_path));//image_path
 
-        DBManager *dbManager = DBManager::getInstance();
-        dbManager->addRecord(record);
+        DBManager::getInstance()->addRecord(record);
 
         Oasis_SetOasisFileName(record->image_path);
 		//Oasis_WriteJpeg();
@@ -771,8 +770,7 @@ int cmdMechicalLockRsp(unsigned char nMessageLen, const unsigned char *pszMessag
         //snprintf(image_path, sizeof(image_path), "C%d", record->time_stamp);
         //memcpy(record->image_path, image_path, sizeof(image_path));//image_path
 
-        DBManager *dbManager = DBManager::getInstance();
-        dbManager->addRecord(record);
+        DBManager::getInstance()->addRecord(record);
 
         //Oasis_SetOasisFileName(record->image_path);
 		//Oasis_WriteJpeg();
@@ -1480,8 +1478,6 @@ int cmdRequestMqttUpload(int id) {
             LOGD("WIFI 连接成功,请求mqtt发送msg  \r\n");
             SendMsgToMQTT(szBuffer, iBufferSize + CRC16_LEN);
             break;
-        }else{
-            LOGD("WIFI 未连接 \r\n");
         }
     }
 
