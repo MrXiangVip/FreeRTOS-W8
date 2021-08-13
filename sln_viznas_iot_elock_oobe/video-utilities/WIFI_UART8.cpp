@@ -22,6 +22,7 @@
 #include "../mqtt/mqtt_util.h"
 #include "../mqtt/mqtt-api.h"
 #include "../mqtt/mqtt-topic.h"
+#include "../mqtt/mqtt-ota.h"
 #include "commondef.h"
 #include <ctype.h>
 #include <stdio.h>
@@ -818,7 +819,21 @@ int SendMsgToMQTT(char *mqtt_payload, int len) {
             g_has_more_download_data = 0;
             LOGD("no more data to download from server by timeout");
             return 0;
-        } else if (msg != NULL && strncmp(msg, "disconnect", 9) == 0) {
+        } else if (msg != NULL && strncmp(msg, "startota:", 9) == 0) {
+			mysplit(msg, first, pub_msg, ":");
+			char *pub_topic_ota_request = get_pub_topic_ota_request();
+			int ret = quickPublishMQTTWithPriority(pub_topic_ota_request, pub_msg, 1);
+			//freePointer(&pub_topic_ota_request);
+			return ret;
+		} else if (msg != NULL && strncmp(msg, "ota", 3) == 0) {
+			char *msgId = gen_msgId();
+			sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"curr_ver\\\":\\\"%s\\\"}", msgId, versionConfig.oasis_ver);
+			freePointer(&msgId);
+			char *pub_topic_ota_request = get_pub_topic_ota_request();
+			int ret = quickPublishMQTTWithPriority(pub_topic_ota_request, pub_msg, 1);
+			//freePointer(&pub_topic_ota_request);
+			return ret;
+		} else if (msg != NULL && strncmp(msg, "disconnect", 9) == 0) {
             int ret = disconnectMQTT(MQTT_LINK_ID_DEFAULT);
             g_is_online = 0;
             return ret;
@@ -1116,6 +1131,9 @@ int handleJsonMsg(char *jsonMsg) {
 	return result;
 }
 
+static char g_ota_data[UART_RX_BUF_LEN];
+
+
 #define MQTT_LINKID_LEN     16
 #define MQTT_TOPIC_LEN      64
 #define MQTT_DATALEN_LEN    16
@@ -1153,6 +1171,26 @@ int analyzeMQTTMsgInternal(char *msg) {
 
 		if (data != NULL) {
 			if (strlen(data) >= data_len) {
+				char *ota_topic_cmd = get_ota_topic_cmd();
+				if (strncmp(topic, ota_topic_cmd, strlen(ota_topic_cmd)) == 0) {
+					if (data[0] == '{') {
+						memset(g_ota_data, '\0', sizeof(g_ota_data));
+						strcpy(g_ota_data, data);
+					} else {
+						int len = strlen(g_ota_data);
+						strcpy(&g_ota_data[len], data);
+					} 
+					if (data[data_len - 1] == '}') {
+						// log_info("get ota data %d: %s", strlen(g_ota_data), g_ota_data);
+						char msgId[MQTT_AT_LEN];
+						memset(msgId, '\0', MQTT_AT_LEN);
+						int ret = analyzeOTA(g_ota_data, (char*)&msgId);
+						LOGD("analyzeOTA ret %d", ret);
+					}
+					//freePointer(&ota_topic_cmd);
+					return true;
+				}
+				//freePointer(&ota_topic_cmd);
 				char payload[MQTT_AT_LEN];
 				strncpy(payload, data, data_len);
 				payload[data_len] = '\0';

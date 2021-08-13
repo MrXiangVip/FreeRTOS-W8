@@ -9,6 +9,10 @@ extern "C" {
 #endif
 
 /*** 订阅TOPIC ***/
+// OTA请求
+char *get_pub_topic_ota_request();
+// OTA命令
+char *get_ota_topic_cmd();
 // 后台命令
 char *get_sub_topic_cmd();
 // 时间同步订阅
