@@ -19,6 +19,17 @@ char *generate_topic(char *cmd) {
 	return topic;
 }
 
+/*** 订阅OTA TOPIC ***/
+// OTA请求
+char *get_pub_topic_ota_request() {
+	return generate_topic("WAVE/DEVICE/%s/W7/OTA/REQUEST");
+}
+
+// OTA命令
+char *get_ota_topic_cmd() {
+	return generate_topic("WAVE/DEVICE/%s/INSTRUCTION/OTA");
+}
+
 /*** 订阅TOPIC ***/
 // 后台命令
 char *get_sub_topic_cmd() {

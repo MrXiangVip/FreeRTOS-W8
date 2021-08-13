@@ -82,6 +82,16 @@ CJSON_PUBLIC(char *) cJSON_GetStringValue(cJSON *item) {
     return item->valuestring;
 }
 
+CJSON_PUBLIC(double) cJSON_GetNumberValue(const cJSON * const item) 
+{
+    if (!cJSON_IsNumber(item)) 
+    {
+        return (double) NAN;
+    }
+
+    return item->valuedouble;
+}
+
 /* This is a safeguard to prevent copy-pasters from using incompatible C and header files */
 #if (CJSON_VERSION_MAJOR != 1) || (CJSON_VERSION_MINOR != 7) || (CJSON_VERSION_PATCH != 7)
     #error cJSON.h and cJSON.c have different versions. Make sure that both have the same.
