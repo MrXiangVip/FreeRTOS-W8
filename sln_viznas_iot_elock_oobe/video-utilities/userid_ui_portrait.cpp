@@ -133,6 +133,7 @@ static int logindex = 0;
 static int bat_level = 0;
 // 20201114 wavezgx end
 extern int boot_mode;
+extern int battery_level;
 
 /*******************************************************************************
  * Prototypes
@@ -364,7 +365,7 @@ static void UIInfo_UpdateBottomInfoBarV2(uint16_t *pBufferAddr, QUIInfoMsg* info
         uint16_t *pIcon = NULL;
         // 20201119 wszgx modified for battery level display
         // >5:80-100 4:64-79 3: 48-63 2: 32-47 1: 16-31 0: 0-15
-        bat_level = (stInitSyncInfo.PowerVal / 16);
+        bat_level = (battery_level / 16);
         //LOGD("PowerVal is %d bat_level is %d\r\n", stInitSyncInfo.PowerVal, bat_level);
         if (bat_level == 0) {
             pIcon = (uint16_t *)bat_disp1_v6;

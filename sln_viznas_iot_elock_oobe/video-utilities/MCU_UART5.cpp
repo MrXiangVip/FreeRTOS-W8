@@ -86,7 +86,6 @@ lpuart_rtos_config_t lpuart_config5 = {
 };
 
 uUID g_uu_id;  //记录当前应用的uuid
-InitSyncInfo stInitSyncInfo;        //记录初始化同步信息(电量、MCU版本等)
 bool bInitSyncInfo = false;
 bool bSysTimeSynProc = false;
 
@@ -339,49 +338,39 @@ int cmdSysInitOKSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessa
     LOGD("接收开机同步响应 \r\n");
     unsigned char szBuffer[32] = {0};
 
-    if ((nMessageLen < sizeof(szBuffer)) && nMessageLen == 4) {
-        memcpy(szBuffer, pszMessage, nMessageLen);
+	memcpy(szBuffer, pszMessage, nMessageLen);
+
+    uint8_t year = 0, month = 0, day = 0, hour = 0, min = 0, sec = 0, i = 0;
+	year = StrGetUInt8(pszMessage + i);
+	i++;
+	month = StrGetUInt8(pszMessage + i);
+	i++;
+	day = StrGetUInt8(pszMessage + i);
+	i++;
+	hour = StrGetUInt8(pszMessage + i);
+	i++;
+	min = StrGetUInt8(pszMessage + i);
+	i++;
+	sec = StrGetUInt8(pszMessage + i);
+	i++;
+    LOGD("setTime:%04d-%02d-%02d %02d:%02d:%02d \r\n", 2000 + year, month, day, hour, min, sec);
+
+    if ((month == 0 || month > 12) || (day == 0 || day > 31) || hour > 24 || min > 60 || sec > 60) {
+        LOGD("Set Time value error!\r\n");
     } else {
-        LOGD("%s : error\r\n", __FUNCTION__);
-        return 0;
+        /*系统时间设置*/
+        SysTimeSet(year, month, day, hour, min, sec);
     }
+
+    bSysTimeSynProc = true;
 
     //解析设置参数
-    pInitSyncInfo pt_InitSyncInfo;
-    pt_InitSyncInfo = (pInitSyncInfo) pszMessage;
-    stInitSyncInfo.Mcu_Ver = pt_InitSyncInfo->Mcu_Ver;
-    stInitSyncInfo.PowerVal = (pt_InitSyncInfo->PowerVal > 100) ? 100 : pt_InitSyncInfo->PowerVal;
-    battery_level = stInitSyncInfo.PowerVal;
-    stInitSyncInfo.status = pt_InitSyncInfo->status;
-    stInitSyncInfo.LightVal = pt_InitSyncInfo->LightVal;
-    bInitSyncInfo = true;
-    LOGD("Mcu_Ver<0x%02x>,PowerVal<%d>, status<%d>, LightVal<%d>\r\n", stInitSyncInfo.Mcu_Ver, stInitSyncInfo.PowerVal,
-         stInitSyncInfo.status, stInitSyncInfo.LightVal);
+    battery_level = StrGetUInt8(pszMessage + i);
+    i++;
+	LOGD("battery_level:<%d>.\r\n", battery_level);
+	bInitSyncInfo = true;
 
-    //MCU消息处理
-    //更新电量显示
-    //status中bit 的处理
-    if (stInitSyncInfo.status & 0x01) // 防撬开关单次出发(MCU上传后置0)
-    {
-        //通知UI做出反应
-    }
-    if (stInitSyncInfo.status & 0x02)// 恢复出厂设置按钮单次触发(MCU上传后置0)
-    {
-        // 界面跳转到恢复出厂设置或者直接调用恢复出厂设置功能模块
-    }
-    if (stInitSyncInfo.status & 0x04)// 老化模式(MCU掉电后清0, 由A5配置)
-    {
-        //运行老化测试程序
-    }
 
-#if    0
-    if(stInitSyncInfo.LightVal == 2) {
-        OpenCameraPWM();
-    }else {
-        CloseCameraPWM();
-    }
-#endif
-#if    1
     {
         char verbuf[4] = {0};
         char ver_tmp[32] = {0};
@@ -405,8 +394,14 @@ int cmdSysInitOKSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessa
         // 获取字符串格式的版本号
         memset(verbuf, 0, sizeof(verbuf));
         memset(ver_tmp, 0, sizeof(ver_tmp));
-        sprintf(verbuf, "%03d", stInitSyncInfo.Mcu_Ver);
-        sprintf(ver_tmp, "W8_HC130_106F_V%c.%c.%c", verbuf[0], verbuf[1], verbuf[2]);
+        //sprintf(verbuf, "%03d", stInitSyncInfo.Mcu_Ver);
+        //sprintf(ver_tmp, "W8_HC130_106F_V%c.%c.%c", verbuf[0], verbuf[1], verbuf[2]);
+        verbuf[1]=StrGetUInt8(pszMessage + i);
+        i++;
+		verbuf[0]=StrGetUInt8(pszMessage + i);
+		i++;
+		sprintf(ver_tmp, "W8_HC130_106F_V%d.%d.%d", verbuf[1], verbuf[0]>>4, verbuf[0]&0x0f );
+		LOGD("MCU_VERSION:<%s>.\r\n", ver_tmp);
 
         // 保存设置到系统配置文件
         update_mcu_info(ver_tmp);
@@ -415,7 +410,24 @@ int cmdSysInitOKSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessa
 
         //system("sync");
     }
-#endif
+
+    boot_mode = StrGetUInt8(pszMessage + i);
+    if (boot_mode > BOOT_MODE_MECHANICAL_LOCK) {
+        boot_mode = BOOT_MODE_INVALID;
+    }
+    LOGD("boot_mode: %d\r\n", boot_mode);
+    if((boot_mode == BOOT_MODE_NORMAL) || (boot_mode == BOOT_MODE_REG)) {
+        if(oasis_task_start == false) {
+        	oasis_task_start = true;
+        	OpenLcdBackground();
+        	Display_Start();
+            Oasis_Start();
+
+            //Display_Update((uint32_t)wave_logo_v3);
+        }
+    }else if(boot_mode == BOOT_MODE_REMOTE) {
+    	cmdCommRsp2Mqtt(CMD_BOOT_MODE, boot_mode);
+    }
 
     return 0;
 }
@@ -1597,7 +1609,7 @@ static void uart5_QMsg_task(void *pvParameters) {
                     }
 
                     if (pQMsg->msg.val) {//success
-                        LOGD("User face recognize succuss!\r\n");
+                        LOGD("User face recognize success!\r\n");
                         CloseLcdBackground();
                         vTaskDelay(pdMS_TO_TICKS(1000));
 						Uart5_SendDeinitCameraMsg();

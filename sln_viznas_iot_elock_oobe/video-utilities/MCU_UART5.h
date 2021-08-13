@@ -152,14 +152,6 @@ typedef union{
 	uint8_t UID[8];
 }uUID;
 
-typedef struct 
-{
-	unsigned char	Mcu_Ver;			/*MCU版本，如D678表示版本6.7.8*/
-	unsigned char 	PowerVal;			/*电量: 1~100*/
-	unsigned char 	status;				/*默认为0;置1描述：Bit0 防撬开关单次触发（MCU上传后置0）；Bit1 恢复出厂设置按钮单次触发（MCU上传后置0）；Bit2 老化模式（MCU掉电后清0，由A5配置*/	
-	unsigned char 	LightVal;			/*补光灯值:无->0;不要补光->1;补光:2*/	
-}InitSyncInfo, *pInitSyncInfo;
-
 typedef struct wf_face_info{
     char name[64];
     bool recognize;
@@ -191,6 +183,7 @@ int SendMsgToSelf(uint8_t *MsgBuf, uint8_t MsgLen);
 
 int SendMsgToMCU(uint8_t *MsgBuf, uint8_t MsgLen);
 int cmdSysInitOKSyncReq(const char *strVersion);
+void SysTimeSet(uint8_t year, uint8_t month, uint8_t day, uint8_t hour, uint8_t min, uint8_t sec);
 
 // 主控发送指令:请求MQTT 上传记录
 int cmdRequestMqttUpload(int id);
@@ -204,7 +197,6 @@ int cmdCommRsp2Mqtt(unsigned char CmdId, uint8_t ret);//106F->MQTT: 通用响应
 #endif
 
 // 20201119 wszgx modified for display correct battery information in the screen
-extern InitSyncInfo	stInitSyncInfo;		//记录初始化同步信息(电量、MCU版本等)
 extern bool	bInitSyncInfo;
 extern bool bSysTimeSynProc;
 // 20201119 wszgx end
