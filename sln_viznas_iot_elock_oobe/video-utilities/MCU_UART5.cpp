@@ -1482,7 +1482,6 @@ int cmdRequestMqttUpload(int id) {
             break;
         }else{
             LOGD("WIFI 未连接 \r\n");
-            break;
         }
     }
 
