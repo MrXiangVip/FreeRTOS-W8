@@ -1375,6 +1375,7 @@ int uploadRecordImage(Record *record, bool online) {
             // 第一步：传记录
             bOasisRecordUpload = false;
             //int ret = pubOasisImage(pub_topic, msgId);
+            LOGD("第一步：传记录 \r\n");
             int ret = uploadRecord(msgId, record);
             if (ret == 0) {
                 //ret = uploadRecord(msgId, record);
@@ -1388,9 +1389,11 @@ int uploadRecordImage(Record *record, bool online) {
             }
             // 第二步：传图片
             if((record->action_upload & 0xFF00) != 0xB00) {
-				ret = pubOasisImage(pub_topic, msgId);
+                LOGD("第二步：传图片 \r\n");
+                ret = pubOasisImage(pub_topic, msgId);
 				if (ret == 0) {
 					// 第三步：再传记录
+                    LOGD("第三步：再传记录 \r\n");
 					ret = uploadRecord(msgId, record);
 					if (ret == 0) {
 						//record->upload = 2;
@@ -1415,6 +1418,7 @@ int uploadRecordImage(Record *record, bool online) {
             char *msgId = gen_msgId();
             LOGD("uploadRecordImage msgId is %s\r\n", msgId);
             // 第一步：传记录
+            LOGD("第一步：传记录 \r\n");
             int ret = uploadRecord(msgId, record);
             //int ret = pubImage(pub_topic, filename, msgId);
             if (ret == 0) {
@@ -1427,9 +1431,11 @@ int uploadRecordImage(Record *record, bool online) {
             }
             // 第二步：传图片
             if((record->action_upload & 0xFF00) != 0xB00) {
+                LOGD("第二步：传图片 \r\n");
 				ret = pubImage(pub_topic, filename, msgId);
 				if(ret == 0) {
 					// 第三步：再传记录
+                    LOGD("第三步：再传记录 \r\n");
 					ret = uploadRecord(msgId, record);
 					if (ret == 0) {
 						//record->upload = 2;
@@ -1449,7 +1455,7 @@ int uploadRecordImage(Record *record, bool online) {
 }
 
 int uploadRecords() {
-
+    LOGD("上传历史记录 \r\n");
 	g_is_auto_uploading = 1;
 	if (g_is_uploading_data == 1) {
 		g_is_auto_uploading = 2;
