@@ -135,7 +135,10 @@ list<Record*> DBManager::readRecordFromFile(char *filePath){
 
 					recordList.push_back(record);
 					//LOGD("i: [%d] id:%d, uuid:%s, action %d, time_stamp:%d, upload:%d\r\n", i, record->ID, record->UUID, record->action, record->time_stamp, record->upload);
-					LOGD("i: [%d] id:%d, uuid:%s, time_stamp:%d, action_upload:%d\r\n", i, record->ID, record->UUID, record->time_stamp, record->action_upload);
+					//LOGD("i: [%d] id:%d, uuid:%s, time_stamp:%d, action_upload:%d\r\n", i, record->ID, record->UUID, record->time_stamp, record->action_upload);
+					//LOGD("i: [%d] uuid:%s, time_stamp:%d, action_upload:%d\r\n", i, record->UUID, record->time_stamp, record->action_upload);
+					//LOGD("[%d] %s, %d, %d\r\n", i, record->UUID, record->time_stamp, record->action_upload);
+					//LOGD("[%d] %d, %d\r\n", i, record->time_stamp, record->action_upload);
 				}
 			}
 

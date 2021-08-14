@@ -61,7 +61,7 @@ typedef struct {
     short     power;    // 电池电量 高8位为power1, 低8位为power2
     //int     power1;    // 电池电量
     //int     power2;   // 电池电量
-    short	  action_upload;	//高8位为action, 操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁
+    short	  action_upload;	//高8位为action, 操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3:人脸识别开锁  11:机械开锁
     							//低8位upload, 0代表没上传 1代表记录上传图片未上传 2代表均已
     //int     upload; //   0代表没上传 1代表记录上传图片未上传 2代表均已
 } Record, *pRecord;
