@@ -1424,10 +1424,12 @@ int uploadRecordImage(Record *record, bool online) {
             		record->action_upload = (record->action_upload & 0xFF00) + 2;
             		bOasisRecordUpload = true;
             	}
+            }else{
+                LOGD("第一步:传记录失败 \r\n");
             }
             // 第二步：传图片
             if((record->action_upload & 0xFF00) != 0xB00) {
-                LOGD("第二步：传图片 \r\n");
+                LOGD("第二步：传图片 %s \r\n", record->image_path );
                 ret = pubOasisImage(pub_topic, msgId);
 				if (ret == 0) {
 					// 第三步：再传记录
@@ -1436,8 +1438,12 @@ int uploadRecordImage(Record *record, bool online) {
 					if (ret == 0) {
 						//record->upload = 2;
 						record->action_upload = (record->action_upload & 0xFF00) + 2;
+					}else{
+					    LOGD("第三步:再传记录失败 \r\n");
 					}
 					bOasisRecordUpload = true;
+				}else{
+				    LOGD("第二步:传图片失败 \r\n");
 				}
             }
             //LOGD("uploadRecordImage record->upload is %d\r\n", record->upload);
@@ -1466,10 +1472,12 @@ int uploadRecordImage(Record *record, bool online) {
             	}else {
             		record->action_upload = (record->action_upload & 0xFF00) + 2;
             	}
+            }else{
+                LOGD("第一步:传记录失败 \r\n");
             }
             // 第二步：传图片
             if((record->action_upload & 0xFF00) != 0xB00) {
-                LOGD("第二步：传图片 \r\n");
+                LOGD("第二步：传图片 %s \r\n", record->image_path );
 				ret = pubImage(pub_topic, filename, msgId);
 				if(ret == 0) {
 					// 第三步：再传记录
@@ -1479,7 +1487,11 @@ int uploadRecordImage(Record *record, bool online) {
 						//record->upload = 2;
 						record->action_upload = (record->action_upload & 0xFF00) + 2;
 						fatfs_delete(filename);
+					}else{
+					    LOGD("第三步:再传记录失败 \r\n");
 					}
+				}else{
+				    LOGD("第二步:传图片失败 \r\n");
 				}
             }
             DBManager::getInstance()->updateRecordByID(record);
