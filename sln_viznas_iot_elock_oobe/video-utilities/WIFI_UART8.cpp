@@ -218,7 +218,6 @@ int run_at_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
             // 防止死锁，10s无论如何解锁
             at_is_running = 0;
         }
-        LOGD("AT cmd return %d %d\r\n", -5, AT_CMD_RESULT_BUSY);
         return AT_CMD_RESULT_BUSY;
     }
     at_is_running = 1;
@@ -329,8 +328,9 @@ int run_at_raw_cmd(char const *cmd, char *data, int data_len, int retry_times, i
     }
 
     int ret = 0;
-    LOGD("start AT raw command %s\r\n", cmd);
-    LOGD("start AT raw data_len is %d\r\n", data_len);
+    //LOGD("start AT raw command %s\r\n", cmd);
+    //LOGD("start AT raw data_len is %d\r\n", data_len);
+    LOGD("start AT raw command %s data_len is %d\r\n", cmd, data_len);
     //LOGD("start AT raw data %s\r\n", data);
 
     ret = run_at_cmd(cmd, retry_times, cmd_timeout_usec);
@@ -1409,7 +1409,7 @@ int uploadRecordImage(Record *record, bool online) {
 	if(online) {
             char *pub_topic = get_pub_topic_pic_report();
             char *msgId = gen_msgId();
-            LOGD("uploadRecordImage msgId is %s\r\n", msgId);
+            //LOGD("uploadRecordImage msgId is %s\r\n", msgId);
             // 第一步：传记录
             bOasisRecordUpload = false;
             //int ret = pubOasisImage(pub_topic, msgId);
@@ -1460,7 +1460,7 @@ int uploadRecordImage(Record *record, bool online) {
         if (filename != NULL && strlen(filename) > 0 && (fatfs_getsize(filename)) != -1) {
             char *pub_topic = get_pub_topic_pic_report();
             char *msgId = gen_msgId();
-            LOGD("uploadRecordImage msgId is %s\r\n", msgId);
+            //LOGD("uploadRecordImage msgId is %s\r\n", msgId);
             // 第一步：传记录
             LOGD("第一步：传记录 \r\n");
             int ret = uploadRecord(msgId, record);
@@ -1524,7 +1524,7 @@ int uploadRecords() {
 
 		LOGD("---------------------- register: upload record id %d g_uploading_id %d\r\n", record->ID, g_uploading_id);
 		if(g_is_shutdown == 0) {
-		    if ((record->action_upload & 0xFF) == 0 && g_uploading_id != record->ID) {
+		    if ((record->action_upload == 0) && (g_uploading_id != record->ID)) {
 		        notifyKeepAlive();
 		        vTaskDelay(pdMS_TO_TICKS(20));
 
@@ -1540,7 +1540,7 @@ int uploadRecords() {
 		            }
 		            //break;
 		        } else {
-		            LOGD("register: upload record and image success\r\n");
+		            LOGD("register: upload record and image id %d success\r\n", record->ID);
 		        }
 		    }
 		}
@@ -1564,13 +1564,13 @@ int uploadRecords() {
 		            return -2;
 		        }
 		        if (ret != 0) {
-		            LOGD("register/opendoor: upload records fail with ret %d\r\n", ret);
+		            LOGD("register/opendoor: upload records id %d fail with ret %d\r\n", record->ID, ret);
 		            if (fret == 0) {
 		                fret = ret;
 		            }
 		            //break;
 		        } else {
-		            LOGD("register/opendoor: upload records success\r\n");
+		            LOGD("register/opendoor: upload records id %d success\r\n", record->ID);
 		        }
 		    }
 		}
@@ -1596,13 +1596,13 @@ int uploadRecords() {
 		            return -2;
 		        }
 		        if (ret != 0) {
-		            LOGD("opendoor: upload record and image fail with ret %d\r\n", ret);
+		            LOGD("opendoor: upload record and image id %d fail with ret %d\r\n", ret, record->ID);
 		            if (fret == 0) {
 		                fret = ret;
 		            }
 		            //break;
 		        } else {
-		            LOGD("opendoor: upload record and image success\r\n");
+		            LOGD("opendoor: upload record and image id %d success\r\n", record->ID);
 		        }
 		    }
 		}

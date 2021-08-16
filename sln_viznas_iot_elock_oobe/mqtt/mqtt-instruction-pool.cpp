@@ -15,11 +15,11 @@ int MqttInstructionPool::insertMqttInstruction(MqttInstruction mqtt_instruction)
     int cmd_index = mqtt_instruction.getCmdIndex();
 	map<int, MqttInstruction>::iterator iter = m_mqtt_instructions.find(cmd_index);
 	if(iter != m_mqtt_instructions.end()){
-		LOGD("mqtt_instruction_pool key %d exist\n", cmd_index);
+		LOGD("key %d exist\r\n", cmd_index);
         return -1;
     }
     m_mqtt_instructions.insert(pair<int, MqttInstruction>(cmd_index, mqtt_instruction));
-    LOGD("mqtt_instruction_pool insert key %d success\n", cmd_index);
+    LOGD("insert key %d success\r\n", cmd_index);
 	return 0;
 }
 
@@ -27,11 +27,11 @@ int MqttInstructionPool::insertOrUpdateMqttInstruction(MqttInstruction mqtt_inst
     int cmd_index = mqtt_instruction.getCmdIndex();
 	map<int, MqttInstruction>::iterator iter = m_mqtt_instructions.find(cmd_index);
 	if(iter != m_mqtt_instructions.end()){
-		LOGD("mqtt_instruction_pool key %d exist\n", cmd_index);
+		LOGD("key %d exist\r\n", cmd_index);
 		iter->second = mqtt_instruction;
         return -1;
     }
-	LOGD("mqtt_instruction_pool insert key %d success\n", cmd_index);
+	LOGD("insert key %d success\r\n", cmd_index);
     m_mqtt_instructions.insert(pair<int, MqttInstruction>(cmd_index, mqtt_instruction));
 	return 0;
 }
@@ -40,10 +40,10 @@ int MqttInstructionPool::removeMqttInstruction(int cmd_index) {
     map<int, MqttInstruction>::iterator key = m_mqtt_instructions.find(cmd_index);
     if(key!=m_mqtt_instructions.end()) {
         m_mqtt_instructions.erase(key);
-        LOGD("mqtt_instruction_pool remove key %d success\n", cmd_index);
+        LOGD("remove key %d success\r\n", cmd_index);
         return 0;
     }
-    LOGD("mqtt_instruction_pool remove key %d not found\n", cmd_index);
+    LOGD("remove key %d not found\r\n", cmd_index);
     return -1;
 }
 
@@ -53,11 +53,11 @@ char* MqttInstructionPool::getMsgId(char type_code, char cmd_code) {
     map<int, MqttInstruction>::iterator key;// = m_mqtt_instructions.find(cmd_index);
     for(key = m_mqtt_instructions.begin(); key != m_mqtt_instructions.end(); key ++) {
         int index = key->first;
-        LOGD("%s key->first is %d\n", __FUNCTION__, index);
+        //LOGD("%s key->first is %d\n", __FUNCTION__, index);
         if (index == cmd_index) {
             //LOGD("mqtt_instruction_pool getMsgId %d found\n", cmd_index);
             MqttInstruction mqttInstruction = key->second;
-            LOGD("mqtt_instruction_pool getMsgId %d found msgId %s\n", cmd_index, mqttInstruction.getMsgId());
+            LOGD("getMsgId %d found msgId %s\n", cmd_index, mqttInstruction.getMsgId());
             return mqttInstruction.getMsgId();
         }
     }
@@ -67,7 +67,7 @@ char* MqttInstructionPool::getMsgId(char type_code, char cmd_code) {
         LOGD("mqtt_instruction_pool getMsgId %d found msgId %s\n", cmd_index, mqttInstruction.getMsgId());
         return mqttInstruction.getMsgId();
     }*/
-    LOGD("mqtt_instruction_pool getMsgId %d not found\n", cmd_index);
+    LOGD("getMsgId %d not found\r\n", cmd_index);
     return "";
 }
 
@@ -96,7 +96,7 @@ int MqttInstructionPool::tick() {
 #else
             //MessageSend(1883, pub_msg, strlen(pub_msg));
             SendMsgToMQTT(pub_msg, strlen(pub_msg));
-			LOGD("mqtt_instruction_pool key %d timeout\n", mqttInstruction.getCmdIndex());
+			LOGD("key %d timeout\n", mqttInstruction.getCmdIndex());
 #endif
             m_mqtt_instructions.erase(it++);
         } else {
