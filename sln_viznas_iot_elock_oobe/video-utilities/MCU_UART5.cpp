@@ -333,6 +333,53 @@ int cmdSysInitOKSyncReq(const char *strVersion) {
     return 0;
 }
 
+int cmdRemoteRequestRsp(unsigned char nHead, unsigned char CmdId, uint8_t ret) {
+    LOGD("%s\r\n", __func__);
+    char szBuffer[32] = {0};
+    int iBufferSize;
+    char *pop = NULL;
+    unsigned char MsgLen = 0;
+
+    memset(szBuffer, 0, sizeof(szBuffer));
+    pop = szBuffer + sizeof(MESSAGE_HEAD);
+
+    /* 填充消息体 */
+    StrSetUInt8((uint8_t *) pop, ret);
+    MsgLen += sizeof(uint8_t);
+    pop += sizeof(uint8_t);
+
+    /* 填充消息头 */
+    iBufferSize = MsgHead_Packet(
+            szBuffer,
+            nHead,
+            CmdId,
+            MsgLen);
+
+    /* 计算FCS */
+    unsigned short cal_crc16 = CRC16_X25((uint8_t *) szBuffer, MsgLen + sizeof(MESSAGE_HEAD));
+    memcpy((uint8_t *) pop, &cal_crc16, sizeof(cal_crc16));
+
+    LOGD("%s send to 0x%02x cmd 0x%02x \r\n", __FUNCTION__, nHead, CmdId);
+
+    int count = 0;
+    while (1) {
+        // 发送指令给 wifi 相关的mqtt 模块
+        //usleep(100000);//0.1秒
+        vTaskDelay(pdMS_TO_TICKS(100));
+        if (count++ > 150) {//如果超过15秒 还没有连接上则退出
+            LOGD("WIFI 未连接  \r\n");
+            break;
+        }
+        //判断MQTT是否可用
+        if (mqtt_init_done == 1) {// 1 代表MQTT连接成功
+            LOGD("WIFI 连接成功,请求mqtt发送msg  \r\n");
+            SendMsgToMQTT(szBuffer, iBufferSize + CRC16_LEN);
+            break;
+        }
+    }
+
+    return 0;
+}
 //主控接收指令:  开机同步响应
 int cmdSysInitOKSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
     LOGD("接收开机同步响应 \r\n");
@@ -426,31 +473,9 @@ int cmdSysInitOKSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessa
             //Display_Update((uint32_t)wave_logo_v3);
         }
     }else if(boot_mode == BOOT_MODE_REMOTE) {
-    	cmdCommRsp2Mqtt(CMD_BOOT_MODE, boot_mode);
+    	cmdRemoteRequestRsp(HEAD_MARK, CMD_BOOT_MODE, 1);
     }
 
-    return 0;
-}
-
-int cmdBootModeRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
-    LOGD("开机状态 \r\n");
-    boot_mode = StrGetUInt8(pszMessage);
-    if (boot_mode > BOOT_MODE_MECHANICAL_LOCK) {
-        boot_mode = BOOT_MODE_INVALID;
-    }
-    LOGD("boot_mode: %d\r\n", boot_mode);
-    if((boot_mode == BOOT_MODE_NORMAL) || (boot_mode == BOOT_MODE_REG)) {
-        if(oasis_task_start == false) {
-        	oasis_task_start = true;
-        	OpenLcdBackground();
-        	Display_Start();
-            Oasis_Start();
-
-            //Display_Update((uint32_t)wave_logo_v3);
-        }
-    }else if(boot_mode == BOOT_MODE_REMOTE) {
-    	cmdCommRsp2Mqtt(CMD_BOOT_MODE, boot_mode);
-    }
     return 0;
 }
 
@@ -1430,10 +1455,6 @@ int ProcMessage(
         }
         case CMD_WIFI_MQTTSER_URL: {
             cmdMqttSvrURLProc(nMessageLen, pszMessage);
-            break;
-        }
-        case CMD_BOOT_MODE: {
-            cmdBootModeRsp(nMessageLen, pszMessage);
             break;
         }
         case CMD_MECHANICAL_LOCK: {
