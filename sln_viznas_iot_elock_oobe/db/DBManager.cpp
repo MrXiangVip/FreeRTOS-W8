@@ -148,6 +148,7 @@ list<Record*> DBManager::readRecordFromFile(char *filePath){
         }
     }
 
+    LOGD("%s end\r\n", __FUNCTION__);
 
     return  recordList;
 }
@@ -220,8 +221,10 @@ Record*  DBManager::getLastRecord(   )
     if( recordList.empty() != true ){
         record = recordList.back();
 
-        LOGD("%s \n", record->UUID);
-        LOGD("%ld\n", record->time_stamp);
+        //LOGD("%s \n", record->UUID);
+        //LOGD("%ld\n", record->time_stamp);
+        LOGD("%s %d\r\n", record->UUID, record->time_stamp);
+
     }
 
     return  record;
