@@ -36,6 +36,7 @@ extern volatile uint8_t g_RecFace;
 extern volatile uint8_t g_FaceSystemLocked;
 volatile static uint32_t s_API_Events = 0;
 //extern std::string g_AddNewFaceName;
+extern bool lcd_back_ground;
 
 static void SendDelFaceQMsg(uint8_t start)
 {
@@ -355,7 +356,9 @@ void Oasis_TimerCallback(uint8_t id_timer)
         break;
         case TIMER_SYSTEM_LOCKED:
         {
-            StartRecognitionProcess();
+            if(lcd_back_ground) {
+                StartRecognitionProcess();
+            }
         }
         break;
         case TIMER_DET_NO_FACE:
