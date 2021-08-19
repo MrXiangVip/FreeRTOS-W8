@@ -18,6 +18,7 @@
 
 #if RTFFI_USE_FATFS
 #include "fatfs_op.h"
+#include "ff.h"
 
 static FeatureMap s_FeatureMap;
 static FeatureMap s_FeatureMap_bak;
@@ -494,10 +495,15 @@ int FeatureDB::load_feature()
         }
 #endif
     }
-    else 
+    else if (ret == (-1*FR_NO_FILE))
     {
+		LOGD("db map file seems not exist, create it in the first time.\r\n", ret);
         File_FacerecFsUpdateMap(&s_FeatureMap);
     }
+	else
+    {
+		LOGD("can't load_feature:%d!\r\n", ret);
+	}
     memcpy(&s_FeatureMap_bak, &s_FeatureMap, FEATUREDATA_MAX_COUNT);
     return 0;
 }

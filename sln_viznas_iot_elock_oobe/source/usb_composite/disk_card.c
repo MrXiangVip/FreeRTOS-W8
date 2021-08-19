@@ -32,7 +32,7 @@
 /*******************************************************************************
 * Variables
 ******************************************************************************/
-uint8_t remote_change_fs;
+uint8_t remote_change_fs = 0;
 static usb_device_composite_struct_t *g_deviceComposite;
 USB_DMA_INIT_DATA_ALIGN(USB_DATA_ALIGN_SIZE)
 usb_device_inquiry_data_fromat_struct_t g_InquiryInfo = {

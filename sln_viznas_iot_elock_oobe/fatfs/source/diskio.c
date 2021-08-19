@@ -44,6 +44,7 @@
 
 #ifdef NOR_DISK_ENABLE
 #include "fsl_nor_disk.h"
+#include "fatfs_op.h"
 #endif
 
 /*-----------------------------------------------------------------------*/
@@ -267,8 +268,12 @@ DRESULT disk_write (
 #endif
 #ifdef NOR_DISK_ENABLE
         case NORDISK:
+        {
+        	FATFS_PRINTF(("[nor_disk_write]:buff:0x%x sector:0x%x flash addr:0x%x count:0x%x\r\n",
+        			buff,sector, (sector+ FATFS_SECTOR_OFFSET)*FATFS_SECTOR_SIZE + 0x60000000UL,count));
             res = nor_disk_write(pdrv, buff, sector, count);
             return res;
+        }
 #endif
 
         default:

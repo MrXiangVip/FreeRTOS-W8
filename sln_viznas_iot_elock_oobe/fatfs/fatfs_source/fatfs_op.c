@@ -71,7 +71,7 @@ int fatfs_write(const char *file_name, const char *buf, int offset, int bytes)
     {
         if (error == FR_EXIST)
         {
-            FATFS_PRINTF(("File exists.\r\n"));
+            FATFS_PRINTF(("%s File exists.\r\n", file_name));
         }
         else
         {
@@ -84,13 +84,15 @@ int fatfs_write(const char *file_name, const char *buf, int offset, int bytes)
     if (error)
     {
         FATFS_PRINTF(("Move file point failed: %d.\r\n", error));
+        return -1;
     }
 
-    FATFS_PRINTF(("\r\nWrite to above created file:%s.\r\n", file_name));
+    FATFS_PRINTF(("\r\nWrite to above created file:%s, %d.\r\n", file_name, bytes));
     error = f_write(&g_fileObject, buf, bytes, &num);
     if (error || (bytes != num))
     {
-        FATFS_PRINTF(("Write file failed: %d, write number: %d.\r\n", error, num));
+        FATFS_PRINTF(("Write file failed: %d, %d write number: %d.\r\n", error, bytes, num));
+        return -1;
     }
     if (f_close(&g_fileObject))
     {
@@ -106,7 +108,7 @@ int fatfs_write_append(const char *file_name, const char *buf, int bytes)
 {
     FRESULT error;
     UINT num = -1;
-    error    = f_open(&g_fileObject, _T(file_name), (FA_WRITE));
+    error    = f_open(&g_fileObject, _T(file_name), (FA_OPEN_ALWAYS | FA_WRITE ));
     if (error)
     {
         if (error == FR_EXIST)
@@ -124,12 +126,14 @@ int fatfs_write_append(const char *file_name, const char *buf, int bytes)
     if (error)
     {
         FATFS_PRINTF(("Move file point failed: %d.\r\n", error));
+        return -1;
     }
 
     error = f_write(&g_fileObject, buf, bytes, &num);
     if (error || (bytes != num))
     {
-        FATFS_PRINTF(("Write file failed: %d, write number: %d.\r\n", error, num));
+        FATFS_PRINTF(("Write file failed: %d, %d write number: %d.\r\n", error, bytes, num));
+        return -1;
     }
     if (f_close(&g_fileObject))
     {
@@ -152,18 +156,24 @@ int fatfs_read(char *file_name, char *buf, int offset, int bytes)
         {
             FATFS_PRINTF(("File exists.\r\n"));
         }
+        else if (error == FR_NO_FILE)
+        {
+            FATFS_PRINTF(("No file %s failed: %d.\r\n",  file_name, error));
+            return (-1*FR_NO_FILE);
+        }
         else
         {
-            FATFS_PRINTF(("Open file %s failed: %d.\r\n",  _T(file_name), error));
+            FATFS_PRINTF(("Open file %s failed: %d.\r\n", file_name, error));
             return -1;
         }
     }
 
-    FATFS_PRINTF(("Read from %s\r\n", _T(file_name)));
+    FATFS_PRINTF(("Read from %s, %d\r\n", file_name, bytes));
     error = f_read(&g_fileObject, buf, bytes, &num);
     if (error || (num != bytes))
     {
         FATFS_PRINTF(("Read file failed: %d, read bytes: %d, read number: %d.\r\n", error, bytes, num));
+        return -1;
     }
 
     //    FATFS_PRINTF(("Content of %s: %s.\r\n", _T(file_name), buf));

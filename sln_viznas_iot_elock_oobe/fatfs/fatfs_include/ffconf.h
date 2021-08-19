@@ -105,7 +105,7 @@
 */
 
 
-#define FF_USE_LFN		1
+#define FF_USE_LFN		3
 #define FF_MAX_LFN		255
 /* The FF_USE_LFN switches the support for LFN (long file name).
 /
@@ -224,16 +224,6 @@
 /  disk_ioctl() function. */
 
 
-#define FF_FS_NOFSINFO	0
-/* If you need to know correct free space on the FAT32 volume, set bit 0 of this
-/  option, and f_getfree() function at first time after volume mount will force
-/  a full FAT scan. Bit 1 controls the use of last allocated cluster number.
-/
-/  bit0=0: Use free cluster count in the FSINFO if available.
-/  bit0=1: Do not trust free cluster count in the FSINFO.
-/  bit1=0: Use last allocated cluster number in the FSINFO if available.
-/  bit1=1: Do not trust last allocated cluster number in the FSINFO.
-*/
 
 
 
@@ -293,9 +283,9 @@
 
 
 /* #include <somertos.h>	// O/S definitions */
-#define FF_FS_REENTRANT	0
+#define FF_FS_REENTRANT	1
 #define FF_FS_TIMEOUT	1000
-#define FF_SYNC_t		HANDLE
+#define FF_SYNC_t		int //HANDLE
 /* The option FF_FS_REENTRANT switches the re-entrancy (thread safe) of the FatFs
 /  module itself. Note that regardless of this option, file access to different
 /  volume is always re-entrant and volume control functions, f_mount(), f_mkfs()
