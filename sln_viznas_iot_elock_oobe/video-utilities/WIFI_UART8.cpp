@@ -491,15 +491,15 @@ static void mqttinit_task(void *pvParameters) {
         notifyWifiConnected(result);
         update_rssi();
         if (result < 0) {
-            LOGD("--------- Failed to connect to WIFI\n");
+            LOGD("--------- Failed to connect to WIFI\r\n");
             vTaskDelete(NULL);
             return;
         } else {
             update_need_reconnect("false");
         }
-        LOGD("--------- connect to WIFI done\n");
+        LOGD("--------- connect to WIFI done\r\n");
     } else {
-        LOGD("--------- auto connect to WIFI done\n");
+        LOGD("--------- auto connect to WIFI done\r\n");
     }
     vTaskDelay(pdMS_TO_TICKS(300));
 
@@ -520,11 +520,11 @@ static void mqttinit_task(void *pvParameters) {
     //                          mqttConfig.server_port, pub_topic_last_will, lwtMsg);
     notifyMqttConnected(result);
     if (result != 0) {
-        LOGD("--------- Failed to connect to MQTT\n");
+        LOGD("--------- Failed to connect to MQTT\r\n");
         vTaskDelete(NULL);
         return;
     }
-    LOGD("--------- connect to mqtt done\n");
+    LOGD("--------- connect to mqtt done\r\n");
 
     vTaskDelay(pdMS_TO_TICKS(200));
 
@@ -539,11 +539,11 @@ static void mqttinit_task(void *pvParameters) {
     if (result != 0) {
         notifyHeartBeat(CODE_FAILURE);
         //freePointer(&sub_topic_cmd);
-        LOGD("--------- Failed to subscribe topic\n");
+        LOGD("--------- Failed to subscribe topic\r\n");
         //return;
     }else {
         //freePointer(&sub_topic_cmd);
-        LOGD("--------- subscribe topic done\n");
+        LOGD("--------- subscribe topic done\r\n");
     }
 #endif
 
@@ -1486,7 +1486,9 @@ int uploadRecordImage(Record *record, bool online) {
 					if (ret == 0) {
 						//record->upload = 2;
 						record->action_upload = (record->action_upload & 0xFF00) + 2;
+						LOGD("%s delete start \r\n", __FUNCTION__);
 						fatfs_delete(filename);
+						LOGD("%s delete end \r\n", __FUNCTION__);
 					}else{
 					    LOGD("第三步:再传记录失败 \r\n");
 					}
