@@ -29,7 +29,7 @@ static FeatureItem s_FeatureItem[FEATUREDATA_MAX_COUNT];
 #endif
 #define MAP_FILE_NAME "featureMap"
 
-#define FEATURE_FILE_INDEX_LENGTH  10
+#define FEATURE_FILE_INDEX_LENGTH  4
 #define FEATURE_FILE_SUFFIX ".db"
 #define FEATURE_FILE_NAME_LEN (FEATURE_FILE_INDEX_LENGTH + 4)
 
@@ -84,7 +84,7 @@ static int File_FacerecFsReadItem(int index, FeatureItem *pItem)
         fatfs_mount_with_mkfs();
         remote_change_fs = 0;
     }
-    sprintf(file_name, "%010d%s", index, FEATURE_FILE_SUFFIX);
+    sprintf(file_name, "%04d%s", index, FEATURE_FILE_SUFFIX);
     ret = fatfs_read(file_name, (char *)pItem, 0, offset + OASISLT_getFaceItemSize());
     return ret;
 }
@@ -98,7 +98,7 @@ static int File_FacerecFsUpdateItem(int index, FeatureItem *pItem)
         fatfs_mount_with_mkfs();
         remote_change_fs = 0;
     }
-    sprintf(file_name, "%010d%s", index, FEATURE_FILE_SUFFIX);
+    sprintf(file_name, "%04d%s", index, FEATURE_FILE_SUFFIX);
     ret = fatfs_write(file_name, (char *)pItem, 0, offset + OASISLT_getFaceItemSize());
     return ret;
 }
@@ -112,7 +112,7 @@ static int File_FacerecFsReadItemHeader(int index, FeatureItem *pItem)
         fatfs_mount_with_mkfs();
         remote_change_fs = 0;
     }
-    sprintf(file_name, "%010d%s", index, FEATURE_FILE_SUFFIX);
+    sprintf(file_name, "%04d%s", index, FEATURE_FILE_SUFFIX);
     ret = fatfs_read(file_name, (char *)pItem, 0, offset);
     return ret;
 }
