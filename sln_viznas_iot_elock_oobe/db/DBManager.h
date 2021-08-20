@@ -42,7 +42,7 @@
 #endif
 
 //记录最大column
-#define MAX_COLUMN 100	//200
+#define MAX_COLUMN 200	//200
 //记录最大字节数
 #define MAX_BYTE (MAX_COLUMN*100)
 
@@ -102,6 +102,7 @@ public:
 
 
     int getAllUnuploadRecordCount();
+    int getRecordCount();
 
     list<Record *> getAllUnuploadRecord();
 

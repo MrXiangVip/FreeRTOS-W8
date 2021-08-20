@@ -199,6 +199,11 @@ int  DBManager::getAllUnuploadRecordCount()
     return  nrow;
 }
 
+int  DBManager::getRecordCount()
+{
+    return  recordList.size();
+}
+
 list<Record*>  DBManager::getAllUnuploadRecord()
 {
     LOGD("获取全部开门成功，但未上传的识别记录 \r\n");
