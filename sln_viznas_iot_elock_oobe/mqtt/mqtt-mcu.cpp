@@ -19,40 +19,47 @@
 
 // WIFI已初始化
 int notifyWifiInitialized(int code) {
+    LOGD("MQTT 通知MCU WIFI 已初始化 \r\n");
 	return sendStatusToMCU(0x00, code);
 }
 
 // WIFI已连接
 int notifyWifiConnected(int code) {
+    LOGD("MQTT 通知MCU WIFI 已连接 \r\n");
 	return sendStatusToMCU(0x01, code);
 }
 
 // MQTT已连接
 int notifyMqttConnected(int code) {
-	return sendStatusToMCU(0x02, code);
+    LOGD("MQTT 通知MCU MQTT 已连接 \r\n");
+    return sendStatusToMCU(0x02, code);
 }
 
 // TOPIC已订阅
 // int notifyTopicSubscribed(int code) {
 // 心跳已经发送
 int notifyHeartBeat(int code) {
-	return sendStatusToMCU(0x03, code);
+    LOGD("MQTT 通知MCU 心跳已发送 \r\n");
+    return sendStatusToMCU(0x03, code);
 }
 
 // 命令已执行 
 int notifyCommandExecuted(int code) {
+    LOGD("MQTT 任务完成,通知MCU下电 \r\n");
 	return sendStatusToMCU(0x04, code);
 }
 
 // 心跳发送保持不下电
 // int notifyKeepAlive(int timeout) {
 int notifyKeepAlive() {
+    LOGD("MQTT 发送心跳 MCU保持不下电 \r\n");
 	return sendStatusToMCU(0x06, 0);
 }
 
 // 发送下电
 int notifyShutdown() {
 	// TODO: 后续可以使用下电指令来代替
+    LOGD("MQTT 没有任务,通知MCU下电 \r\n");
 	return sendStatusToMCU(0x05, 0);
 }
 
