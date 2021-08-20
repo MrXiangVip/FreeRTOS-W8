@@ -105,7 +105,7 @@ static int g_is_wifi_connected = 0;
 // 心跳是否立即执行
 static int g_heart_beat_executed = 0;
 
-static int g_is_shutdown = 0;
+int g_is_shutdown = 0;
 
 
 
@@ -141,7 +141,6 @@ int uploadRecordImage(Record *record, bool online);
 
 int g_uploading_id = -1;
 
-extern bool  shut_down;
 extern bool bPubOasisImage;
 extern int boot_mode;
 bool bOasisRecordUpload = false;
@@ -207,7 +206,7 @@ int run_at_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
 //	if (AT_CMD_MODE_ACTIVE == at_cmd_mode) {
 //		return AT_CMD_RESULT_BUSY;
 //	}
-    if(shut_down) {
+	if(g_is_shutdown) {
         at_cmd_mode = AT_CMD_MODE_INACTIVE;
         return -1;
     }
@@ -262,7 +261,7 @@ int run_at_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
 char at_long_cmd[MQTT_AT_LONG_LEN];
 int run_at_long_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
 {
-    if(shut_down) {
+    if(g_is_shutdown) {
         at_cmd_mode = AT_CMD_MODE_INACTIVE;
         return -1;
     }
@@ -322,7 +321,7 @@ int run_at_long_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
 
 int run_at_raw_cmd(char const *cmd, char *data, int data_len, int retry_times, int cmd_timeout_usec)
 {
-    if(shut_down) {
+    if(g_is_shutdown) {
         at_cmd_mode = AT_CMD_MODE_INACTIVE;
         return -1;
     }

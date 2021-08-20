@@ -103,7 +103,7 @@ bool lcd_back_ground = true;
 extern int battery_level;
 static bool saving_file = false;
 static bool saving_db = false;
-bool shut_down = false;
+extern int g_is_shutdown;
 bool bDeleteUser = false;
 extern int mqtt_init_done;
 int boot_mode = BOOT_MODE_INVALID;  //0:短按;1：长按;2:蓝牙设置;3:蓝牙人脸注册;4:睡眠状态
@@ -272,7 +272,7 @@ int  SendMsgToSelf(unsigned char *MsgBuf, unsigned char MsgLen)
 }
 
 int SendMsgToMCU(unsigned char *MsgBuf, unsigned char MsgLen) {
-    if (shut_down) {
+    if (g_is_shutdown) {
         return 0;
     }
     int ret = kStatus_Success;
@@ -896,7 +896,7 @@ int cmdCloseFaceBoardReq() {
     memcpy((uint8_t *) pop, &cal_crc16, sizeof(cal_crc16));
 
     SendMsgToMCU((uint8_t *) szBuffer, iBufferSize + CRC16_LEN);
-    shut_down = true;
+    g_is_shutdown = true;
     vTaskDelay(pdMS_TO_TICKS(100));
     save_files_before_pwd();
 
@@ -1987,7 +1987,7 @@ int Uart5_GetFaceRecResult(uint8_t result, char *pszMessage) {
 static int Uart5_SendQMsg(void *msg) {
     BaseType_t ret;
 
-    if (shut_down) {
+    if (g_is_shutdown) {
         return -3;
     }
 
