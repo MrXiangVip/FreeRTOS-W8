@@ -1653,11 +1653,11 @@ static void msghandle_task(void *pvParameters)
                     if (g_command_executed) {
                         // 如果远程开锁完成或者其他指令执行完成，并且上传也执行完成了
                         if(g_is_shutdown == 0) {
-                        	g_is_shutdown = 1;
 							CloseLcdBackground();
 							LOGD("need to notify command executed 1\r\n");
 							notifyCommandExecuted(0);
 							vTaskDelay(pdMS_TO_TICKS(100));
+                        	g_is_shutdown = 1;
 							save_files_before_pwd();
                         }
                         // } else if (g_shutdown_notified == 0) {
@@ -1685,11 +1685,11 @@ static void msghandle_task(void *pvParameters)
 				// TODO: 后续可以使用下电指令来代替
 				// notifyShutdown();
 				if(g_is_shutdown == 0) {
-					g_is_shutdown = 1;
 					CloseLcdBackground();
 					LOGD("need to notify command executed 2\r\n");
 					notifyCommandExecuted(0);
 					vTaskDelay(pdMS_TO_TICKS(100));
+					g_is_shutdown = 1;
 					save_files_before_pwd();
 				}
 			}
