@@ -767,6 +767,13 @@ int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
     return 0;
 }
 
+int cmdPowerDownRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
+    LOGD("收到MCU发来的下电回复 \r\n");
+    for( int i=0; i<nMessageLen ; i++){
+        LOGD("0x%02x	\r\n", pszMessage[i]);
+    }
+    return  0;
+}
 // 主控接收指令:机械开锁响应
 int cmdMechicalLockRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
     uint8_t ret = -1;
@@ -1398,6 +1405,10 @@ int ProcMessage(
                 LOGD("display mode not supported\r\n");
             }
 #endif
+            break;
+        }
+        case CMD_CLOSE_FACEBOARD:{
+            cmdPowerDownRsp(nMessageLen, pszMessage);
             break;
         }
         case CMD_FACE_REG: {
