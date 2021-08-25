@@ -173,6 +173,8 @@ void freePointer(char **p) {
     }
 }
 
+//10 MAC + 8 tv_sec + 1 random
+#define MSG_BT_MAC_LEN	10
 char *gen_msgId() {
     char *msgId = (char *) pvPortMalloc(64);
     memset(msgId, '\0', 64);
@@ -185,12 +187,20 @@ char *gen_msgId() {
     // long id = tv.tv_sec*1000000 + tv.tv_usec;
     // sprintf(msgId, "%s%d%06d%03d", btWifiConfig.wifi_mac, tv.tv_sec, tv.tv_usec, random_gen);
     // sprintf(msgId, "%s%d%d", btWifiConfig.wifi_mac, tv.tv_sec, random_gen);
-    sprintf(msgId, "%d%06d%03d", tv.tv_sec, tv.tv_usec, random_gen);
+    long a = tv.tv_sec % 100000000;
+    char bt_mac_string[MSG_BT_MAC_LEN];
+	memset(bt_mac_string, '\0', MSG_BT_MAC_LEN);
+	memcpy(bt_mac_string, btWifiConfig.bt_mac + 2, MSG_BT_MAC_LEN);
+	//LOGD("gen_msgId bt_mac_string is %s\r\n", bt_mac_string);
+	//LOGD("gen_msgId tv.tv_sec is %d, a is %d\r\n", tv.tv_sec, a);
+    //sprintf(msgId, "%d%06d%03d", tv.tv_sec, tv.tv_usec, random_gen);
+    sprintf(msgId, "%s%08d%d", bt_mac_string, a, random_gen);
     //LOGD("generate msgId is %s\n", msgId);
     // 3位random
     // if (++random_gen >= 1000) {
     // 1位random
-    if (++random_gen >= 1000) {
+    //LOGD("gen_msgId msgId is %s\r\n", msgId);
+    if (++random_gen >= 10) {
         random_gen = 1;
     }
     return msgId;
