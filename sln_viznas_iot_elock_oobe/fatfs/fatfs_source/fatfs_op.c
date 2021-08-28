@@ -92,6 +92,7 @@ int fatfs_write(const char *file_name, const char *buf, int offset, int bytes)
     if (error || (bytes != num))
     {
         FATFS_PRINTF(("Write file failed: %d, %d write number: %d.\r\n", error, bytes, num));
+        f_close(&g_fileObject);
         return -1;
     }
     if (f_close(&g_fileObject))
@@ -133,6 +134,7 @@ int fatfs_write_append(const char *file_name, const char *buf, int bytes)
     if (error || (bytes != num))
     {
         FATFS_PRINTF(("Write file failed: %d, %d write number: %d.\r\n", error, bytes, num));
+        f_close(&g_fileObject);
         return -1;
     }
     if (f_close(&g_fileObject))
@@ -173,6 +175,7 @@ int fatfs_read(char *file_name, char *buf, int offset, int bytes)
     if (error || (num != bytes))
     {
         FATFS_PRINTF(("Read file failed: %d, read bytes: %d, read number: %d.\r\n", error, bytes, num));
+        f_close(&g_fileObject);
         return -1;
     }
 
@@ -281,6 +284,7 @@ int fatfs_delete(const char *file_name)
         FATFS_PRINTF(("Delete %s failed: %d.\r\n", file_name, error));
         return -1;
     }
+    FATFS_PRINTF(("Delete %s succeed.\r\n", file_name));
 
     return 0;
 }
