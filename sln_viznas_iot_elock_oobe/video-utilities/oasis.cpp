@@ -317,9 +317,11 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
             Camera_GetPWM(LED_WHITE,&gui_info.rgbPwm);
 
             //UsbShell_DbgPrintf(VERBOSE_MODE_L2,"[irBrightness]:%d\r\n",gui_info.irBrightness);
-            LOGD("[irBrightness]:%d\r\n",gui_info.irBrightness);
+            //LOGD("[irBrightness]:%d\r\n",gui_info.irBrightness);
             //UsbShell_DbgPrintf(VERBOSE_MODE_L2,"[rgbBrightness]:%d\r\n",gui_info.rgbBrightness);
-            LOGD("[rgbBrightness]:%d\r\n",gui_info.rgbBrightness);
+            //LOGD("[rgbBrightness]:%d\r\n",gui_info.rgbBrightness);
+            LOGD("[Brightness]:ir %d, rgb %d\r\n",gui_info.irBrightness, gui_info.rgbBrightness);
+
             if (para->qualityResult == OASIS_QUALITY_RESULT_FACE_OK)
             {
                 //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]:ok!\r\n");
@@ -581,13 +583,16 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
         if (evt == OASISLT_EVT_REC_COMPLETE || evt == OASISLT_EVT_REG_COMPLETE)
         {
             //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]:sim:[%d]\r\n", para->reserved[0]);
-            LOGD("[EVT]:sim:[%d]\r\n", para->reserved[0]);
+            //LOGD("[EVT]:sim:[%d]\r\n", para->reserved[0]);
             //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]:FF[%d][%d]\r\n", para->reserved[1], para->reserved[2]);
-            LOGD("[EVT]:FF[%d][%d]\r\n", para->reserved[1], para->reserved[2]);
+            //LOGD("[EVT]:FF[%d][%d]\r\n", para->reserved[1], para->reserved[2]);
             //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]:Blur[%d][%d]\r\n", para->reserved[3], para->reserved[4]);
-            LOGD("[EVT]:Blur[%d][%d]\r\n", para->reserved[3], para->reserved[4]);
+            //LOGD("[EVT]:Blur[%d][%d]\r\n", para->reserved[3], para->reserved[4]);
             //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]:Liveness[%d][%d]\r\n", para->reserved[5], para->reserved[6]);
-            LOGD("[EVT]:Liveness[%d][%d]\r\n", para->reserved[5], para->reserved[6]);
+            //LOGD("[EVT]:Liveness[%d][%d]\r\n", para->reserved[5], para->reserved[6]);
+            LOGD("[EVT]:sim:[%d] FF[%d][%d] Blur[%d][%d] Liveness[%d][%d]\r\n", para->reserved[0], para->reserved[1], para->reserved[2],
+            		para->reserved[3], para->reserved[4], para->reserved[5], para->reserved[6]);
+
         }
 		if(evt == OASISLT_EVT_REC_COMPLETE) {
 		    Uart5_GetFaceRecResult((uint8_t)face_info.recognize, gui_info.name);

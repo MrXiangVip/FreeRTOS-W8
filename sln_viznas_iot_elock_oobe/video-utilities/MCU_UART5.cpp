@@ -1567,7 +1567,7 @@ static void uart5_QMsg_task(void *pvParameters) {
             //LOGD("%s pQMsg->id is %d!\r\n", __FUNCTION__, pQMsg->id);
             switch (pQMsg->id) {
                 case QMSG_FACEREC_ADDNEWFACE: {//处理人脸注册结果
-                    LOGD("处理人脸注册结果 %d\r\n", pQMsg->msg.val);
+                    //LOGD("处理人脸注册结果 %d\r\n", pQMsg->msg.val);
                     if (pQMsg->msg.val) {//success
                         if (gFaceInfo.enrolment && (OASIS_REG_RESULT_DUP == gFaceInfo.rt)) {//判断是否是重复注册
                             LOGD("User face duple register!\r\n");
@@ -1637,7 +1637,7 @@ static void uart5_QMsg_task(void *pvParameters) {
 
                 case QMSG_FACEREC_RECFACE: {//处理人脸识别结果
                     //LOGD("%s g_reging_flg is %d lcd_back_ground is %d\r\n", __FUNCTION__, g_reging_flg, lcd_back_ground);
-                    LOGD("处理人脸识别结果 %d flg %d\r\n", pQMsg->msg.val, g_reging_flg);
+                    //LOGD("处理人脸识别结果 %d flg %d\r\n", pQMsg->msg.val, g_reging_flg);
                     if ( (boot_mode != BOOT_MODE_NORMAL) || (REG_STATUS_WAIT != g_reging_flg)
                         || (lcd_back_ground == false))//如果正在注册流程，就过滤掉该识别结果
                     {
