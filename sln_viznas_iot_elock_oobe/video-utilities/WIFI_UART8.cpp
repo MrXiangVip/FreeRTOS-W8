@@ -23,6 +23,8 @@
 #include "../mqtt/mqtt-api.h"
 #include "../mqtt/mqtt-topic.h"
 #include "../mqtt/mqtt-ota.h"
+#include "../mqtt/mqtt-ff.h"
+
 #include "commondef.h"
 #include <ctype.h>
 #include <stdio.h>
@@ -66,8 +68,11 @@ uint8_t recv_buffer8[1];
 #endif
 
 #define MAX_MSG_LINES           20
+#if	FFD_SUPPORT != 0
+#define MAX_MSG_LEN_OF_LINE     1536
+#else
 #define MAX_MSG_LEN_OF_LINE     256
-
+#endif
 #define MQTT_AT_LEN             128
 #define MQTT_AT_LONG_LEN        256
 #define MQTT_MAC_LEN            32
@@ -138,7 +143,9 @@ static int at_cmd_result = AT_CMD_RESULT_UNDEF;
 static int wifi_ready = 0;
 
 int uploadRecordImage(Record *record, bool online);
-
+#if	FFD_SUPPORT != 0
+int uploadOasisFeature(Record *record, bool online);
+#endif
 int g_uploading_id = -1;
 
 extern bool bPubOasisImage;
@@ -556,6 +563,33 @@ static void mqttinit_task(void *pvParameters) {
         //freePointer(&sub_topic_cmd);
         LOGD("--------- subscribe topic done\r\n");
     }
+
+#if	OTA_SUPPORT != 0
+    vTaskDelay(pdMS_TO_TICKS(200));
+	char *ota_topic_cmd = get_ota_topic_cmd();
+	result = quickSubscribeMQTT(ota_topic_cmd);
+	if (result < 0) {
+		// notifyHeartBeat(CODE_FAILURE);
+		LOGD("--------- Failed to subscribe ota topic\r\n");
+		//freePointer(&ota_topic_cmd);
+		return;
+	}
+	//freePointer(&ota_topic_cmd);
+	LOGD("--------- subscribe ota topic done\r\n");
+#endif
+#if	FFD_SUPPORT != 0
+    vTaskDelay(pdMS_TO_TICKS(200));
+	char *ffd_topic_cmd = get_ffd_topic_cmd();
+	result = quickSubscribeMQTT(ffd_topic_cmd);
+	if (result < 0) {
+		// notifyHeartBeat(CODE_FAILURE);
+		LOGD("--------- Failed to subscribe ffd topic\r\n");
+		//freePointer(&ffd_topic_cmd);
+		return;
+	}
+	//freePointer(&ffd_topic_cmd);
+	LOGD("--------- subscribe ffd topic done\r\n");
+#endif
 #endif
 
     vTaskDelay(pdMS_TO_TICKS(200));
@@ -994,7 +1028,12 @@ int SendMsgToMQTT(char *mqtt_payload, int len) {
 						//usleep(100000);
 						vTaskDelay(pdMS_TO_TICKS(100));
 					}
-                    int ret = uploadRecordImage(&record, true);
+					int ret = 0;
+#if	FFD_SUPPORT != 0
+					ret = uploadOasisFeature(&record, true);
+					vTaskDelay(pdMS_TO_TICKS(100));
+#endif
+                    ret = uploadRecordImage(&record, true);
                     LOGD("uploadRecordImage end\r\n");
                     // notifyCommandExecuted(ret);
                     g_is_uploading_data = 0;
@@ -1143,7 +1182,9 @@ int handleJsonMsg(char *jsonMsg) {
 }
 
 static char g_ota_data[UART_RX_BUF_LEN];
-
+#if	FFD_SUPPORT != 0
+static char g_ffd_data[UART_RX_BUF_LEN];
+#endif
 
 #define MQTT_LINKID_LEN     16
 #define MQTT_TOPIC_LEN      64
@@ -1161,13 +1202,21 @@ int analyzeMQTTMsgInternal(char *msg) {
 
 		// TODO: 只要服务器下发指令下来，我们就认为服务器已经确认在线
 		g_is_online = 1;
-
+#if	FFD_SUPPORT != 0
+		char firstWithLinkId[MQTT_AT_LEN];
+		char topic[MQTT_AT_LEN];
+		char dataLen[MQTT_AT_LEN];
+		char data[UART_RX_BUF_LEN];
+		char lastWithTopic[UART_RX_BUF_LEN];
+		char lastWithDataLen[UART_RX_BUF_LEN];
+#else
 		char firstWithLinkId[MQTT_LINKID_LEN];
 		char topic[MQTT_TOPIC_LEN];
 		char dataLen[MQTT_DATALEN_LEN];
 		char data[MQTT_DATA_LEN];
 		char lastWithTopic[MQTT_LASTTOP_LEN];
 		char lastWithDataLen[MQTT_LASTDATA_LEN];
+#endif
 		mysplit(msg, firstWithLinkId, lastWithTopic, (char *)",\"");
 
 		mysplit(lastWithTopic, topic, lastWithDataLen, (char *)"\",");
@@ -1202,6 +1251,28 @@ int analyzeMQTTMsgInternal(char *msg) {
 					return true;
 				}
 				//freePointer(&ota_topic_cmd);
+#if	FFD_SUPPORT != 0
+				char *ffd_topic_cmd = get_ffd_topic_cmd();
+				if (strncmp(topic, ffd_topic_cmd, strlen(ffd_topic_cmd)) == 0) {
+					if (data[0] == '{') {
+						memset(g_ffd_data, '\0', sizeof(g_ffd_data));
+						strcpy(g_ffd_data, data);
+					} else {
+						int len = strlen(g_ffd_data);
+						strcpy(&g_ffd_data[len], data);
+					} 
+					if (data[data_len - 1] == '}') {
+						// log_info("get ffd data %d: %s", strlen(g_ffd_data), g_ffd_data);
+						char msgId[MQTT_AT_LEN];
+						memset(msgId, '\0', MQTT_AT_LEN);
+						int ret = analyzeFFD(g_ffd_data, (char*)&msgId);
+						LOGD("analyzeFFD ret %d", ret);
+					}
+					//freePointer(&ffd_topic_cmd);
+					return true;
+				}
+				//freePointer(&ffd_topic_cmd);
+#endif
 				char payload[MQTT_AT_LEN];
 				strncpy(payload, data, data_len);
 				payload[data_len] = '\0';
@@ -1626,6 +1697,59 @@ int uploadRecords() {
     g_is_auto_uploading = 0;
 	return fret;
 }
+
+#if	FFD_SUPPORT != 0
+int uploadOasisFeature(Record *record, bool online) {
+	LOGD("uploadOasisFeature online is %d \r\n", online);
+	char *pub_topic = get_ffu_topic_cmd();
+	char *msgId = gen_msgId();
+	//LOGD("uploadOasisFeature msgId is %s\r\n", msgId);
+	// 第一步：传记录
+	bOasisRecordUpload = false;
+	//int ret = pubOasisImage(pub_topic, msgId);
+	LOGD("第一步：传记录 \r\n");
+	int ret = uploadRecord(msgId, record);
+	if (ret == 0) {
+		//ret = uploadRecord(msgId, record);
+		//record->upload = 1;
+		if((record->action_upload & 0xFF00) != 0xB00) {
+			record->action_upload = (record->action_upload & 0xFF00) + 1;
+		}else {
+			record->action_upload = (record->action_upload & 0xFF00) + 2;
+			bOasisRecordUpload = true;
+		}
+	}else{
+		LOGD("第一步:传记录失败 \r\n");
+	}
+	// 第二步：传图片
+	if((record->action_upload & 0xFF00) != 0xB00) {
+		LOGD("第二步：传图片 %s \r\n", record->image_path );
+		ret = pubOasisFeature(pub_topic, msgId);
+		if (ret == 0) {
+			// 第三步：再传记录
+			LOGD("第三步：再传记录 \r\n");
+			ret = uploadRecord(msgId, record);
+			if (ret == 0) {
+				//record->upload = 2;
+				record->action_upload = (record->action_upload & 0xFF00) + 2;
+			}else{
+				LOGD("第三步:再传记录失败 \r\n");
+			}
+			bOasisRecordUpload = true;
+		}else{
+			LOGD("第二步:传图片失败 \r\n");
+		}
+	}
+	//LOGD("uploadRecordImage record->upload is %d\r\n", record->upload);
+	LOGD("uploadOasisFeature record->action_upload is 0x%X\r\n", record->action_upload);
+
+	DBManager::getInstance()->updateRecordByID(record);
+
+	freePointer(&pub_topic);
+	freePointer(&msgId);
+	return ret;
+}
+#endif
 
 int MAX_COUNT = 5;
 

@@ -494,6 +494,8 @@ extern "C" {
 #define WIFI_SUPPORT	1
 #define PWM2_SUPPORT	1
 #define USB_OTG_SUPPORT	0
+#define OTA_SUPPORT		0
+#define	FFD_SUPPORT		0
 
 #define  PROJECT_VERSION  "W8_106F_V1.3.1"
 #define  FIRMWARE_VERSION  "FW_W8_3db474_20210828_V1.3.1"
