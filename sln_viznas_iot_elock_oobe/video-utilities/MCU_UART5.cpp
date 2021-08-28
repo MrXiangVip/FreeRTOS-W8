@@ -104,6 +104,7 @@ extern int battery_level;
 static bool saving_file = false;
 static bool saving_db = false;
 extern int g_is_shutdown;
+bool g_is_save_file = false;
 bool bDeleteUser = false;
 extern int mqtt_init_done;
 int boot_mode = BOOT_MODE_INVALID;  //0:短按;1：长按;2:蓝牙设置;3:蓝牙人脸注册;4:睡眠状态
@@ -849,12 +850,13 @@ int cmdWifiOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessag
 
 int save_config_feature_file() {
     LOGD("save config, feature start\r\n");
+    g_is_save_file = true;
     if (saving_file == false) {
         DB_Save(0);
         save_json_config_file();
         saving_file = true;
     }
-
+    g_is_save_file = false;
     LOGD("save config, feature end\r\n");
 
     return 0;
@@ -862,6 +864,7 @@ int save_config_feature_file() {
 
 int save_files_before_pwd() {
     LOGD("开始保存config, db, jpg 文件 \r\n");
+    g_is_save_file = true;
     if (saving_file == false) {
         DB_Save(0);
         save_json_config_file();
@@ -873,6 +876,7 @@ int save_files_before_pwd() {
         DBManager::getInstance()->flushRecordList();
     }
     Oasis_WriteJpeg();
+    g_is_save_file = false;
     LOGD("保存config, db, jpg 文件结束 \r\n");
 
     return 0;

@@ -20,7 +20,7 @@ const char * base64char = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0
 char data[MQTT_PUB_PACKAGE_LEN + 1];
 char pub_msg[MQTT_PUB_MSG_LEN];
 bool bPubOasisImage = false;
-
+extern bool g_is_save_file;
 char * base64_encode( char * bindata, char * base64, int binlength )
 {
 	int i, j;
@@ -133,6 +133,9 @@ int pubImage(const char* pub_topic, const char *filename, const char *msgId) {
 	unsigned int length;
 
 	//获取图片大小
+	while (g_is_save_file) {
+		vTaskDelay(pdMS_TO_TICKS(50));
+	}
 	size = fatfs_getsize(filename);
     LOGD("%s size is %d\r\n", __FUNCTION__, size);
     if(size == 0) {
@@ -148,6 +151,9 @@ int pubImage(const char* pub_topic, const char *filename, const char *msgId) {
 	}
 
 	//将图片拷贝到buffer
+	while (g_is_save_file) {
+		vTaskDelay(pdMS_TO_TICKS(50));
+	}
 	result = fatfs_read(filename, buffer, 0, size);
 
 	//base64编码

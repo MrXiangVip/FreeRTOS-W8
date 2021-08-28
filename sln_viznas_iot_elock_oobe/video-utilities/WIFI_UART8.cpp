@@ -144,6 +144,7 @@ int g_uploading_id = -1;
 extern bool bPubOasisImage;
 extern int boot_mode;
 bool bOasisRecordUpload = false;
+extern bool g_is_save_file;
 lpuart_rtos_handle_t handle8;
 struct _lpuart_handle t_handle8;
 
@@ -1467,6 +1468,9 @@ int uploadRecordImage(Record *record, bool online) {
     }else {
         char *filename = (char*)(record->image_path);
         LOGD("uploadRecordImage filename is %s\r\n", filename);
+        while (g_is_save_file) {
+			vTaskDelay(pdMS_TO_TICKS(50));
+		}
         if (filename != NULL && strlen(filename) > 0 && (fatfs_getsize(filename)) != -1) {
             char *pub_topic = get_pub_topic_pic_report();
             char *msgId = gen_msgId();
@@ -1534,8 +1538,8 @@ int uploadRecords() {
         Record* record = (Record*) *it;
 		//Record record = records[i];
 
-		LOGD("---------------------- register: upload record id %d g_uploading_id %d\r\n", record->ID, g_uploading_id);
 		if(g_is_shutdown == 0) {
+			LOGD("---------------------- register: upload record id %d g_uploading_id %d\r\n", record->ID, g_uploading_id);
 		    if ((record->action_upload == 0) && (g_uploading_id != record->ID)) {
 		        notifyKeepAlive();
 		        vTaskDelay(pdMS_TO_TICKS(20));
@@ -1596,8 +1600,8 @@ int uploadRecords() {
 
 		Record* record = (Record*) *it;
 
-		LOGD("---------------------- opendoor: upload record id %d g_uploading_id %d\r\n", record->ID, g_uploading_id);
 		if(g_is_shutdown == 0) {
+			LOGD("---------------------- opendoor: upload record id %d g_uploading_id %d\r\n", record->ID, g_uploading_id);
 		    if (((record->action_upload & 0xFF) == 0 || (record->action_upload & 0xFF) == 1) && g_uploading_id != record->ID) {
 		        notifyKeepAlive();
 		        vTaskDelay(pdMS_TO_TICKS(20));
