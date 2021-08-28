@@ -359,3 +359,13 @@ int DB_SetAutoSave(bool auto_save)
 
     return ret;
 }
+
+int DB_save_feature(float *feature) {
+    int ret = DB_MGMT_FAILED;
+    if (s_DB != NULL)
+    {
+        s_DB->save_feature(feature);
+        ret = DB_MGMT_OK;
+    }
+    return ret;
+}

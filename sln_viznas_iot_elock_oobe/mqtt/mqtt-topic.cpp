@@ -36,6 +36,16 @@ char *get_sub_topic_cmd() {
 	return generate_topic("WAVE/DEVICE/%s/INSTRUCTION/ISSUE");
 }
 
+// face feature 人脸特征上传命令
+char *get_ffu_topic_cmd() {
+	return generate_topic("WAVE/DEVICE/%s/FF/UP");
+}
+
+// face feature 人脸特征下发命令
+char *get_ffd_topic_cmd() {
+	return generate_topic("WAVE/DEVICE/%s/FF/DOWN");
+}
+
 // 时间同步订阅
 char *get_sub_topic_time_sync() {
 	return generate_topic("WAVE/DEVICE/%s/TIME/RESPONSE");

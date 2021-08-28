@@ -269,3 +269,61 @@ int pubOasisImage(const char* pub_topic, const char *msgId) {
     vPortFree(buffer1);
     return fresult;
 }
+
+int pubOasisFeature(const char* pub_topic, const char *msgId) {
+    unsigned int size;
+    char *buffer1;
+    unsigned int length;
+
+    size = getOasisFeatureSize();
+
+    //base64编码
+    buffer1 = (char *)pvPortMalloc((size/3+1)*4 + 1);
+    if (NULL == buffer1)
+    {
+        LOGD("memory_error");
+        return (-1);
+    }
+    base64_encode(getOasisFeature(), buffer1, size);
+    length = strlen(buffer1);
+    // printf("%d ------- %s\n", length, buffer1);
+    //LOGD("%d ------- %s\n", length, buffer1);
+
+    int count = (length + MQTT_PUB_PACKAGE_LEN - 1) / MQTT_PUB_PACKAGE_LEN;
+    int fresult = 0;
+    bPubOasisImage = true;
+    for (int i = 0; i < count; i++) {
+        int len = MQTT_PUB_PACKAGE_LEN;
+        if (i == (count - 1)) {
+            len = length - MQTT_PUB_PACKAGE_LEN * (count - 1);
+        }
+        //char data[MQTT_PUB_PACKAGE_LEN + 1];
+        //char pub_msg[MQTT_PUB_PACKAGE_LEN + 32];
+        memset(data, '\0', MQTT_PUB_PACKAGE_LEN + 1);
+        memset(pub_msg, '\0', MQTT_PUB_MSG_LEN);
+        strncpy(data, buffer1 + (i*MQTT_PUB_PACKAGE_LEN), len);
+
+        // sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"t\\\":%d\\,\\\"i\\\":%d\\,\\\"p\\\":%d\\,\\\"d\\\":\\\"%s\\\"}", msgId, count, i+1, 0, data);
+        //sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"t\\\":%d\\,\\\"i\\\":%d\\,\\\"d\\\":\\\"%s\\\"}", msgId, count, i+1, data);
+		sprintf(pub_msg, "{\"msgId\":\"%s\",\"t\":%d,\"i\":%d,\"d\":\"%s\"}", msgId, count, i+1, data);
+        LOGD("%s g_priority is %d\r\n", __FUNCTION__, g_priority);
+        while (g_priority != 0) {
+            //usleep(500000);	// 睡眠0.5s
+            vTaskDelay(pdMS_TO_TICKS(500));
+        }
+        //LOGD("%s pub_topic is %s length is %d\r\n", __FUNCTION__, pub_topic, strlen(pub_topic));
+        //LOGD("%s pub_msg is %s length is %d\r\n", __FUNCTION__, pub_msg, strlen(pub_msg));
+        //int ret = quickPublishOasisMQTT(pub_topic, pub_msg);
+		int ret = quickPublishRawMQTT(pub_topic, pub_msg, strlen(pub_msg));
+
+        LOGD("%s ret is %d\r\n", __FUNCTION__, ret);
+        if (ret != 0) {
+            fresult = -1;
+            break;
+        }
+    }
+    bPubOasisImage = false;
+
+    vPortFree(buffer1);
+    return fresult;
+}

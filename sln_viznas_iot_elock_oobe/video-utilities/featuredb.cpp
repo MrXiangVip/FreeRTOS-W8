@@ -535,6 +535,17 @@ int FeatureDB::save_feature(int index)
     return 0;
 }
 
+int FeatureDB::save_feature(float *feature) {
+    int index = 0;
+    get_free(index);
+    if(index != -1) {
+    	File_FacerecFsUpdateItem(index, (FeatureItem*)feature);
+    	s_FeatureMap.magic[index] = FEATUREDATA_MAGIC_VALID;
+    	File_FacerecFsUpdateMapMagic(index, &s_FeatureMap);
+    }
+    return 0;
+}
+
 int FeatureDB::reassign_feature()
 {
     int unuse_size     = 0;

@@ -15,6 +15,10 @@ char *get_pub_topic_ota_request();
 char *get_ota_topic_cmd();
 // 后台命令
 char *get_sub_topic_cmd();
+// face feature 人脸特征上传命令
+char *get_ffu_topic_cmd();
+// face feature 人脸特征下发命令
+char *get_ffd_topic_cmd();
 // 时间同步订阅
 char *get_sub_topic_time_sync();
 

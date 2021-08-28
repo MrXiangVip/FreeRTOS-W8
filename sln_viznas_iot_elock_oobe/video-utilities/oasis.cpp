@@ -119,6 +119,8 @@ void util_crop(unsigned char* src, int srcw, int srch, unsigned char* dst, int d
 static uint8_t s_tmpBuffer4Jpeg[OASIS_JPEG_IMG_WIDTH*OASIS_JPEG_IMG_HEIGHT*3];
 static uint32_t s_dataSizeInJpeg = 0;
 
+static float s_OasisFeature[1024];
+
 //#define OASIS_JPEG_IMG_BUFFER_SIZE (100*1024)
 //#define OASIS_JPEG_IMG_NUM_MAX (30)
 //typedef struct _OasisJpegImgCtx
@@ -165,6 +167,13 @@ static void Oasis_WriteJpegBuffer(uint8_t byte)
 	s_tmpBuffer4Jpeg[s_dataSizeInJpeg++] = byte;
 }
 
+float * getOasisFeature() {
+	return (float *)s_OasisFeature;
+}
+
+int getOasisFeatureSize() {
+	return OASISLT_getFaceItemSize();
+}
 
 /*******************************************************************************
  * Code
@@ -626,6 +635,7 @@ static int AddNewFaceHandler(uint16_t *face_id, void *face,void* snapshot, int s
     struct TimeStat *timeState = (struct TimeStat *)user_data;
 
     char* name = timeState->new_name;
+    memcpy(s_OasisFeature, (float *)face, getOasisFeatureSize());
     status = VIZN_EnrolmentAddNewFace(NULL, face_id, face, (strlen(name) == 0? NULL:name));
     if (status != kStatus_API_Layer_Success)
     {

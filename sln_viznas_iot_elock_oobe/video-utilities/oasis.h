@@ -51,6 +51,8 @@ void Oasis_SetOasisFileName(const char *filename);
 void Oasis_WriteJpeg();
 char * getOasisBuffer();
 int getOasisBufferSize();
+float * getOasisFeature();
+int getOasisFeatureSize();
 
 #ifdef __cplusplus
 }
