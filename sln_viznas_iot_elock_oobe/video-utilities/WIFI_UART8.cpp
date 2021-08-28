@@ -648,6 +648,18 @@ static void uartrecv_timeout_task(void *pvParameters)
 }
 #endif
 
+char short_str[256] = {0};
+char* get_short_str(const char *str) {
+    if(strlen(str) < 256) {
+        return (char *)str;
+    }else {
+        memset(short_str, 0, sizeof(short_str));
+        memcpy(short_str, str, 255);
+        return (char *)short_str;
+    }
+}
+
+
 static void uartrecv_task(void *pvParameters)
 {
 	char const *logTag = "[UART8_WIFI]:uartrecv_task-";
@@ -679,7 +691,7 @@ static void uartrecv_task(void *pvParameters)
             				}
             			}
             			recv_msg_lines[current_recv_line][current_recv_line_len - 1] = '\0';
-            			LOGD("--- recv_msg_line is %s\r\n", recv_msg_lines[current_recv_line]);
+            			//LOGD("--- recv_msg_line is %s\r\n", get_short_str((const char *)recv_msg_lines[current_recv_line]));
             			current_recv_line++;
             			current_recv_line_len = 0;
             			if (current_recv_line >= MAX_MSG_LINES) {
@@ -1315,7 +1327,7 @@ static int handle_line()
     		break;
     	}
     	const char *curr_line = (const char*)recv_msg_lines[current_handle_line];
-    	LOGD("---------------- line %d is : %s\r\n", current_handle_line, recv_msg_lines[current_handle_line]);
+		LOGD("---------------- line %d is : %s\r\n", current_handle_line, get_short_str((const char*)recv_msg_lines[current_handle_line]));
 #if 0
 		// 如果是MQTT的TOPIC RECEIVE
 		if (strncmp((const char*)recv_msg_lines[current_handle_line], "+MQTTSUBRECV:", strlen("+MQTTSUBRECV:")) == 0) {
@@ -1416,7 +1428,7 @@ static int handle_line()
 					// TODO: 确认是否有OK
 					// GET MAC
 				}else if (strncmp((const char*)recv_msg_lines[current_handle_line], "+MQTTSUBRECV:", 13) == 0) {
-					LOGD("####receive subscribe message from mqtt server %s \r\n", (const char*)recv_msg_lines[current_handle_line]);
+					//LOGD("####receive subscribe message from mqtt server %s \r\n", get_short_str((const char*)recv_msg_lines[current_handle_line]));
                     int ret = analyzeMQTTMsgInternal((char*)recv_msg_lines[current_handle_line]);
                 }else if (((strncmp((const char*)recv_msg_lines[current_handle_line], MQTT_DISCONNECT, MQTT_DISCONNECT_SIZE) == 0) ||
                         (strncmp((const char*)recv_msg_lines[current_handle_line], MQTT_RAW_DISCONNECT, MQTT_RAW_DISCONNECT_SIZE) == 0)) && (mqtt_init_done == 1)) {
