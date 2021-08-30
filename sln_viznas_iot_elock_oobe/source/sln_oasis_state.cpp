@@ -358,6 +358,12 @@ void Oasis_TimerCallback(uint8_t id_timer)
         {
             if(lcd_back_ground) {
                 StartRecognitionProcess();
+            }else {
+            	static int isFirst = 0;
+            	if(isFirst == 0) {
+            		isFirst = 1;
+            		StartRecognitionProcess();
+            	}
             }
         }
         break;
