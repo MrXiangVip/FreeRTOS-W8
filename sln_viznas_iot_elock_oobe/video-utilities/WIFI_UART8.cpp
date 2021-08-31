@@ -654,7 +654,7 @@ char* get_short_str(const char *str) {
         return (char *)str;
     }else {
         memset(short_str, 0, sizeof(short_str));
-        memcpy(short_str, str, 255);
+        memcpy(short_str, str, 127);
         return (char *)short_str;
     }
 }

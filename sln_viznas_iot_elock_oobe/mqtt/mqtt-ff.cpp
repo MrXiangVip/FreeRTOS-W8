@@ -2,8 +2,6 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
-#include <sys/time.h>
 #include <sys/stat.h>
 #include "mqtt-mcu.h"
 #include "base64.h"
@@ -16,8 +14,6 @@
 #include "util.h"
 #define MD5_SIZE        16
 #define MD5_STR_LEN     (MD5_SIZE * 2)
-#define PACK_SIZE 6000
-#define OTA_DIR "/opt/smartlocker/ota/"
 #include "database.h"
 
 #include <ctype.h>
@@ -48,17 +44,12 @@ int handleBase64FFD(char *uuid, unsigned char *payload, char *sign, int length) 
 
 
 	if (payload_bin_len != length) {
-		LOGD("length is not equal: payload_bin_len is %d but length is %d\r\n", payload_bin_len, length);
 		if(ret != length) {
 			LOGD("length is not equal: ret is %d but length is %d\r\n", ret, length);
 			return -1;
-		}else {
-			LOGD("length is equal: ret is %d length is %d\r\n", ret, length);
 		}
 	}
 
-
-#if	1
 	// verify sign
 	unsigned char md5_value[MD5_SIZE];
 	unsigned char md5_str[MD5_STR_LEN + 1];
@@ -78,7 +69,6 @@ int handleBase64FFD(char *uuid, unsigned char *payload, char *sign, int length) 
 	}
 
 	save_ffd(uuid, payload_bin, payload_bin_len);
-#endif
 	return 0;
 }
 
@@ -98,27 +88,27 @@ int analyzeFFD(char *jsonMsg, char *msgId) {
 	mqtt = cJSON_Parse(jsonMsg);
 	msg_id = cJSON_GetObjectItem(mqtt, "msgId");
 	msg_idStr = cJSON_GetStringValue(msg_id);
-	LOGD("ffd msgId is %s", msg_idStr);
+	LOGD("ffd msgId is %s\r\n", msg_idStr);
 	strcpy(msgId, msg_idStr);
 
 	j_uuid = cJSON_GetObjectItem(mqtt, "u");
 	uuid = cJSON_GetStringValue(j_uuid);
-	LOGD("ffd uuid is %s", uuid);
+	LOGD("ffd uuid is %s\r\n", uuid);
 
 	j_sign = cJSON_GetObjectItem(mqtt, "s");
 	sign = cJSON_GetStringValue(j_sign);
-	LOGD("ota sign is %s", sign);
+	LOGD("ota sign is %s\r\n", sign);
 
 	j_length = cJSON_GetObjectItem(mqtt, "l");
 	length = (int)cJSON_GetNumberValue(j_length);
-	LOGD("ota length is %d", length);
+	LOGD("ota length is %d\r\n", length);
 
 	int result = 0;
 
 	j_data = cJSON_GetObjectItem(mqtt, "d");
 	if (uuid != NULL && j_data != NULL) { 
 		dataStr = cJSON_GetStringValue(j_data);
-		LOGD("---JSON j_data is %s\n", dataStr);
+		LOGD("---JSON j_data is %s\r\n", dataStr);
 		result = handleBase64FFD(uuid, (unsigned char*)dataStr, sign, length);
 	}
 
