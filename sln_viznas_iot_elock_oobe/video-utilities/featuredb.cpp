@@ -14,7 +14,7 @@
 
 #include "commondef.h"
 
-#define RTFFI_USE_FATFS 1
+#define RTFFI_USE_FATFS 0
 
 #if RTFFI_USE_FATFS
 #include "fatfs_op.h"
@@ -837,6 +837,17 @@ int FeatureDB::get_remain_map()
 
 int FeatureDB::save_feature(int index)
 {
+    return 0;
+}
+
+int FeatureDB::save_feature(float *feature) {
+    int index = 0;
+    get_free(index);
+    if(index != -1) {
+    	Flash_FacerecFsUpdateItem(index, (FeatureItem*)feature, true);
+    	s_FeatureMap.magic[index] = FEATUREDATA_MAGIC_VALID;
+    	Flash_FacerecFsUpdateMapMagic(index, &s_FeatureMap, true);
+    }
     return 0;
 }
 

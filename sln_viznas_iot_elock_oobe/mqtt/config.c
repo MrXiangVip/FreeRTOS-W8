@@ -28,6 +28,8 @@ void init_config() {
     hooks.free_fn   = vPortFree;
     cJSON_InitHooks(&hooks);
 
+    fatfs_mount_with_mkfs();
+
     int status = fatfs_read(DEFAULT_CONFIG_FILE, buf, 0, sizeof(buf));
     LOGD("buf length is %d, size is %d, status is %d\r\n", strlen(buf), sizeof(buf), status);
 
