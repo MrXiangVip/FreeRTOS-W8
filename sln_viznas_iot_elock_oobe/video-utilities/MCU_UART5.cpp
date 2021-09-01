@@ -1244,8 +1244,8 @@ int cmdMqttParamSetProc(unsigned char nMessageLen, const unsigned char *pszMessa
         memset(mqtt_pwd_tmp, 0, sizeof(mqtt_user_tmp));
         HexToStr(mqtt_user_tmp, mqtt_user, MQTT_USER_LEN);
         memset(mqtt_pwd_tmp, 0, sizeof(mqtt_pwd_tmp));
-        HexToStr(mqtt_pwd_tmp, mqtt_pwd, MQTT_PWD_LEN);
-        update_mqtt_opt(mqtt_user_tmp, mqtt_pwd_tmp);
+//        HexToStr(mqtt_pwd_tmp, mqtt_pwd, MQTT_PWD_LEN);
+        update_mqtt_opt(mqtt_user_tmp,  (char*)mqtt_pwd);
         //read_config("./config.ini");
         LOGD("mqtt user :<%s>, mqtt_pwd:<%s>.\r\n", mqtt_user_tmp, mqtt_pwd_tmp);
 
