@@ -1707,6 +1707,7 @@ int uploadRecords() {
 		}
 	}
     g_is_auto_uploading = 0;
+    g_command_executed = 1;
 	return fret;
 }
 
