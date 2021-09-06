@@ -43,7 +43,10 @@ int fatfs_mount_with_mkfs(void)
         FATFS_PRINTF(("Change drive failed.\r\n"));
     }
 #endif
-
+//   xshx add
+    if(s_fLock == NULL ){
+        s_fLock= xSemaphoreCreateMutex();
+    }
 #if FF_USE_MKFS
     if (isNeedMkfs)
     {
@@ -55,10 +58,7 @@ int fatfs_mount_with_mkfs(void)
         }
     }
 #endif /* FF_USE_MKFS */
-//   xshx add
-    if(s_fLock == NULL ){
-        s_fLock= xSemaphoreCreateMutex();
-    }
+
     return 0;
 }
 
