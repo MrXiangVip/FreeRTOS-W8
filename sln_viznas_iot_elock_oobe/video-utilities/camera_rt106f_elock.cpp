@@ -87,6 +87,8 @@ uint32_t pwmSourceClockInHz;
 
 #define RGB_IR_FRAME_RATIO 2
 
+#define SUPPORT_CLOSE_LCD_OPEN_IR   1
+
 /*******************************************************************************
  * Prototypes
  *******************************************************************************/
@@ -338,8 +340,10 @@ static void Camera_LedTimer_Deinit()
     PWM_Deinit(LED_PWM, LED_PWM_MOD_IR);
     PWM_Deinit(LED_PWM, LED_PWM_MOD_IR2);*/
 #else
+#if SUPPORT_CLOSE_LCD_OPEN_IR != 1
     QTMR_StopTimer(CAMERA_QTMR_BASEADDR, CAMERA_QTMR_PWM_CHANNEL);
     QTMR_Deinit(CAMERA_QTMR_BASEADDR, CAMERA_QTMR_PWM_CHANNEL);
+#endif
 #if PWM2_SUPPORT != 0
     QTMR_StopTimer(CAMERA_QTMR_BASEADDR2, CAMERA_QTMR_PWM_CHANNEL2);
     QTMR_Deinit(CAMERA_QTMR_BASEADDR2, CAMERA_QTMR_PWM_CHANNEL2);
@@ -812,7 +816,11 @@ static void CameraDevice_Init_Task(void *param)
 
 static void Camera_Deinit(void)
 {
-    Camera_SetPWM(LED_IR,0);
+#if SUPPORT_CLOSE_LCD_OPEN_IR != 0
+    Camera_SetPWM(LED_IR,20);
+#else
+    Camera_SetPWM(LED_IR,20);
+#endif
 
     Camera_SetPWM(LED_WHITE,0);
 
