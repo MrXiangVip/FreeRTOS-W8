@@ -96,6 +96,7 @@ static uint8_t s_appType;
 static char oasis_filename[64] = {0};
 static int oasis_flag = 0;  //1:reg; 2:rec; 0:other
 extern bool bOasisRecordUpload;
+extern int g_is_shutdown;
 
 volatile int g_OASISLT_heap_debug;
 
@@ -148,11 +149,13 @@ void Oasis_SetOasisFileName(const char *filename)
 
 void Oasis_WriteJpeg()
 {
-    if(((oasis_flag == 1) || (oasis_flag == 2)) && (bOasisRecordUpload == false)) {
-        int ret = fatfs_write(oasis_filename, (char *) s_tmpBuffer4Jpeg, 0, s_dataSizeInJpeg);
-        //UsbShell_Printf("[OASIS]:%s saved ret:%d\r\n", oasis_filename, ret);
-        LOGD("[OASIS]:%s saved ret:%d\r\n", oasis_filename, ret);
-    }
+	if(g_is_shutdown == 0) {
+		if(((oasis_flag == 1) || (oasis_flag == 2)) && (bOasisRecordUpload == false)) {
+			int ret = fatfs_write(oasis_filename, (char *) s_tmpBuffer4Jpeg, 0, s_dataSizeInJpeg);
+			//UsbShell_Printf("[OASIS]:%s saved ret:%d\r\n", oasis_filename, ret);
+			LOGD("[OASIS]:%s saved ret:%d\r\n", oasis_filename, ret);
+		}
+	}
 }
 
 char * getOasisBuffer() {
@@ -694,7 +697,7 @@ static void Oasis_PWMControl(uint8_t led, uint8_t curPWM, uint8_t direction)
 
     }
     //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[LED:%d][curPWM:%d]\r\n", led, curPWM);
-    LOGD("[LED:%d][curPWM:%d]\r\n", led, curPWM);
+    LOGD("[LED:%d][curPWM:%d][pwm:%d]\r\n", led, curPWM, pwm);
     Camera_QMsgSetPWM(led, pwm);
 }
 

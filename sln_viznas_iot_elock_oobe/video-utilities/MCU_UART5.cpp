@@ -1570,10 +1570,10 @@ static void uart5_QMsg_task(void *pvParameters) {
                     //LOGD("处理人脸注册结果 %d\r\n", pQMsg->msg.val);
                     if (pQMsg->msg.val) {//success
                         if (gFaceInfo.enrolment && (OASIS_REG_RESULT_DUP == gFaceInfo.rt)) {//判断是否是重复注册
-                            LOGD("User face duple register!\r\n");
+                            LOGD("User face duplicate register!\r\n");
                             g_reging_flg = REG_STATUS_DUP;
                         } else {
-                            LOGD("User face register succuss!\r\n");
+                            LOGD("User face register success!\r\n");
                             g_reging_flg = REG_STATUS_OK;
                         }
 
@@ -2044,8 +2044,8 @@ static void SwTimerCallback(TimerHandle_t xTimer) {
 // 20201120 wszgx end
 
 void OpenLcdBackground() {
-    LOGD("[%s]:\r\n", __FUNCTION__);
     if (!lcd_back_ground) {
+        LOGD("[%s]:\r\n", __FUNCTION__);
         lcd_back_ground = true;
         //if(stInitSyncInfo.LightVal == 2) {
         //	OpenCameraPWM();
@@ -2055,8 +2055,8 @@ void OpenLcdBackground() {
 }
 
 void CloseLcdBackground() {
-    LOGD("[%s]:\r\n", __FUNCTION__);
     if (lcd_back_ground) {
+        LOGD("[%s]:\r\n", __FUNCTION__);
         lcd_back_ground = false;
         //if(stInitSyncInfo.LightVal == 2) {
         CloseCameraPWM();
