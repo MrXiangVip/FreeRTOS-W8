@@ -20,6 +20,8 @@ static FIL g_fileObject;   /* File object */
 static DIR g_dir;          /* Directory object */
 static FILINFO g_fileInfo; /* File information */
 
+static SemaphoreHandle_t s_fLock = NULL;//xshx add
+
 int fatfs_mount_with_mkfs(void)
 {
     FRESULT error;
@@ -53,7 +55,10 @@ int fatfs_mount_with_mkfs(void)
         }
     }
 #endif /* FF_USE_MKFS */
-
+//   xshx add
+    if(s_fLock == NULL ){
+        s_fLock= xSemaphoreCreateMutex();
+    }
     return 0;
 }
 
@@ -64,6 +69,7 @@ int fatfs_unmount(void)
 
 int fatfs_write(const char *file_name, const char *buf, int offset, int bytes)
 {
+    xSemaphoreTake( s_fLock, portMAX_DELAY );
     FRESULT error;
     UINT num = -1;
     error    = f_open(&g_fileObject, _T(file_name), (FA_WRITE | FA_OPEN_ALWAYS));
@@ -76,6 +82,7 @@ int fatfs_write(const char *file_name, const char *buf, int offset, int bytes)
         else
         {
             FATFS_PRINTF(("Write %s file failed: %d.\r\n", file_name, error));
+            xSemaphoreGive( s_fLock );
             return -1;
         }
     }
@@ -84,6 +91,7 @@ int fatfs_write(const char *file_name, const char *buf, int offset, int bytes)
     if (error)
     {
         FATFS_PRINTF(("Move file point failed: %d.\r\n", error));
+        xSemaphoreGive( s_fLock );
         return -1;
     }
 
@@ -93,15 +101,17 @@ int fatfs_write(const char *file_name, const char *buf, int offset, int bytes)
     {
         FATFS_PRINTF(("Write file failed: %d, %d write number: %d.\r\n", error, bytes, num));
         f_close(&g_fileObject);
+        xSemaphoreGive( s_fLock );
         return -1;
     }
     if (f_close(&g_fileObject))
     {
         FATFS_PRINTF(("\r\nClose file failed.\r\n"));
+        xSemaphoreGive( s_fLock );
         return -1;
     }
     FATFS_PRINTF(("\r\nWrite End:%s.\r\n", file_name));
-
+    xSemaphoreGive( s_fLock );
     return 0;
 }
 
