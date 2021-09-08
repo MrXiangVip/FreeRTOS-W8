@@ -35,9 +35,9 @@
  * To obtain good face brightness in different light conditions.
  * Also balance power consumption and recognition distance.
  */
-#define IR_PWM_MIN      20
-#define IR_PWM_MAX      100
-#define IR_PWM_INTERVAL 10
+#define IR_PWM_MIN      5   //20
+#define IR_PWM_MAX      50  //100
+#define IR_PWM_INTERVAL 5   //10
 
 #define WHITE_PWM_MIN      0
 #define WHITE_PWM_MAX      30
@@ -96,7 +96,6 @@ static uint8_t s_appType;
 static char oasis_filename[64] = {0};
 static int oasis_flag = 0;  //1:reg; 2:rec; 0:other
 extern bool bOasisRecordUpload;
-extern int g_is_shutdown;
 
 volatile int g_OASISLT_heap_debug;
 
@@ -149,13 +148,11 @@ void Oasis_SetOasisFileName(const char *filename)
 
 void Oasis_WriteJpeg()
 {
-	if(g_is_shutdown == 0) {
-		if(((oasis_flag == 1) || (oasis_flag == 2)) && (bOasisRecordUpload == false)) {
-			int ret = fatfs_write(oasis_filename, (char *) s_tmpBuffer4Jpeg, 0, s_dataSizeInJpeg);
-			//UsbShell_Printf("[OASIS]:%s saved ret:%d\r\n", oasis_filename, ret);
-			LOGD("[OASIS]:%s saved ret:%d\r\n", oasis_filename, ret);
-		}
-	}
+    if(((oasis_flag == 1) || (oasis_flag == 2)) && (bOasisRecordUpload == false)) {
+        int ret = fatfs_write(oasis_filename, (char *) s_tmpBuffer4Jpeg, 0, s_dataSizeInJpeg);
+        //UsbShell_Printf("[OASIS]:%s saved ret:%d\r\n", oasis_filename, ret);
+        LOGD("[OASIS]:%s saved ret:%d\r\n", oasis_filename, ret);
+    }
 }
 
 char * getOasisBuffer() {
@@ -1035,6 +1032,7 @@ int Oasis_Start()
     if (s_appType != APP_TYPE_USERID)
     {
         s_InitPara.enable_flags |= OASIS_ENABLE_MULTI_VIEW;
+        //s_InitPara.enable_flags |= OASIS_ENABLE_FACE_REC_BRIGHTNESS_CHECK;
     }
     s_InitPara.false_accept_rate = OASIS_FAR_1_1000000;
     s_InitPara.enable_flags |= (Cfg_AppDataGetLivenessMode() == LIVENESS_MODE_ON) ? OASIS_ENABLE_LIVENESS : 0;
