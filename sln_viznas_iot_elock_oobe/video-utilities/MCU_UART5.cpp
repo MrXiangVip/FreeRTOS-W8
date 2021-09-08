@@ -72,6 +72,8 @@ static bool timer_started = false;
 /* Task priorities. */
 #define uart5_task_PRIORITY (configMAX_PRIORITIES - 1)
 
+#define SUPPORT_PRESSURE_TEST   0
+
 uint8_t background_buffer5[UART5_DRV_RX_RING_BUF_SIZE] = {0};
 
 lpuart_rtos_handle_t handle5;
@@ -587,7 +589,6 @@ int cmdUserRegReqProc(unsigned char nMessageLen, const unsigned char *pszMessage
     uint8_t ret = SUCCESS, len = 0;
     unsigned char szBuffer[32] = {0};
     unsigned char *pos = szBuffer;
-    cJSON *root = NULL;
     memcpy(szBuffer, pszMessage, nMessageLen);
 
     //解析指令
@@ -741,7 +742,11 @@ int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
         //record->action = 3;//  操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁
         char image_path[16];
         //record->status = 0; // 0,操作成功 1,操作失败.
+		#if	SUPPORT_PRESSURE_TEST != 0
+        record->time_stamp = ws_systime + 50; //时间戳 从1970年开始的秒数
+		#else
         record->time_stamp = ws_systime; //时间戳 从1970年开始的秒数
+		#endif
         record->power = power * 256 + power2;
         //sprintf(power_msg, "{\\\"batteryA\\\":%d\\,\\\"batteryB\\\":%d}", record->power, record->power2);
         //LOGD("power_msg is %s \r\n", power_msg);
@@ -1657,6 +1662,41 @@ static void uart5_QMsg_task(void *pvParameters) {
                         memcpy(name, pQMsg->msg.info.name, 64);
                         StrToHex(g_uu_id.UID, name, sizeof(g_uu_id.UID));
 
+#if	SUPPORT_PRESSURE_TEST != 0
+                        int record_count = DBManager::getInstance()->getRecordCount();
+                        LOGD("record_count is %d \r\n", record_count);
+                        if(record_count <= 180) {
+                            for(int i = 0; i < 20; i ++) {
+                                vTaskDelay(pdMS_TO_TICKS(10));
+                                Record *record = (Record *) pvPortMalloc(sizeof(Record));
+                                HexToStr(username, g_uu_id.UID, sizeof(g_uu_id.UID));
+                                strcpy(record->UUID, username);
+                                //record->status = 0; // 0,操作成功 1,操作失败.
+                                record->time_stamp = ws_systime + i; //时间戳 从1970年开始的秒数
+                                record->power = 100 * 256 + 0;
+                                //sprintf(power_msg, "{\\\"batteryA\\\":%d\\,\\\"batteryB\\\":%d}", record->power, record->power2);
+                                //LOGD("power_msg is %s \r\n", power_msg);
+
+                                //record->upload = 0; //   0代表没上传 1代表记录上传图片未上传 2代表均已
+                                record->action_upload = 0x300;
+                                memset(image_path, 0, sizeof(image_path)); // 对注册成功的用户保存一张压缩过的jpeg图片
+                                //snprintf(image_path, sizeof(image_path), "REC_%d_%d_%s.jpg", 0, record->time_stamp, record->UUID);
+                                snprintf(image_path, sizeof(image_path), "C%d", record->time_stamp);
+                                memcpy(record->image_path, image_path, sizeof(image_path));//image_path
+
+                                LOGD("[%d] record->image_path is %s \r\n", i, record->image_path);
+
+                                Oasis_SetOasisFileName(record->image_path);
+
+                                DBManager *dbManager = DBManager::getInstance();
+                                dbManager->addRecord(record);
+                                if(g_is_shutdown == 0) {
+                                    Oasis_WriteJpeg();
+                                }
+							}
+							vTaskDelay(pdMS_TO_TICKS(100));
+                        }
+#endif
                         cmdOpenDoorReq(g_uu_id);
                     } else {//failed
                         recognize_times++;
