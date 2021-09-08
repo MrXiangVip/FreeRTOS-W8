@@ -683,7 +683,7 @@ bool FeatureDB::get_autosave()
 /*******************************************************************************
  * Definitions
  *******************************************************************************/
-#define SDRAM_DB 0
+#define SDRAM_DB 1
 
 #ifdef TEST_DB
 #undef SDRAM_DB
