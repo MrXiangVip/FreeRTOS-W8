@@ -117,7 +117,7 @@ void CfgData_GetDefault(sln_cfg_data_t *cfg)
             .low_power_mode             = LOW_POWER_MODE_OFF,
     };
 #if APP_CAMERA_TYPE == APP_CAMERA_GC0308
-    default_app_data.camera_ir_pulse_width = 5; //50;
+    default_app_data.camera_ir_pulse_width = 20;	//5; //50;
 #else
     default_app_data.camera_ir_pulse_width = 30;
 #endif
