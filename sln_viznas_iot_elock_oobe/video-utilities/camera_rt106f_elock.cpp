@@ -819,7 +819,7 @@ static void Camera_Deinit(void)
 #if SUPPORT_CLOSE_LCD_OPEN_IR != 0
     Camera_SetPWM(LED_IR,20);
 #else
-    Camera_SetPWM(LED_IR,20);
+    Camera_SetPWM(LED_IR,0);
 #endif
 
     Camera_SetPWM(LED_WHITE,0);
