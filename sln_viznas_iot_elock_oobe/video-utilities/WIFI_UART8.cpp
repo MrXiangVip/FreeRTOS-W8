@@ -211,7 +211,7 @@ char *gen_msgId() {
     }
     //LOGD("gen_msgId random_gen is %d\r\n", random_gen);
     sprintf(msgId, "%s%08d%d", bt_mac_string, a, random_gen);
-    LOGD("gen_msgId msgId is %s\r\n", msgId);
+    //LOGD("gen_msgId msgId is %s\r\n", msgId);
     return msgId;
 }
 
@@ -1583,9 +1583,11 @@ int uploadRecordImage(Record *record, bool online) {
 					if (ret == 0) {
 						//record->upload = 2;
 						record->action_upload = (record->action_upload & 0xFF00) + 2;
-						LOGD("%s delete start \r\n", __FUNCTION__);
-						fatfs_delete(filename);
-						LOGD("%s delete end \r\n", __FUNCTION__);
+						if(g_is_shutdown == 0) {
+							LOGD("%s delete start \r\n", __FUNCTION__);
+							fatfs_delete(filename);
+							LOGD("%s delete end \r\n", __FUNCTION__);
+						}
 					}else{
 					    LOGD("第三步:再传记录失败 \r\n");
 					}
