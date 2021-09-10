@@ -269,8 +269,8 @@ int  SendMsgToSelf(unsigned char *MsgBuf, unsigned char MsgLen)
 		LOGD("msg headmark error: 0x%x!\n", HeadMark);
 		return -1;
 	}
-	ProcMessage(CmdId, MsgLen, pszMsgInfo);
-
+	//ProcMessage(CmdId, MsgLen, pszMsgInfo);
+	ProcMessageFromMQTT(CmdId, MsgLen, pszMsgInfo);
     return 0;
 }
 
@@ -1396,6 +1396,27 @@ int ProcMessage(
         unsigned char nCommand,
         unsigned char nMessageLen,
         const unsigned char *pszMessage) {
+    ProcMessageByHead(HEAD_MARK, nCommand, nMessageLen, pszMessage);
+    return 0;
+}
+
+int ProcMessageFromMQTT(
+        unsigned char nCommand,
+        unsigned char nMessageLen,
+        const unsigned char *pszMessage)
+{
+    ProcMessageByHead((unsigned char)(HEAD_MARK_MQTT), nCommand, nMessageLen, pszMessage);
+    return  0;
+}
+
+// source: 0x23 MCU 0x24 MQTT
+int ProcMessageByHead(
+        unsigned char nHead,
+        unsigned char nCommand,
+        unsigned char nMessageLen,
+        const unsigned char *pszMessage)
+{
+
     LOGD("======Command[0x%X], nMessageLen<%d>\r\n", nCommand, nMessageLen);
     switch (nCommand) {
         case CMD_INITOK_SYNC: {
@@ -1432,7 +1453,7 @@ int ProcMessage(
             break;
         }
         case CMD_FACE_DELETE_USER: {
-            cmdDeleteUserReqProcByHead(/*HEAD_MARK*/HEAD_MARK_MQTT, nMessageLen, pszMessage);
+            cmdDeleteUserReqProcByHead(/*HEAD_MARK*/nHead, nMessageLen, pszMessage);
             break;
         }
         case CMD_REQ_RESUME_FACTORY: {
