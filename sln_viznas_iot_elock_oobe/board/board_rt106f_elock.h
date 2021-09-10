@@ -497,8 +497,8 @@ extern "C" {
 #define OTA_SUPPORT		0
 #define	FFD_SUPPORT		0
 
-#define  PROJECT_VERSION  "W8_106F_V1.3.4"
-#define  FIRMWARE_VERSION  "FW_W8_12a842_20210909_V1.3.4"
+#define  PROJECT_VERSION  "W8_106F_V1.3.5"
+#define  FIRMWARE_VERSION  "FW_W8_96d6bd_20210910_V1.3.5"
 
 /*******************************************************************************
  * API
