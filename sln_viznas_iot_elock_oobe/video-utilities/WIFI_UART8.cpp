@@ -1709,7 +1709,6 @@ int uploadRecords() {
 		}
 	}
     g_is_auto_uploading = 0;
-    g_command_executed = 1;
 	return fret;
 }
 
@@ -1817,7 +1816,7 @@ static void msghandle_task(void *pvParameters)
                         // } else if (g_shutdown_notified == 0) {
                     } else { // if (g_shutdown_notified == 0) {
                         // 如果没有收到指令执行完成的状况，可以尝试通知MCU下电，MCU根据是否是远程开锁决定是否下电
-							notifyShutdown();
+							//notifyShutdown();
                     }
                     g_shutdown_notified = 1;
                 } else if (count % 10 == 0) {

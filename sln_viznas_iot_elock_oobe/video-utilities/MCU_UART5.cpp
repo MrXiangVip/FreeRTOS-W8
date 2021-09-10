@@ -1722,7 +1722,7 @@ static void uart5_QMsg_task(void *pvParameters) {
                     } else {//failed
                         recognize_times++;
                         LOGD("User face recognize failed %d times\r\n", recognize_times);
-                        if (recognize_times > 100) {
+                        if (recognize_times > 50) {
                             recognize_times = 0;
                             CloseLcdBackground();
                             vTaskDelay(pdMS_TO_TICKS(1000));
