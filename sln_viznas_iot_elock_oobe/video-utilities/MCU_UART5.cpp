@@ -889,7 +889,6 @@ int save_files_before_pwd() {
 
 //主控发送: 关机请求
 int cmdCloseFaceBoardReq() {
-    save_files_before_pwd();
     LOGD("发送关机请求 \r\n");
     char szBuffer[32] = {0};
     int iBufferSize;
@@ -915,6 +914,7 @@ int cmdCloseFaceBoardReq() {
     SendMsgToMCU((uint8_t *) szBuffer, iBufferSize + CRC16_LEN);
     g_is_shutdown = true;
     vTaskDelay(pdMS_TO_TICKS(100));
+    save_files_before_pwd();//BUG328
 
 
     return 0;
