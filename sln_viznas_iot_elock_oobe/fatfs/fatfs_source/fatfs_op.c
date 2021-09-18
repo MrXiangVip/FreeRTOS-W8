@@ -15,20 +15,25 @@
 
 const TCHAR driverNumberBuffer[3U] = {NORDISK + '0', ':', '/'};
 
-static FATFS g_fileSystem; /* File system object */
-static FIL g_fileObject;   /* File object */
+static FATFS g_fileSystem;
+//static FIL &g_fileObject;   /* File object */
 static DIR g_dir;          /* Directory object */
 static FILINFO g_fileInfo; /* File information */
-
-static SemaphoreHandle_t s_fLock = NULL;//xshx add
 
 int fatfs_mount_with_mkfs(void)
 {
     FRESULT error;
     BYTE isNeedMkfs = 0;
-    BYTE work[FF_MAX_SS];
+    BYTE* work = NULL;
 
-    if (f_mount(&g_fileSystem, driverNumberBuffer, 1U) != FR_OK)
+#if 0//#ifdef FSL_RTOS_FREE_RTOS
+    work = (BYTE*)pvPortMalloc(FF_MAX_SS);
+#else
+    work = (BYTE*)malloc(FF_MAX_SS);	/* Allocate a new memory block with POSIX API */
+#endif
+
+
+    if ((error = f_mount(&g_fileSystem, driverNumberBuffer, 1U)) != FR_OK)
     {
         isNeedMkfs = 1;
     }else
@@ -43,23 +48,25 @@ int fatfs_mount_with_mkfs(void)
         FATFS_PRINTF(("Change drive failed.\r\n"));
     }
 #endif
-//   xshx add
-    if(s_fLock == NULL ){
-        s_fLock= xSemaphoreCreateMutex();
-    }
+
 #if FF_USE_MKFS
     if (isNeedMkfs)
     {
         FATFS_PRINTF(("\r\nMake file system......The time may be long if the card capacity is big.\r\n"));
-        if (f_mkfs(driverNumberBuffer, NULL, work, sizeof work))
+        if ((error = f_mkfs(driverNumberBuffer, NULL, work, FF_MAX_SS)) != FR_OK)
         {
             FATFS_PRINTF(("Make file system failed.\r\n"));
-            return -1;
         }
     }
 #endif /* FF_USE_MKFS */
 
-    return 0;
+#if 0 //#ifdef FSL_RTOS_FREE_RTOS
+    vPortFree(work);
+#else
+    free(work);	/* Allocate a new memory block with POSIX API */
+#endif
+
+    return error;
 }
 
 int fatfs_unmount(void)
@@ -69,56 +76,69 @@ int fatfs_unmount(void)
 
 int fatfs_write(const char *file_name, const char *buf, int offset, int bytes)
 {
-    xSemaphoreTake( s_fLock, portMAX_DELAY );
     FRESULT error;
-    UINT num = -1;
-    error    = f_open(&g_fileObject, _T(file_name), (FA_WRITE | FA_OPEN_ALWAYS));
-    if (error)
+    FIL g_fileObject;   /* File object */
+
+    if (bytes > 0 && offset >= 0)
     {
-        if (error == FR_EXIST)
-        {
-            FATFS_PRINTF(("%s File exists.\r\n", file_name));
-        }
-        else
-        {
-            FATFS_PRINTF(("Write %s file failed: %d.\r\n", file_name, error));
-            xSemaphoreGive( s_fLock );
-            return -1;
-        }
+		error    = f_open(&g_fileObject, _T(file_name), (FA_WRITE | FA_OPEN_ALWAYS));
+		if (error)
+		{
+			if (error == FR_EXIST)
+			{
+				FATFS_PRINTF(("%s File exists.\r\n", file_name));
+			}
+			else
+			{
+				FATFS_PRINTF(("Open %s file failed: %d.\r\n", file_name, error));
+				return error;
+			}
+		}
+
+		error = f_lseek(&g_fileObject, offset);
+		if (error)
+		{
+			FATFS_PRINTF(("Move file point failed: %d.\r\n", error));
+
+		}else
+		{
+
+			UINT num = 0;
+			error = f_write(&g_fileObject, buf, bytes, &num);
+			if (error || (bytes != num))
+			{
+				error = FR_DISK_ERR;
+				FATFS_PRINTF(("Write file failed: %d, %d write number: %d.\r\n", error, bytes, num));
+
+			}else
+			{
+				FATFS_PRINTF(("Write file:%s, %d.\r\n", file_name, bytes));
+
+			}
+		}
+
+		if ((error = f_close(&g_fileObject)) != 0)
+		{
+			FATFS_PRINTF(("\r\nClose file failed.\r\n"));
+
+		}
+
+    }else
+    {
+    	FATFS_PRINTF(("Write file invalid length/offset:%d/%d.\r\n", bytes, offset));
+    	error = FR_INVALID_PARAMETER;
     }
 
-    error = f_lseek(&g_fileObject, offset);
-    if (error)
-    {
-        FATFS_PRINTF(("Move file point failed: %d.\r\n", error));
-        xSemaphoreGive( s_fLock );
-        return -1;
-    }
-
-    FATFS_PRINTF(("\r\nWrite to above created file:%s, %d.\r\n", file_name, bytes));
-    error = f_write(&g_fileObject, buf, bytes, &num);
-    if (error || (bytes != num))
-    {
-        FATFS_PRINTF(("Write file failed: %d, %d write number: %d.\r\n", error, bytes, num));
-        f_close(&g_fileObject);
-        xSemaphoreGive( s_fLock );
-        return -1;
-    }
-    if (f_close(&g_fileObject))
-    {
-        FATFS_PRINTF(("\r\nClose file failed.\r\n"));
-        xSemaphoreGive( s_fLock );
-        return -1;
-    }
-    FATFS_PRINTF(("\r\nWrite End:%s.\r\n", file_name));
-    xSemaphoreGive( s_fLock );
-    return 0;
+    return error;
 }
 
+#if 0
 int fatfs_write_append(const char *file_name, const char *buf, int bytes)
 {
     FRESULT error;
     UINT num = -1;
+    FIL g_fileObject;   /* File object */
+
     error    = f_open(&g_fileObject, _T(file_name), (FA_OPEN_ALWAYS | FA_WRITE ));
     if (error)
     {
@@ -129,7 +149,7 @@ int fatfs_write_append(const char *file_name, const char *buf, int bytes)
         else
         {
             FATFS_PRINTF(("Write file %s failed: %d.\r\n", file_name, error));
-            return -1;
+            return error;
         }
     }
 
@@ -137,68 +157,83 @@ int fatfs_write_append(const char *file_name, const char *buf, int bytes)
     if (error)
     {
         FATFS_PRINTF(("Move file point failed: %d.\r\n", error));
-        return -1;
+
+    }else
+    {
+
+		error = f_write(&g_fileObject, buf, bytes, &num);
+		if (error || (bytes != num))
+		{
+			FATFS_PRINTF(("Write file failed: %d, %d write number: %d.\r\n", error, bytes, num));
+
+		}
+
     }
 
-    error = f_write(&g_fileObject, buf, bytes, &num);
-    if (error || (bytes != num))
-    {
-        FATFS_PRINTF(("Write file failed: %d, %d write number: %d.\r\n", error, bytes, num));
-        f_close(&g_fileObject);
-        return -1;
-    }
-    if (f_close(&g_fileObject))
-    {
-        FATFS_PRINTF(("\r\nClose file failed.\r\n"));
-        return -1;
-    }
+	if (f_close(&g_fileObject))
+	{
+		FATFS_PRINTF(("\r\nClose file failed.\r\n"));
+        error = -2;
+	}
 
-    return 0;
+    return error;
 }
+#endif
 
 int fatfs_read(char *file_name, char *buf, int offset, int bytes)
 {
     FRESULT error;
-    UINT num = -1;
+    FIL g_fileObject;   /* File object */
 
-    error = f_open(&g_fileObject, _T(file_name), (FA_READ));
-    if (error)
+    if (bytes > 0 && offset >= 0)
     {
-        if (error == FR_EXIST)
-        {
-            FATFS_PRINTF(("File exists.\r\n"));
-        }
-        else if (error == FR_NO_FILE)
-        {
-            FATFS_PRINTF(("No file %s failed: %d.\r\n",  file_name, error));
-            return (-1*FR_NO_FILE);
-        }
-        else
-        {
-            FATFS_PRINTF(("Open file %s failed: %d.\r\n", file_name, error));
-            return -1;
-        }
-    }
+		error = f_open(&g_fileObject, _T(file_name), (FA_READ));
+		if (error)
+		{
+			if (error == FR_EXIST)
+			{
+				FATFS_PRINTF(("File exists.\r\n"));
+			}
+			else
+			{
+				FATFS_PRINTF(("Open file %s failed: %d.\r\n", file_name, error));
+				return error;
+			}
+		}
 
-    FATFS_PRINTF(("Read from %s, %d\r\n", file_name, bytes));
-    error = f_read(&g_fileObject, buf, bytes, &num);
-    if (error || (num != bytes))
+		FATFS_PRINTF(("Read from %s, %d\r\n", file_name, bytes));
+
+		error = f_lseek(&g_fileObject, offset);
+		if (error)
+		{
+			FATFS_PRINTF(("Move file point failed: %d.\r\n", error));
+
+		}else
+		{
+			UINT num = 0;
+			error = f_read(&g_fileObject, buf, bytes, &num);
+			if (error || (num != bytes))
+			{
+				FATFS_PRINTF(("Read file failed: %d, read bytes: %d, read number: %d.\r\n", error, bytes, num));
+			}
+
+			//    FATFS_PRINTF(("Content of %s: %s.\r\n", _T(file_name), buf));
+			if ((error = f_close(&g_fileObject)) != 0)
+			{
+				FATFS_PRINTF(("\r\nClose file failed.\r\n"));
+			}
+		}
+
+    }
+    else
     {
-        FATFS_PRINTF(("Read file failed: %d, read bytes: %d, read number: %d.\r\n", error, bytes, num));
-        f_close(&g_fileObject);
-        return -1;
+    	error = FR_INVALID_PARAMETER;
+    	FATFS_PRINTF(("Read file invalid length/offset:%d/%d.\r\n", bytes, offset));
     }
-
-    //    FATFS_PRINTF(("Content of %s: %s.\r\n", _T(file_name), buf));
-    if (f_close(&g_fileObject))
-    {
-        FATFS_PRINTF(("\r\nClose file failed.\r\n"));
-        return -1;
-    }
-
-    return 0;
+    return error;
 }
 
+#if 0
 int fatfs_opendir(const char *dir_name)
 {
     if (f_opendir(&g_dir, dir_name))
@@ -254,12 +289,13 @@ int fatfs_closedir(void)
 
     return 0;
 }
+#endif
 
 int fatfs_getsize(char *file_name)
 {
     FRESULT error;
     UINT size = 0;
-
+    FIL g_fileObject;   /* File object */
     error = f_open(&g_fileObject, _T(file_name), (FA_READ));
     if (error)
     {
@@ -270,7 +306,7 @@ int fatfs_getsize(char *file_name)
         else
         {
             FATFS_PRINTF(("Open file  %s failed: %d.\r\n", file_name, error));
-            return -1;
+            return 0;
         }
     }
 
@@ -279,7 +315,6 @@ int fatfs_getsize(char *file_name)
     if (f_close(&g_fileObject))
     {
         FATFS_PRINTF(("\r\nClose file failed.\r\n"));
-        return -1;
     }
 
     return size;
@@ -299,6 +334,7 @@ int fatfs_delete(const char *file_name)
     return 0;
 }
 
+#if 0
 int fatfs_rename(const char *old_name, const char *new_name)
 {
     FRESULT error;
@@ -334,3 +370,4 @@ int fatfs_mkdir(const char *dir_name)
 
     return 0;
 }
+#endif

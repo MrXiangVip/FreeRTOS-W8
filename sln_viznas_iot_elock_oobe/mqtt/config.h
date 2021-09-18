@@ -5,7 +5,7 @@
 
 #define	SUPPORT_CONFIG_JSON		1
 #if SUPPORT_CONFIG_JSON != 0
-#define DEFAULT_CONFIG_FILE "config.json"
+#define DEFAULT_CONFIG_FILE "config.jsn"
 #else
 //#define DEFAULT_CONFIG_FILE "/opt/smartlocker/config.ini"
 #define DEFAULT_CONFIG_FILE "config.ini"

@@ -14,7 +14,7 @@
 
 #include "commondef.h"
 
-#define RTFFI_USE_FATFS 0
+#define RTFFI_USE_FATFS 1
 
 #if RTFFI_USE_FATFS
 #include "fatfs_op.h"
@@ -27,7 +27,7 @@ static FeatureMap s_FeatureMap_bak;
 #if SDRAM_DB
 static FeatureItem s_FeatureItem[FEATUREDATA_MAX_COUNT];
 #endif
-#define MAP_FILE_NAME "featureMap"
+const char *MAP_FILE_NAME = "feature.map";
 
 #define FEATURE_FILE_INDEX_LENGTH  4
 #define FEATURE_FILE_SUFFIX ".db"
@@ -42,31 +42,31 @@ extern uint8_t remote_change_fs;
 static int File_FacerecFsReadMap(FeatureMap *pMap)
 {
     int ret;
-    if (remote_change_fs)
+    if (0/*remote_change_fs*/)
     {
         fatfs_mount_with_mkfs();
         remote_change_fs = 0;
     }
-    ret = fatfs_read(MAP_FILE_NAME, (char *)pMap, 0, FEATUREDATA_MAX_COUNT);
+    ret = fatfs_read((char*)MAP_FILE_NAME, (char *)pMap, 0, sizeof(*pMap));
     return ret;
 }
 
 static int File_FacerecFsUpdateMap(FeatureMap *pMap)
 {
     int ret;
-    if (remote_change_fs)
+    if (0/*remote_change_fs*/)
     {
         fatfs_mount_with_mkfs();
         remote_change_fs = 0;
     }
-    ret = fatfs_write(MAP_FILE_NAME, (char *)pMap, 0, FEATUREDATA_MAX_COUNT);
+    ret = fatfs_write(MAP_FILE_NAME, (char *)pMap, 0, sizeof(*pMap));
     return ret;
 }
 
 static int File_FacerecFsUpdateMapMagic(int index, FeatureMap *pMap)
 {
     int ret;
-    if (remote_change_fs)
+    if (0/*remote_change_fs*/)
     {
         fatfs_mount_with_mkfs();
         remote_change_fs = 0;
@@ -79,7 +79,7 @@ static int File_FacerecFsReadItem(int index, FeatureItem *pItem)
 {
     int ret;
     int offset = offsetof(FeatureItem,feature);
-    if (remote_change_fs)
+    if (0/*remote_change_fs*/)
     {
         fatfs_mount_with_mkfs();
         remote_change_fs = 0;
@@ -93,7 +93,7 @@ static int File_FacerecFsUpdateItem(int index, FeatureItem *pItem)
 {
     int ret;
     int offset = offsetof(FeatureItem,feature);
-    if (remote_change_fs)
+    if (0/*remote_change_fs*/)
     {
         fatfs_mount_with_mkfs();
         remote_change_fs = 0;
@@ -107,7 +107,7 @@ static int File_FacerecFsReadItemHeader(int index, FeatureItem *pItem)
 {
     int ret;
     int offset = offsetof(FeatureItem,feature);
-    if (remote_change_fs)
+    if (0/*remote_change_fs*/)
     {
         fatfs_mount_with_mkfs();
         remote_change_fs = 0;
@@ -121,7 +121,7 @@ FeatureDB::FeatureDB()
 {
     this->auto_save = auto_save_mode;
 
-    fatfs_mount_with_mkfs();
+    //fatfs_mount_with_mkfs();
     load_feature();
     reassign_feature();
 }
@@ -152,8 +152,15 @@ int FeatureDB::add_feature(uint16_t id, const std::string name, float *feature)
 #endif
     if (get_autosave())
     {
-        File_FacerecFsUpdateItem(index,&item_t);
-        File_FacerecFsUpdateMapMagic(index, &s_FeatureMap);
+        int ret = File_FacerecFsUpdateItem(index,&item_t);
+        if (ret)
+        {
+        	s_FeatureMap.magic[index] = FEATUREDATA_MAGIC_UNUSE;
+
+        }else
+        {
+            File_FacerecFsUpdateMapMagic(index, &s_FeatureMap);
+        }
     }
     return 0;
 }
@@ -237,17 +244,22 @@ int FeatureDB::del_feature(const std::string name)
 
 int FeatureDB::del_feature_all()
 {
+	bool update = 0;
     for (int i = 0; i < FEATUREDATA_MAX_COUNT; i++)
     {
         if (s_FeatureMap.magic[i] == FEATUREDATA_MAGIC_VALID)
         {
             s_FeatureMap.magic[i] = FEATUREDATA_MAGIC_DELET;
-            if (get_autosave())
-            {
-                File_FacerecFsUpdateMapMagic(i, &s_FeatureMap);
-            }
+            update = 1;
+
         }
     }
+
+    if (get_autosave() && update)
+    {
+    	File_FacerecFsUpdateMap(&s_FeatureMap);
+//		File_FacerecFsUpdateMapMagic(i, &s_FeatureMap);
+	}
     return 0;
 }
 
@@ -495,7 +507,7 @@ int FeatureDB::load_feature()
         }
 #endif
     }
-    else if (ret == (-1*FR_NO_FILE))
+    else if (ret == FR_NO_FILE)
     {
 		LOGD("db map file seems not exist, create it in the first time.\r\n", ret);
         File_FacerecFsUpdateMap(&s_FeatureMap);
@@ -539,9 +551,16 @@ int FeatureDB::save_feature(float *feature) {
     int index = 0;
     get_free(index);
     if(index != -1) {
-    	File_FacerecFsUpdateItem(index, (FeatureItem*)feature);
-    	s_FeatureMap.magic[index] = FEATUREDATA_MAGIC_VALID;
-    	File_FacerecFsUpdateMapMagic(index, &s_FeatureMap);
+    	int ret = File_FacerecFsUpdateItem(index, (FeatureItem*)feature);
+    	if (ret)
+    	{
+    		s_FeatureMap.magic[index] = FEATUREDATA_MAGIC_UNUSE;
+    	}
+    	else
+    	{
+    		s_FeatureMap.magic[index] = FEATUREDATA_MAGIC_VALID;
+    		File_FacerecFsUpdateMapMagic(index, &s_FeatureMap);
+    	}
     }
     return 0;
 }

@@ -11,7 +11,7 @@
 #include "fatfs_op.h"
 
 
-#define RECORD_PATH "record"
+#define RECORD_PATH "record.jsn"
 
 #if 0
 #define DB_KEY_INFO         "ObjInfo"

@@ -71,6 +71,9 @@ static void FileSystem_Init()
 
     /* Initialize the user application config data */
     Cfg_AppDataInit();
+
+    //move from FeatureDB
+    fatfs_mount_with_mkfs();
 }
 
 /*!

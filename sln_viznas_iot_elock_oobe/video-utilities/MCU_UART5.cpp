@@ -755,7 +755,11 @@ int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
         record->action_upload = 0x300;
         memset(image_path, 0, sizeof(image_path)); // 对注册成功的用户保存一张压缩过的jpeg图片
         //snprintf(image_path, sizeof(image_path), "REC_%d_%d_%s.jpg", 0, record->time_stamp, record->UUID);
-        snprintf(image_path, sizeof(image_path), "C%d", record->time_stamp);
+#if    SUPPORT_PRESSURE_TEST != 0
+        snprintf(image_path, sizeof(image_path), "%x21.jpg", record->time_stamp & 0x00FFFFFF);
+#else
+        snprintf(image_path, sizeof(image_path), "%x.jpg", record->time_stamp);
+#endif
         memcpy(record->image_path, image_path, sizeof(image_path));//image_path
 
         DBManager::getInstance()->addRecord(record);
@@ -1615,7 +1619,7 @@ static void uart5_QMsg_task(void *pvParameters) {
                         memset(image_path, 0, sizeof(image_path)); // 对注册成功的用户保存一张压缩过的jpeg图片
                         //snprintf(image_path, sizeof(image_path), "REG_%d_%d_%s.jpg", g_reging_flg, record->time_stamp,
                         //         record->UUID);
-                        snprintf(image_path, sizeof(image_path), "G%d", record->time_stamp);
+                        snprintf(image_path, sizeof(image_path), "%x.jpg", record->time_stamp);
                         memcpy(record->image_path, image_path, sizeof(image_path));//image_path
                         //record->status = SUCCESS;// 本次注册成功
                         record->power = 0xFFFF;
@@ -1702,7 +1706,8 @@ static void uart5_QMsg_task(void *pvParameters) {
                                 record->action_upload = 0x300;
                                 memset(image_path, 0, sizeof(image_path)); // 对注册成功的用户保存一张压缩过的jpeg图片
                                 //snprintf(image_path, sizeof(image_path), "REC_%d_%d_%s.jpg", 0, record->time_stamp, record->UUID);
-                                snprintf(image_path, sizeof(image_path), "C%d", record->time_stamp);
+
+                                snprintf(image_path, sizeof(image_path), "%x%02d.jpg", record->time_stamp & 0x00FFFFFF, i);
                                 memcpy(record->image_path, image_path, sizeof(image_path));//image_path
 
                                 LOGD("[%d] record->image_path is %s \r\n", i, record->image_path);

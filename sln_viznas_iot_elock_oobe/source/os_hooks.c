@@ -204,10 +204,12 @@ void vApplicationIdleHook( void )
    uint32_t offset;
    uint32_t num;
 
+#if 0
    while (DiskWrite_PopReq(&buf,&offset,&num))
    {
 	   nor_disk_write(NORDISK, buf, offset, num);
 	   remote_change_fs = 1;
 
    }
+#endif
 }
