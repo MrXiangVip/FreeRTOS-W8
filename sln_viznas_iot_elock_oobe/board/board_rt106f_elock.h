@@ -493,7 +493,7 @@ extern "C" {
 
 #define WIFI_SUPPORT	1
 #define PWM2_SUPPORT	1
-#define USB_OTG_SUPPORT	0
+#define USB_OTG_SUPPORT	1
 #define OTA_SUPPORT		0
 #define	FFD_SUPPORT		0
 

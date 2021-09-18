@@ -303,7 +303,7 @@ void USB_DeviceApplicationInit(void)
 {
     USB_DeviceClockInit();
     g_device_configuration = (Cfg_AppDataGetOutputMode() == DISPLAY_USB) ? UVC_CDC_CONFIGURE_DESCRIPTOR : 
-                                                                           MSC_CDC_CONFIGURE_DESCRIPTOR; //CDC_CONFIGURE_DESCRIPTOR); 
+                                                                           /*MSC_CDC_CONFIGURE_DESCRIPTOR*/CDC_CONFIGURE_DESCRIPTOR;
     USB_DeviceSetConfigurationDescriptor(g_device_configuration);
 #if (defined(FSL_FEATURE_SOC_SYSMPU_COUNT) && (FSL_FEATURE_SOC_SYSMPU_COUNT > 0U))
     SYSMPU_Enable(SYSMPU, 0);
