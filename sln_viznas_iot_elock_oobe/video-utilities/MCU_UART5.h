@@ -205,6 +205,7 @@ int cmdRequestMqttUpload(int id);
 int cmdOpenDoorReq(uUID uu_id, uint8_t flag);
 //关机请求
 int cmdCloseFaceBoardReq();
+int cmdCloseFaceBoardReqExt(bool save_file);
 int cmdCommRsp2MqttByHead(unsigned char nHead, unsigned char CmdId, uint8_t ret);//106F->MQTT: 通用响应
 int cmdCommRsp2Mqtt(unsigned char CmdId, uint8_t ret);//106F->MQTT: 通用响应
 #ifdef __cplusplus

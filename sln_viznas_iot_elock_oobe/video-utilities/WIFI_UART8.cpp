@@ -98,7 +98,7 @@ static int g_has_more_upload_data = 1;
 // 是否正在上传数据
 static int g_is_uploading_data = 0;
 // 命令是否已经执行完成
-static int g_command_executed = 0;
+int g_command_executed = 0;
 // 关机通知是否已经执行完成
 static int g_shutdown_notified = 0;
 // 当前pub执行优先级，0为最低优先级，9为最高优先级
@@ -150,8 +150,10 @@ int g_uploading_id = -1;
 
 extern bool bPubOasisImage;
 extern int boot_mode;
+extern int receive_boot_mode;
 bool bOasisRecordUpload = false;
 extern bool g_is_save_file;
+extern int pressure_test;
 lpuart_rtos_handle_t handle8;
 struct _lpuart_handle t_handle8;
 
@@ -1516,7 +1518,6 @@ int uploadRecordImage(Record *record, bool online) {
             		record->action_upload = (record->action_upload & 0xFF00) + 1;
             	}else {
             		record->action_upload = (record->action_upload & 0xFF00) + 2;
-            		bOasisRecordUpload = true;
             	}
             }else{
                 LOGD("第一步:传记录失败 \r\n");
@@ -1532,10 +1533,10 @@ int uploadRecordImage(Record *record, bool online) {
 					if (ret == 0) {
 						//record->upload = 2;
 						record->action_upload = (record->action_upload & 0xFF00) + 2;
+						bOasisRecordUpload = true;
 					}else{
 					    LOGD("第三步:再传记录失败 \r\n");
 					}
-					bOasisRecordUpload = true;
 				}else{
 				    LOGD("第二步:传图片失败 \r\n");
 				}
@@ -1554,7 +1555,7 @@ int uploadRecordImage(Record *record, bool online) {
         while (g_is_save_file) {
 			vTaskDelay(pdMS_TO_TICKS(50));
 		}
-        if (filename != NULL && strlen(filename) > 0 && (fatfs_getsize(filename)) != -1) {
+        if (filename != NULL && strlen(filename) > 0) {
             char *pub_topic = get_pub_topic_pic_report();
             char *msgId = gen_msgId();
             //LOGD("uploadRecordImage msgId is %s\r\n", msgId);
@@ -1910,15 +1911,20 @@ static void uploaddata_task(void *pvParameters)
     do {
         vTaskDelay(pdMS_TO_TICKS(1000));
 
-        if((boot_mode == BOOT_MODE_NORMAL) || (boot_mode == BOOT_MODE_REMOTE) || (boot_mode == BOOT_MODE_MECHANICAL_LOCK)) {
+        if((boot_mode == BOOT_MODE_NORMAL) || (boot_mode == BOOT_MODE_MECHANICAL_LOCK)) {
             if (g_has_more_download_data == 0 && g_has_more_upload_data == 1) {
-                if ((mqtt_init_done == 1) && (g_priority == 0) && (bPubOasisImage == false)) {
+                if ((mqtt_init_done == 1) && (g_priority == 0) && (bPubOasisImage == false) && (pressure_test == 1)) {
                     if (mqtt_upload_records_run == false) {
-                        LOGD("----------------- g_priority == 0");
+                        LOGD("----------------- g_priority == 0\r\n");
                         int ret = uploadRecords();
-                        mqtt_upload_records_run = true;
+                        LOGD("----------------- ret is %d\r\n", ret);
+                        if(ret != -2) {
+                            LOGD("----------------- success\r\n");
+                            mqtt_upload_records_run = true;
+                            g_has_more_upload_data = 0;
+                            break;
+                        }
                     }
-                    g_has_more_upload_data = 0;
                 }else {
                     //LOGD("mqtt_init_done is %d, g_priority is %d, bPubOasisImage is %d\r\n", mqtt_init_done, g_priority, bPubOasisImage);
                 }
@@ -1926,7 +1932,9 @@ static void uploaddata_task(void *pvParameters)
                 //LOGD("g_has_more_download_data is %d, g_has_more_upload_data is %d\r\n", g_has_more_download_data, g_has_more_upload_data);
             }
         }else {
-            g_has_more_upload_data = 0;
+            if(receive_boot_mode == 1) {
+                g_has_more_upload_data = 0;
+            }
         }
 
     } while (1);

@@ -19,19 +19,19 @@
 
 // WIFI已初始化
 int notifyWifiInitialized(int code) {
-    LOGD("MQTT 通知MCU WIFI 已初始化 \r\n");
+    LOGD("MQTT 通知MCU WIFI 初始化 %s\r\n", (code==0 ?"成功":"失败"));
 	return sendStatusToMCU(0x00, code);
 }
 
 // WIFI已连接
 int notifyWifiConnected(int code) {
-    LOGD("MQTT 通知MCU WIFI 已连接 \r\n");
+    LOGD("MQTT 通知MCU WIFI 连接 %s\r\n", (code==0 ?"成功":"失败"));
 	return sendStatusToMCU(0x01, code);
 }
 
 // MQTT已连接
 int notifyMqttConnected(int code) {
-    LOGD("MQTT 通知MCU MQTT 已连接 \r\n");
+    LOGD("MQTT 通知MCU MQTT 连接 %s\r\n", (code==0 ?"成功":"失败"));
     return sendStatusToMCU(0x02, code);
 }
 

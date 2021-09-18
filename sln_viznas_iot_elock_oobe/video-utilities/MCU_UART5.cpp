@@ -37,6 +37,7 @@
 #include "camera_rt106f_elock.h"
 
 #include "../mqtt/config.h"
+#include "../mqtt/mqtt-mcu.h"
 #include "WIFI_UART8.h"
 #include "database.h"
 #include "DBManager.h"
@@ -73,6 +74,9 @@ static bool timer_started = false;
 #define uart5_task_PRIORITY (configMAX_PRIORITIES - 1)
 
 #define SUPPORT_PRESSURE_TEST   0
+#define SUPPORT_POWEROFF        1
+
+int pressure_test = 1;
 
 uint8_t background_buffer5[UART5_DRV_RX_RING_BUF_SIZE] = {0};
 
@@ -107,9 +111,10 @@ static bool saving_file = false;
 static bool saving_db = false;
 extern int g_is_shutdown;
 bool g_is_save_file = false;
-bool bDeleteUser = false;
+extern int g_command_executed;
 extern int mqtt_init_done;
 int boot_mode = BOOT_MODE_INVALID;  //0:短按;1：长按;2:蓝牙设置;3:蓝牙人脸注册;4:睡眠状态
+int receive_boot_mode = 0;
 bool oasis_task_start = false;
 #if (configSUPPORT_STATIC_ALLOCATION == 1)
 DTC_BSS static StackType_t Uart5TaskStack[UART5TASK_STACKSIZE];
@@ -246,31 +251,29 @@ int cmdCommRsp2MCU(unsigned char CmdId, uint8_t ret) {
     return 0;
 }
 
-int  SendMsgToSelf(unsigned char *MsgBuf, unsigned char MsgLen)
-{
+int SendMsgToSelf(unsigned char *MsgBuf, unsigned char MsgLen) {
     unsigned char szBuffer[128] = {0};
 
-    const unsigned char *pszMsgInfo=NULL;
-    unsigned char CmdId=0;
+    const unsigned char *pszMsgInfo = NULL;
+    unsigned char CmdId = 0;
     unsigned char HeadMark;
 
     memset(szBuffer, 0, sizeof(szBuffer));
-	memcpy(szBuffer, &MsgBuf[0], MsgLen);
+    memcpy(szBuffer, &MsgBuf[0], MsgLen);
 
-	pszMsgInfo = MsgHead_Unpacket(
-				szBuffer,
-				MsgLen,
-				&HeadMark,
-				&CmdId,
-				&MsgLen);
+    pszMsgInfo = MsgHead_Unpacket(
+            szBuffer,
+            MsgLen,
+            &HeadMark,
+            &CmdId,
+            &MsgLen);
 
-	if(HeadMark != HEAD_MARK_MQTT)
-	{
-		LOGD("msg headmark error: 0x%x!\n", HeadMark);
-		return -1;
-	}
-	//ProcMessage(CmdId, MsgLen, pszMsgInfo);
-	ProcMessageFromMQTT(CmdId, MsgLen, pszMsgInfo);
+    if (HeadMark != HEAD_MARK_MQTT) {
+        LOGD("msg headmark error: 0x%x!\n", HeadMark);
+        return -1;
+    }
+    //ProcMessage(CmdId, MsgLen, pszMsgInfo);
+    ProcMessageFromMQTT(CmdId, MsgLen, pszMsgInfo);
     return 0;
 }
 
@@ -383,26 +386,27 @@ int cmdRemoteRequestRsp(unsigned char nHead, unsigned char CmdId, uint8_t ret) {
 
     return 0;
 }
+
 //主控接收指令:  开机同步响应
 int cmdSysInitOKSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
     LOGD("接收开机同步响应 \r\n");
     unsigned char szBuffer[32] = {0};
 
-	memcpy(szBuffer, pszMessage, nMessageLen);
+    memcpy(szBuffer, pszMessage, nMessageLen);
 
     uint8_t year = 0, month = 0, day = 0, hour = 0, min = 0, sec = 0, i = 0;
-	year = StrGetUInt8(pszMessage + i);
-	i++;
-	month = StrGetUInt8(pszMessage + i);
-	i++;
-	day = StrGetUInt8(pszMessage + i);
-	i++;
-	hour = StrGetUInt8(pszMessage + i);
-	i++;
-	min = StrGetUInt8(pszMessage + i);
-	i++;
-	sec = StrGetUInt8(pszMessage + i);
-	i++;
+    year = StrGetUInt8(pszMessage + i);
+    i++;
+    month = StrGetUInt8(pszMessage + i);
+    i++;
+    day = StrGetUInt8(pszMessage + i);
+    i++;
+    hour = StrGetUInt8(pszMessage + i);
+    i++;
+    min = StrGetUInt8(pszMessage + i);
+    i++;
+    sec = StrGetUInt8(pszMessage + i);
+    i++;
     LOGD("setTime:%04d-%02d-%02d %02d:%02d:%02d \r\n", 2000 + year, month, day, hour, min, sec);
 
     if ((month == 0 || month > 12) || (day == 0 || day > 31) || hour > 24 || min > 60 || sec > 60) {
@@ -417,8 +421,8 @@ int cmdSysInitOKSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessa
     //解析设置参数
     battery_level = StrGetUInt8(pszMessage + i);
     i++;
-	LOGD("battery_level:<%d>.\r\n", battery_level);
-	bInitSyncInfo = true;
+    LOGD("battery_level:<%d>.\r\n", battery_level);
+    bInitSyncInfo = true;
 
 
     {
@@ -446,12 +450,12 @@ int cmdSysInitOKSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessa
         memset(ver_tmp, 0, sizeof(ver_tmp));
         //sprintf(verbuf, "%03d", stInitSyncInfo.Mcu_Ver);
         //sprintf(ver_tmp, "W8_HC130_106F_V%c.%c.%c", verbuf[0], verbuf[1], verbuf[2]);
-        verbuf[1]=StrGetUInt8(pszMessage + i);
+        verbuf[1] = StrGetUInt8(pszMessage + i);
         i++;
-		verbuf[0]=StrGetUInt8(pszMessage + i);
-		i++;
-		sprintf(ver_tmp, "W8_HC130_106F_V%d.%d.%d", verbuf[1], verbuf[0]>>4, verbuf[0]&0x0f );
-		LOGD("MCU_VERSION:<%s>.\r\n", ver_tmp);
+        verbuf[0] = StrGetUInt8(pszMessage + i);
+        i++;
+        sprintf(ver_tmp, "W8_HC130_106F_V%d.%d.%d", verbuf[1], verbuf[0] >> 4, verbuf[0] & 0x0f);
+        LOGD("MCU_VERSION:<%s>.\r\n", ver_tmp);
 
         // 保存设置到系统配置文件
         update_mcu_info(ver_tmp);
@@ -466,17 +470,18 @@ int cmdSysInitOKSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessa
         boot_mode = BOOT_MODE_INVALID;
     }
     LOGD("boot_mode: %d\r\n", boot_mode);
-    if((boot_mode == BOOT_MODE_NORMAL) || (boot_mode == BOOT_MODE_REG)) {
-        if(oasis_task_start == false) {
-        	oasis_task_start = true;
-        	OpenLcdBackground();
-        	Display_Start();
+    receive_boot_mode = 1;
+    if ((boot_mode == BOOT_MODE_NORMAL) || (boot_mode == BOOT_MODE_REG)) {
+        if (oasis_task_start == false) {
+            oasis_task_start = true;
+            OpenLcdBackground();
+            Display_Start();
             Oasis_Start();
 
             //Display_Update((uint32_t)wave_logo_v3);
         }
-    }else if(boot_mode == BOOT_MODE_REMOTE) {
-    	cmdRemoteRequestRsp(HEAD_MARK, CMD_BOOT_MODE, 1);
+    } else if (boot_mode == BOOT_MODE_REMOTE) {
+        cmdRemoteRequestRsp(HEAD_MARK, CMD_BOOT_MODE, 1);
     }
 
     return 0;
@@ -491,10 +496,13 @@ void SetSysToFactory() {
     }
 
     // 清空操作记录
-    DBManager::getInstance()->clearRecord();
+    int clear_status = DBManager::getInstance()->clearRecord();
+    LOGD("Clear Records status is %d\r\n", clear_status);
 
-	VIZN_DelUser(NULL);
-    DB_Save(0);
+    clear_status = VIZN_DelUser(NULL);
+    LOGD("Clear Users status is %d\r\n", clear_status);
+
+    //DB_Save(0);
 }
 
 //主控返回响应指令: 请求恢复出厂设置响应
@@ -540,12 +548,13 @@ int cmdReqResumeFactoryProc(unsigned char nMessageLen, const unsigned char *pszM
 
     vTaskDelay(pdMS_TO_TICKS(10));
 
-    /*关机 */
-    cmdCloseFaceBoardReq();
 
 
     //消息处理
     SetSysToFactory();
+    /*关机 */
+
+    cmdCloseFaceBoardReqExt(false);
     return 0;
 }
 
@@ -718,7 +727,7 @@ int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
     LOGD("x7 收到mcu 的开门响应 \n");
     uint8_t ret = -1;
     unsigned char *pop = NULL;
-    unsigned char szBuffer[32]={0};
+    unsigned char szBuffer[32] = {0};
 
     // MCU到face_loop，0代表开锁成功，1代表开锁失败
     memcpy(szBuffer, pszMessage, nMessageLen);
@@ -734,7 +743,7 @@ int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
         pop += 1;
         uint8_t power = StrGetUInt8(pop);
         pop += 1;
-        uint8_t  power2 = StrGetUInt8(pop);
+        uint8_t power2 = StrGetUInt8(pop);
 
         Record *record = (Record *) pvPortMalloc(sizeof(Record));
         HexToStr(username, g_uu_id.UID, sizeof(g_uu_id.UID));
@@ -742,11 +751,7 @@ int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
         //record->action = 3;//  操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁
         char image_path[16];
         //record->status = 0; // 0,操作成功 1,操作失败.
-		#if	SUPPORT_PRESSURE_TEST != 0
-        record->time_stamp = ws_systime + 50; //时间戳 从1970年开始的秒数
-		#else
         record->time_stamp = ws_systime; //时间戳 从1970年开始的秒数
-		#endif
         record->power = power * 256 + power2;
         //sprintf(power_msg, "{\\\"batteryA\\\":%d\\,\\\"batteryB\\\":%d}", record->power, record->power2);
         //LOGD("power_msg is %s \r\n", power_msg);
@@ -765,7 +770,7 @@ int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
         DBManager::getInstance()->addRecord(record);
 
         Oasis_SetOasisFileName(record->image_path);
-		//Oasis_WriteJpeg();
+        //Oasis_WriteJpeg();
 
         int ID = DBManager::getInstance()->getLastRecordID();
         LOGD("开锁成功, 更新数据库状态.请求MQTT上传本次开门的记录 \n");
@@ -779,16 +784,17 @@ int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
 
 int cmdPowerDownRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
     LOGD("收到MCU发来的下电回复 \r\n");
-    for( int i=0; i<nMessageLen ; i++){
+    for (int i = 0; i < nMessageLen; i++) {
         LOGD("0x%02x	\r\n", pszMessage[i]);
     }
-    return  0;
+    return 0;
 }
+
 // 主控接收指令:机械开锁响应
 int cmdMechicalLockRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
     uint8_t ret = -1;
     unsigned char *pop = NULL;
-    unsigned char szBuffer[32]={0};
+    unsigned char szBuffer[32] = {0};
 
     // MCU到face_loop，0代表开锁成功，1代表开锁失败
     memcpy(szBuffer, pszMessage, nMessageLen);
@@ -804,7 +810,7 @@ int cmdMechicalLockRsp(unsigned char nMessageLen, const unsigned char *pszMessag
         pop += 1;
         uint8_t power = StrGetUInt8(pop);
         pop += 1;
-        uint8_t  power2 = StrGetUInt8(pop);
+        uint8_t power2 = StrGetUInt8(pop);
 
         Record *record = (Record *) pvPortMalloc(sizeof(Record));
         HexToStr(username, g_uu_id.UID, sizeof(g_uu_id.UID));
@@ -827,7 +833,7 @@ int cmdMechicalLockRsp(unsigned char nMessageLen, const unsigned char *pszMessag
         DBManager::getInstance()->addRecord(record);
 
         //Oasis_SetOasisFileName(record->image_path);
-		//Oasis_WriteJpeg();
+        //Oasis_WriteJpeg();
 
         int ID = DBManager::getInstance()->getLastRecordID();
         LOGD("开锁成功, 更新数据库状态.请求MQTT上传本次开门的记录 \n");
@@ -861,7 +867,7 @@ int save_config_feature_file() {
     LOGD("save config, feature start\r\n");
     g_is_save_file = true;
     if (saving_file == false) {
-        DB_Save(0);
+        //DB_Save(0);
         save_json_config_file();
         saving_file = true;
     }
@@ -875,7 +881,7 @@ int save_files_before_pwd() {
     LOGD("开始保存config, db, jpg 文件 \r\n");
     g_is_save_file = true;
     if (saving_file == false) {
-        DB_Save(0);
+        //DB_Save(0);
         save_json_config_file();
         saving_file = true;
     }
@@ -891,8 +897,9 @@ int save_files_before_pwd() {
     return 0;
 }
 
+
 //主控发送: 关机请求
-int cmdCloseFaceBoardReq() {
+int cmdCloseFaceBoardReqExt(bool save_file) {
     LOGD("发送关机请求 \r\n");
     char szBuffer[32] = {0};
     int iBufferSize;
@@ -918,12 +925,19 @@ int cmdCloseFaceBoardReq() {
     SendMsgToMCU((uint8_t *) szBuffer, iBufferSize + CRC16_LEN);
     g_is_shutdown = true;
     vTaskDelay(pdMS_TO_TICKS(100));
-    save_files_before_pwd();//BUG328
-
+    if (save_file) {
+        save_files_before_pwd();
+    } else {
+    	LOGD("No need to save file before shutdown the device\r\n");
+    }
 
     return 0;
 }
 
+//主控发送: 关机请求
+int cmdCloseFaceBoardReq() {
+	return cmdCloseFaceBoardReqExt(true);
+}
 //主控返回响应指令: 手机APP请求注册激活响应
 int cmdReqActiveByPhoneRsp(uint8_t ret) {
     char szBuffer[32] = {0};
@@ -1135,12 +1149,13 @@ int cmdDeleteUserReqProcByHead(unsigned char nHead, unsigned char nMessageLen, c
 
         vizn_api_status_t status;
         status = VIZN_DelUser(NULL);
+    	LOGD("cmdDeleteUserReqProcByHead VIZN_DelUser status is %d\r\n", status);
         if (kStatus_API_Layer_Success == status) {
             ret = SUCCESS;
         } else {
             ret = FAILED;
         }
-        DB_Save(0);
+        //DB_Save(0);
     } else {
         // 删除单个用户 和其操作记录
         LOGD("delete single user start");
@@ -1163,7 +1178,7 @@ int cmdDeleteUserReqProcByHead(unsigned char nHead, unsigned char nMessageLen, c
         } else {
             ret = FAILED;
         }
-        DB_Save(0);
+        //DB_Save(0);
     }
 
     LOGD("delete uuid : <0x%08x>, <0x%08x> result %d nHead 0x%2x.\r\n", uu_id.tUID.H, uu_id.tUID.L, ret, nHead);
@@ -1172,8 +1187,6 @@ int cmdDeleteUserReqProcByHead(unsigned char nHead, unsigned char nMessageLen, c
     } else {
         cmdCommRsp2MCU(CMD_FACE_DELETE_USER, ret);
     }
-
-    bDeleteUser = true;
 
     return 0;
 }
@@ -1195,7 +1208,7 @@ int cmdWifiSSIDProc(unsigned char nMessageLen, const unsigned char *pszMessage) 
         // 保存设置到系统配置文件
         LOGD("wifi ssid : <%s>.\r\n", wifi_ssid);
         update_wifi_ssid(wifi_ssid);
-		update_need_reconnect("true");
+        update_need_reconnect("true");
         //read_config("./config.ini");
 
         ret = SUCCESS;
@@ -1221,7 +1234,7 @@ int cmdWifiPwdProc(unsigned char nMessageLen, const unsigned char *pszMessage) {
         // 保存设置到系统配置文件
         LOGD("wifi pwd : <%s>.\r\n", wifi_pwd);
         update_wifi_pwd(wifi_pwd);
-		update_need_reconnect("true");
+        update_need_reconnect("true");
         //read_config("./config.ini");
         ret = SUCCESS;
     }
@@ -1254,7 +1267,7 @@ int cmdMqttParamSetProc(unsigned char nMessageLen, const unsigned char *pszMessa
         HexToStr(mqtt_user_tmp, mqtt_user, MQTT_USER_LEN);
         memset(mqtt_pwd_tmp, 0, sizeof(mqtt_pwd_tmp));
 //        HexToStr(mqtt_pwd_tmp, mqtt_pwd, MQTT_PWD_LEN);
-        update_mqtt_opt(mqtt_user_tmp,  (char*)mqtt_pwd);
+        update_mqtt_opt(mqtt_user_tmp, (char *) mqtt_pwd);
         //read_config("./config.ini");
         LOGD("mqtt user :<%s>, mqtt_pwd:<%s>.\r\n", mqtt_user_tmp, mqtt_pwd_tmp);
 
@@ -1373,29 +1386,28 @@ int cmdCommRsp2MqttByHead(unsigned char nHead, unsigned char CmdId, uint8_t ret)
 }
 
 // 主控接收指令: wifi 网络时间同步响应
-int cmdWifiTimeSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessage)
-{
+int cmdWifiTimeSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
     LOGD("网络时间同步响应 \r\n");
-	uint8_t ret = SUCCESS;	
+    uint8_t ret = SUCCESS;
 
-	ret = StrGetUInt8( pszMessage );
+    ret = StrGetUInt8(pszMessage);
 
-	{
-		cmdCommRsp2Mqtt(CMD_WIFI_TIME_SYNC, ret);
-	}
-	
-	return 0;
+    {
+        cmdCommRsp2Mqtt(CMD_WIFI_TIME_SYNC, ret);
+    }
+
+    return 0;
 }
 
 //MCU->106F->MQTT:  WIFI 同步订单时间响应
-int cmdWifiOrderTimeSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessage)
-{
-    uint8_t ret = StrGetUInt8( pszMessage );
-    LOGD("远程同步订单请求  %d \r\n", (uint8_t )nMessageLen);
+int cmdWifiOrderTimeSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
+    uint8_t ret = StrGetUInt8(pszMessage);
+    LOGD("远程同步订单请求  %d \r\n", (uint8_t) nMessageLen);
 
-	cmdCommRsp2Mqtt(CMD_ORDER_TIME_SYNC, ret);
-	return 0;
+    cmdCommRsp2Mqtt(CMD_ORDER_TIME_SYNC, ret);
+    return 0;
 }
+
 int ProcMessage(
         unsigned char nCommand,
         unsigned char nMessageLen,
@@ -1407,10 +1419,9 @@ int ProcMessage(
 int ProcMessageFromMQTT(
         unsigned char nCommand,
         unsigned char nMessageLen,
-        const unsigned char *pszMessage)
-{
-    ProcMessageByHead((unsigned char)(HEAD_MARK_MQTT), nCommand, nMessageLen, pszMessage);
-    return  0;
+        const unsigned char *pszMessage) {
+    ProcMessageByHead((unsigned char) (HEAD_MARK_MQTT), nCommand, nMessageLen, pszMessage);
+    return 0;
 }
 
 // source: 0x23 MCU 0x24 MQTT
@@ -1418,8 +1429,7 @@ int ProcMessageByHead(
         unsigned char nHead,
         unsigned char nCommand,
         unsigned char nMessageLen,
-        const unsigned char *pszMessage)
-{
+        const unsigned char *pszMessage) {
 
     LOGD("======Command[0x%X], nMessageLen<%d>\r\n", nCommand, nMessageLen);
     switch (nCommand) {
@@ -1441,7 +1451,7 @@ int ProcMessageByHead(
 #endif
             break;
         }
-        case CMD_CLOSE_FACEBOARD:{
+        case CMD_CLOSE_FACEBOARD: {
             cmdPowerDownRsp(nMessageLen, pszMessage);
             break;
         }
@@ -1480,16 +1490,14 @@ int ProcMessageByHead(
             cmdMqttParamSetProc(nMessageLen, pszMessage);
             break;
         }
-		case CMD_WIFI_TIME_SYNC:	
-		{
-			cmdWifiTimeSyncRsp(nMessageLen, pszMessage);
-			break;
-		}	
-		case CMD_ORDER_TIME_SYNC:
-		{
-			cmdWifiOrderTimeSyncRsp(nMessageLen, pszMessage);
-			break;
-		}
+        case CMD_WIFI_TIME_SYNC: {
+            cmdWifiTimeSyncRsp(nMessageLen, pszMessage);
+            break;
+        }
+        case CMD_ORDER_TIME_SYNC: {
+            cmdWifiOrderTimeSyncRsp(nMessageLen, pszMessage);
+            break;
+        }
         case CMD_WIFI_OPEN_DOOR: {
             cmdWifiOpenDoorRsp(nMessageLen, pszMessage);
             break;
@@ -1504,8 +1512,8 @@ int ProcMessageByHead(
             break;
         }
         case CMD_MECHANICAL_LOCK: {
-        	cmdMechicalLockRsp(nMessageLen, pszMessage);
-        	break;
+            cmdMechicalLockRsp(nMessageLen, pszMessage);
+            break;
         }
         default:
             LOGD("No effective cmd from MCU!\n");
@@ -1548,9 +1556,10 @@ int cmdRequestMqttUpload(int id) {
     while (1) {
         // 发送指令给 wifi 相关的mqtt 模块
         //usleep(100000);//0.1秒
-        vTaskDelay(pdMS_TO_TICKS(100));
-        if (count++ > 150) {//如果超过15秒 还没有连接上则退出
+        vTaskDelay(pdMS_TO_TICKS(300));
+        if (count++ > 50) {//如果超过15秒 还没有连接上则退出
             LOGD("WIFI 未连接  \r\n");
+            g_command_executed = 1;
             break;
         }
         //判断MQTT是否可用
@@ -1564,8 +1573,8 @@ int cmdRequestMqttUpload(int id) {
     return 0;
 }
 
-int Uart5_SendDeinitCameraMsg(void)
-{
+int Uart5_SendDeinitCameraMsg(void) {
+#if  SUPPORT_POWEROFF
     QMsg *pQMsgCamera;
     /* Camera */
     pQMsgCamera             = (QMsg *)pvPortMalloc(sizeof(QMsg));
@@ -1580,6 +1589,7 @@ int Uart5_SendDeinitCameraMsg(void)
     if (status) {
         vPortFree(pQMsgCamera);
     }
+#endif
     return 0;
 }
 
@@ -1626,7 +1636,7 @@ static void uart5_QMsg_task(void *pvParameters) {
                         //record->power1 = -1;//当前电池电量
                         //record->power2 = -1;//当前电池电量
                         //record->upload = 0;// 0代表没上传 1代表记录上传图片未上传 2代表均已
-                        record->action_upload = 0;	//代表注册且未上传
+                        record->action_upload = 0;    //代表注册且未上传
                         LOGD("往数据库中插入本次注册记录 \n");
                         DBManager::getInstance()->addRecord(record);
 
@@ -1658,9 +1668,9 @@ static void uart5_QMsg_task(void *pvParameters) {
                         save_config_feature_file();
                         vTaskDelay(pdMS_TO_TICKS(100));
 
-                    	LOGD("注册成功,请求MQTT上传本次用户注册记录 \n");
-						int ID = DBManager::getInstance()->getLastRecordID();
-						cmdRequestMqttUpload( ID );
+                        LOGD("注册成功,请求MQTT上传本次用户注册记录 \n");
+                        int ID = DBManager::getInstance()->getLastRecordID();
+                        cmdRequestMqttUpload(ID);
                     }
                 }
                     break;
@@ -1668,10 +1678,12 @@ static void uart5_QMsg_task(void *pvParameters) {
                 case QMSG_FACEREC_RECFACE: {//处理人脸识别结果
                     //LOGD("%s g_reging_flg is %d lcd_back_ground is %d\r\n", __FUNCTION__, g_reging_flg, lcd_back_ground);
                     //LOGD("处理人脸识别结果 %d flg %d\r\n", pQMsg->msg.val, g_reging_flg);
-                    if ( (boot_mode != BOOT_MODE_NORMAL) || (REG_STATUS_WAIT != g_reging_flg)
+                    if ((boot_mode != BOOT_MODE_NORMAL) || (REG_STATUS_WAIT != g_reging_flg)
                         || (lcd_back_ground == false))//如果正在注册流程，就过滤掉该识别结果
                     {
+                    	LOGD("Face rec continue!\r\n");
                         vPortFree(pQMsg);
+
                         continue;
                     }
 
@@ -1679,7 +1691,7 @@ static void uart5_QMsg_task(void *pvParameters) {
                         LOGD("User face recognize success!\r\n");
                         CloseLcdBackground();
                         vTaskDelay(pdMS_TO_TICKS(1000));
-						Uart5_SendDeinitCameraMsg();
+                        Uart5_SendDeinitCameraMsg();
                         //LOGD("gFaceInfo.name is %s!\n", gFaceInfo.name);
                         LOGD("pQMsg->msg.info.name is %s!\r\n", pQMsg->msg.info.name);
                         char name[64];
@@ -1687,17 +1699,18 @@ static void uart5_QMsg_task(void *pvParameters) {
                         memcpy(name, pQMsg->msg.info.name, 64);
                         StrToHex(g_uu_id.UID, name, sizeof(g_uu_id.UID));
 
-#if	SUPPORT_PRESSURE_TEST != 0
+#if    SUPPORT_PRESSURE_TEST != 0
                         int record_count = DBManager::getInstance()->getRecordCount();
                         LOGD("record_count is %d \r\n", record_count);
-                        if(record_count <= 180) {
-                            for(int i = 0; i < 20; i ++) {
+                        if (record_count <= 180) {
+                        	pressure_test = 0;
+                            for (int i = 0; i < 20; i++) {
                                 vTaskDelay(pdMS_TO_TICKS(10));
                                 Record *record = (Record *) pvPortMalloc(sizeof(Record));
                                 HexToStr(username, g_uu_id.UID, sizeof(g_uu_id.UID));
                                 strcpy(record->UUID, username);
                                 //record->status = 0; // 0,操作成功 1,操作失败.
-                                record->time_stamp = ws_systime + i; //时间戳 从1970年开始的秒数
+                                record->time_stamp = ws_systime; //时间戳 从1970年开始的秒数
                                 record->power = 100 * 256 + 0;
                                 //sprintf(power_msg, "{\\\"batteryA\\\":%d\\,\\\"batteryB\\\":%d}", record->power, record->power2);
                                 //LOGD("power_msg is %s \r\n", power_msg);
@@ -1716,26 +1729,50 @@ static void uart5_QMsg_task(void *pvParameters) {
 
                                 DBManager *dbManager = DBManager::getInstance();
                                 dbManager->addRecord(record);
-                                if(g_is_shutdown == 0) {
+
+                                //LOGD("feature.map 1size:%d\r\n", fatfs_getsize("feature.map"));
+                                if (!SUPPORT_POWEROFF || g_is_shutdown == 0) {
                                     Oasis_WriteJpeg();
                                 }
-							}
-							vTaskDelay(pdMS_TO_TICKS(100));
+
+                                notifyKeepAlive();
+                                vTaskDelay(pdMS_TO_TICKS(20));
+#if	0
+                                vTaskDelay(pdMS_TO_TICKS(100));
+
+//                                char *buffer = (char *) pvPortMalloc(10 * 1024);
+//                                for (int j = 0; j < 1; j++) {
+//                                    int status = fatfs_read(record->image_path, buffer, 0, 10 * 1024);
+//                                }
+//                                vPortFree(buffer);
+
+                                //LOGD("feature.map 2size:%d\r\n", fatfs_getsize("feature.map"));
+//                                vTaskDelay(pdMS_TO_TICKS(100));
+                                fatfs_delete(record->image_path);
+#endif
+                                LOGD("feature.map size:%d\r\n", fatfs_getsize("feature.map"));
+                                LOGD("config size:%d\r\n", fatfs_getsize("config.jsn"));
+                                LOGD("record size:%d\r\n", fatfs_getsize("record.jsn"));
+
+                            }
+                            pressure_test = 1;
+                            vTaskDelay(pdMS_TO_TICKS(100));
                         }
 #endif
                         cmdOpenDoorReq(g_uu_id);
                     } else {//failed
                         recognize_times++;
                         LOGD("User face recognize failed %d times\r\n", recognize_times);
+#if    SUPPORT_POWEROFF
                         if (recognize_times > 30) {
                             recognize_times = 0;
                             CloseLcdBackground();
                             vTaskDelay(pdMS_TO_TICKS(1000));
-							Uart5_SendDeinitCameraMsg();
+                            Uart5_SendDeinitCameraMsg();
                             cmdCloseFaceBoardReq();//关主控电源
                             break;
                         }
-
+#endif
                     }
 
                 }
@@ -1765,13 +1802,13 @@ static void uart5_sync_task(void *pvParameters) {
 }
 
 
-enum{
-	UART5_RX_MSG_STATUS_WAITING_HEADER,
-	UART5_RX_MSG_STATUS_WAITING_LENGTH,
-	UART5_RX_MSG_STATUS_WAITING_DATA,
+enum {
+    UART5_RX_MSG_STATUS_WAITING_HEADER,
+    UART5_RX_MSG_STATUS_WAITING_LENGTH,
+    UART5_RX_MSG_STATUS_WAITING_DATA,
 
 };
-#define UART5_RX_MAX_DATA_PACKAGE_SIZE 32	//20
+#define UART5_RX_MAX_DATA_PACKAGE_SIZE 32    //20
 
 static void uart5_task(void *pvParameters) {
     int error;
@@ -1809,65 +1846,56 @@ static void uart5_task(void *pvParameters) {
         uint8_t req_len = 0;
 
         while (1) {
-        	switch(rx_status)
-        	{
-        	case UART5_RX_MSG_STATUS_WAITING_HEADER:
-        		req_len = 1;
-                error = LPUART_RTOS_Receive(&handle5, &recv_buffer[0], req_len, &rcvlen);
-                break;
-        	case UART5_RX_MSG_STATUS_WAITING_LENGTH:
-        		req_len = 2;
-        		error = LPUART_RTOS_Receive(&handle5, &recv_buffer[1], req_len, &rcvlen);
-        		break;
-        	case UART5_RX_MSG_STATUS_WAITING_DATA:
-        		req_len = recv_buffer[2] + 2;
-        		error = LPUART_RTOS_Receive(&handle5, &recv_buffer[3], req_len, &rcvlen);
-        		break;
-        	default:
-        		assert(0);
-        	}
+            switch (rx_status) {
+                case UART5_RX_MSG_STATUS_WAITING_HEADER:
+                    req_len = 1;
+                    error = LPUART_RTOS_Receive(&handle5, &recv_buffer[0], req_len, &rcvlen);
+                    break;
+                case UART5_RX_MSG_STATUS_WAITING_LENGTH:
+                    req_len = 2;
+                    error = LPUART_RTOS_Receive(&handle5, &recv_buffer[1], req_len, &rcvlen);
+                    break;
+                case UART5_RX_MSG_STATUS_WAITING_DATA:
+                    req_len = recv_buffer[2] + 2;
+                    error = LPUART_RTOS_Receive(&handle5, &recv_buffer[3], req_len, &rcvlen);
+                    break;
+                default:
+                    assert(0);
+            }
 
-        	if (error == kStatus_Success)
-        	{
-        		//LOGD("[uart5_task]:receive return!\r\n");
-        		if (req_len != rcvlen)
-        		{
-        			LOGD("[uart5_task]:part of data received, expect:%d received:%d!\r\n",req_len,rcvlen);
-					rx_status = UART5_RX_MSG_STATUS_WAITING_HEADER;
+            if (error == kStatus_Success) {
+                //LOGD("[uart5_task]:receive return!\r\n");
+                if (req_len != rcvlen) {
+                    LOGD("[uart5_task]:part of data received, expect:%d received:%d!\r\n", req_len, rcvlen);
+                    rx_status = UART5_RX_MSG_STATUS_WAITING_HEADER;
 
 
-        		}else if (UART5_RX_MSG_STATUS_WAITING_HEADER == rx_status)
-        		{
-        			if (HEAD_MARK != recv_buffer[0]) {
-        				LOGD("[uart5_task]:wrong header received, expect:0x%x received:0x%x!\r\n",HEAD_MARK,recv_buffer[0]);
-						rx_status = UART5_RX_MSG_STATUS_WAITING_HEADER;
-        			}else
-        			{
-        				rx_status = UART5_RX_MSG_STATUS_WAITING_LENGTH;
-        			}
-        		}else if (UART5_RX_MSG_STATUS_WAITING_LENGTH == rx_status)
-        		{
-        			if (recv_buffer[2] > UART5_RX_MAX_DATA_PACKAGE_SIZE)
-        			{
-        				LOGD("[uart5_task]:wrong msg length received, length:%d\r\n",recv_buffer[2]);
-						rx_status = UART5_RX_MSG_STATUS_WAITING_HEADER;
-        			}else
-        			{
-        				rx_status = UART5_RX_MSG_STATUS_WAITING_DATA;
-        			}
-        		}else
-        		{
-        			//a whole package received
-        			msglen = rcvlen + 3;
-        			break;
-        		}
+                } else if (UART5_RX_MSG_STATUS_WAITING_HEADER == rx_status) {
+                    if (HEAD_MARK != recv_buffer[0]) {
+                        LOGD("[uart5_task]:wrong header received, expect:0x%x received:0x%x!\r\n", HEAD_MARK,
+                             recv_buffer[0]);
+                        rx_status = UART5_RX_MSG_STATUS_WAITING_HEADER;
+                    } else {
+                        rx_status = UART5_RX_MSG_STATUS_WAITING_LENGTH;
+                    }
+                } else if (UART5_RX_MSG_STATUS_WAITING_LENGTH == rx_status) {
+                    if (recv_buffer[2] > UART5_RX_MAX_DATA_PACKAGE_SIZE) {
+                        LOGD("[uart5_task]:wrong msg length received, length:%d\r\n", recv_buffer[2]);
+                        rx_status = UART5_RX_MSG_STATUS_WAITING_HEADER;
+                    } else {
+                        rx_status = UART5_RX_MSG_STATUS_WAITING_DATA;
+                    }
+                } else {
+                    //a whole package received
+                    msglen = rcvlen + 3;
+                    break;
+                }
 
-        	}else
-        	{
-        		LOGD("[uart5_task]:LPUART_RTOS_Receive error:%d sts:%d!\r\n",error,rx_status);
-        		rx_status = UART5_RX_MSG_STATUS_WAITING_HEADER;
-        		continue;
-        	}
+            } else {
+                LOGD("[uart5_task]:LPUART_RTOS_Receive error:%d sts:%d!\r\n", error, rx_status);
+                rx_status = UART5_RX_MSG_STATUS_WAITING_HEADER;
+                continue;
+            }
         }
 
         if (msglen > 0) {
@@ -2069,17 +2097,16 @@ int Uart5_GetFaceRecResult(uint8_t result, char *pszMessage) {
 static int Uart5_SendQMsg(void *msg) {
     BaseType_t ret;
 
+#if    SUPPORT_POWEROFF
     if (g_is_shutdown) {
         return -3;
     }
-
-    if (Uart5MsgQ)
-    {
+#endif
+    if (Uart5MsgQ) {
         ret = xQueueSend(Uart5MsgQ, msg, (TickType_t) 0);
-    }else
-    {
-    	LOGE("[ERROR]:Uart5MsgQ is NULL\r\n");
-    	return -2;
+    } else {
+        LOGE("[ERROR]:Uart5MsgQ is NULL\r\n");
+        return -2;
     }
 
     if (ret != pdPASS) {
@@ -2121,6 +2148,7 @@ void OpenLcdBackground() {
 }
 
 void CloseLcdBackground() {
+#if  SUPPORT_POWEROFF
     if (lcd_back_ground) {
         LOGD("[%s]:\r\n", __FUNCTION__);
         lcd_back_ground = false;
@@ -2129,4 +2157,5 @@ void CloseLcdBackground() {
         //}
         PJDisp_TurnOffBacklight();
     }
+#endif
 }
