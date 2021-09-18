@@ -105,7 +105,7 @@ int subscribeMQTT(int linkId, const char* topic, int qos) {
 	sprintf(cmd, "AT+MQTTSUB=%d,\"%s\",%d", linkId, topic, qos);
 
 	int res = sendATCmd(cmd);
-    vPortFree(topic);
+    vPortFree((void*)topic);
 	// free(cmd);
 	return res;
 }

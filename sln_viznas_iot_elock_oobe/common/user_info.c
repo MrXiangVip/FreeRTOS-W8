@@ -49,7 +49,7 @@ int32_t UserInfo_FlashWrite(user_info_t *cfg)
 
 void UserInfo_GetDefault(user_info_t *cfg)
 {
-    user_info_t default_app_data = {0, 0};
+    user_info_t default_app_data = {0};
     memcpy(cfg,&default_app_data,sizeof(user_info_t));
 }
 
