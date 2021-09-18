@@ -2125,7 +2125,7 @@ void CloseLcdBackground() {
         LOGD("[%s]:\r\n", __FUNCTION__);
         lcd_back_ground = false;
         //if(stInitSyncInfo.LightVal == 2) {
-        CloseCameraPWM();
+        //CloseCameraPWM();
         //}
         PJDisp_TurnOffBacklight();
     }

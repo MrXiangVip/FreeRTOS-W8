@@ -35,7 +35,7 @@
  * To obtain good face brightness in different light conditions.
  * Also balance power consumption and recognition distance.
  */
-#define IR_PWM_MIN      5   //20
+#define IR_PWM_MIN      0   //20
 #define IR_PWM_MAX      50  //100
 #define IR_PWM_INTERVAL 5   //10
 
