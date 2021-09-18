@@ -692,7 +692,7 @@ int cmdRegResultNotifyReq(uUID uu_id, uint8_t regResult) {
 
 //主控发送测试指令:  开门请求
 int cmdOpenDoorReq(uUID uu_id) {
-    LOGD("向mcu发送开门请求 \r\n \n");
+    LOGD("向mcu发送开门请求 \r\n");
     char szBuffer[32] = {0};
     int iBufferSize;
     char *pop = NULL;
@@ -724,7 +724,7 @@ int cmdOpenDoorReq(uUID uu_id) {
 
 // 主控接收指令:开门响应
 int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
-    LOGD("x7 收到mcu 的开门响应 \n");
+    LOGD("x7 收到mcu 的开门响应 \r\n");
     uint8_t ret = -1;
     unsigned char *pop = NULL;
     unsigned char szBuffer[32] = {0};
@@ -773,10 +773,11 @@ int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
         //Oasis_WriteJpeg();
 
         int ID = DBManager::getInstance()->getLastRecordID();
-        LOGD("开锁成功, 更新数据库状态.请求MQTT上传本次开门的记录 \n");
+        LOGD("开锁成功, 更新数据库状态.请求MQTT上传本次开门的记录 \r\n");
         cmdRequestMqttUpload(ID);
     } else {
-        LOGD("开锁失败,不更新数据库状态. 不上传记录\n");
+    	g_command_executed = 1;
+        LOGD("开锁失败,不更新数据库状态. 不上传记录\r\n");
     }
 
     return 0;
@@ -836,10 +837,11 @@ int cmdMechicalLockRsp(unsigned char nMessageLen, const unsigned char *pszMessag
         //Oasis_WriteJpeg();
 
         int ID = DBManager::getInstance()->getLastRecordID();
-        LOGD("开锁成功, 更新数据库状态.请求MQTT上传本次开门的记录 \n");
+        LOGD("开锁成功, 更新数据库状态.请求MQTT上传本次开门的记录 \r\n");
         cmdRequestMqttUpload(ID);
     } else {
-        LOGD("开锁失败,不更新数据库状态. 不上传记录\n");
+    	g_command_executed = 1;
+        LOGD("开锁失败,不更新数据库状态. 不上传记录\r\n");
     }
 
     return 0;
