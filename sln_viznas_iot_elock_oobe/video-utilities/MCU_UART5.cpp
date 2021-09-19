@@ -780,7 +780,8 @@ int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
         LOGD("开锁成功, 更新数据库状态.请求MQTT上传本次开门的记录 \r\n");
         cmdRequestMqttUpload(ID);
     } else {
-    	g_command_executed = 1;
+//    	g_command_executed = 1;
+        cmdCloseFaceBoardReq();
         LOGD("开锁失败,不更新数据库状态. 不上传记录\r\n");
     }
 
@@ -911,7 +912,8 @@ int cmdMechicalLockRsp(unsigned char nMessageLen, const unsigned char *pszMessag
         LOGD("开锁成功, 更新数据库状态.请求MQTT上传本次开门的记录 \r\n");
         cmdRequestMqttUpload(ID);
     } else {
-    	g_command_executed = 1;
+//    	g_command_executed = 1;
+        cmdCloseFaceBoardReq();
         LOGD("开锁失败,不更新数据库状态. 不上传记录\r\n");
     }
 
