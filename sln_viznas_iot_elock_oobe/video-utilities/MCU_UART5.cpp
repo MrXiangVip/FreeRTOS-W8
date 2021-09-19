@@ -74,7 +74,7 @@ static bool timer_started = false;
 /* Task priorities. */
 #define uart5_task_PRIORITY (configMAX_PRIORITIES - 1)
 
-#define SUPPORT_PRESSURE_TEST   1
+#define SUPPORT_PRESSURE_TEST   0
 #define SUPPORT_POWEROFF        1
 
 int pressure_test = 1;
