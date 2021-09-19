@@ -74,7 +74,7 @@ static bool timer_started = false;
 /* Task priorities. */
 #define uart5_task_PRIORITY (configMAX_PRIORITIES - 1)
 
-#define SUPPORT_PRESSURE_TEST   0
+#define SUPPORT_PRESSURE_TEST   1
 #define SUPPORT_POWEROFF        1
 
 int pressure_test = 1;
@@ -1794,12 +1794,17 @@ static void uart5_QMsg_task(void *pvParameters) {
                                 strcpy(record->UUID, username);
                                 //record->status = 0; // 0,操作成功 1,操作失败.
                                 record->time_stamp = ws_systime; //时间戳 从1970年开始的秒数
-                                record->power = 100 * 256 + 0;
+//                                record->power = 100 * 256 + 0;
+                                record->data[0]=0xFF;
+                                record->data[1]=0xFF;
                                 //sprintf(power_msg, "{\\\"batteryA\\\":%d\\,\\\"batteryB\\\":%d}", record->power, record->power2);
                                 //LOGD("power_msg is %s \r\n", power_msg);
 
                                 //record->upload = 0; //   0代表没上传 1代表记录上传图片未上传 2代表均已
-                                record->action_upload = 0x300;
+//                                record->action_upload = 0x300;
+                                record->action = FACE_UNLOCK;//  操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁
+                                record->upload = BOTH_UNUPLOAD; //   0代表没上传 1代表记录上传图片未上传 2代表均已
+
                                 memset(image_path, 0, sizeof(image_path)); // 对注册成功的用户保存一张压缩过的jpeg图片
                                 //snprintf(image_path, sizeof(image_path), "REC_%d_%d_%s.jpg", 0, record->time_stamp, record->UUID);
 
