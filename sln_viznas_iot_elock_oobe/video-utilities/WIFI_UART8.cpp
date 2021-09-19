@@ -1640,6 +1640,8 @@ int uploadRecords() {
 	}
 
 	int fret = 0;
+	int continous_fail_count = 0;
+	int MAX_CONTINOUS_FAIL_COUNT = 5;
 	list<Record*> records = DBManager::getInstance()->getAllUnuploadRecord();
     LOGD("第一步，先上传未上传的注册历史记录以及图片 %d \r\n", records.size() );
 	// 第一步，只上传未上传的注册记录以及图片，涉及到可能存在的重复上传问题: 注册优先
@@ -1665,9 +1667,14 @@ int uploadRecords() {
 		            if (fret == 0) {
 		                fret = ret;
 		            }
+                    continous_fail_count++;
+		            if (continous_fail_count >= MAX_CONTINOUS_FAIL_COUNT) {
+		                return -1;
+		            }
 		            //break;
 		        } else {
 		            LOGD("register: upload record and image id %d success\r\n", record->ID);
+                    continous_fail_count = 0;
 		        }
 		    }
 		}
@@ -1706,9 +1713,14 @@ int uploadRecords() {
 		            if (fret == 0) {
 		                fret = ret;
 		            }
+                    continous_fail_count++;
+                    if (continous_fail_count >= MAX_CONTINOUS_FAIL_COUNT) {
+                        return -1;
+                    }
 		            //break;
 		        } else {
 		            LOGD("register/opendoor: upload records id %d success\r\n", record->ID);
+                    continous_fail_count = 0;
 		        }
 		    }
 		}
@@ -1738,9 +1750,14 @@ int uploadRecords() {
 		            if (fret == 0) {
 		                fret = ret;
 		            }
+                    continous_fail_count++;
+                    if (continous_fail_count >= MAX_CONTINOUS_FAIL_COUNT) {
+                        return -1;
+                    }
 		            //break;
 		        } else {
 		            LOGD("opendoor: upload record and image id %d success\r\n", record->ID);
+                    continous_fail_count = 0;
 		        }
 		    }
 		}
