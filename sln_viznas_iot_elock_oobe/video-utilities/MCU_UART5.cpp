@@ -38,6 +38,7 @@
 
 #include "../mqtt/config.h"
 #include "../mqtt/mqtt-mcu.h"
+#include "../mqtt/base64.h"
 #include "WIFI_UART8.h"
 #include "database.h"
 #include "DBManager.h"
@@ -278,9 +279,10 @@ int SendMsgToSelf(unsigned char *MsgBuf, unsigned char MsgLen) {
 }
 
 int SendMsgToMCU(unsigned char *MsgBuf, unsigned char MsgLen) {
-    if (g_is_shutdown) {
-        return 0;
-    }
+    // 由于下电指令在存文件之后，而g_is_shutdown在存文件之前已经置为true，当前写文件不影响串口，所以注释掉下面几行
+//    if (g_is_shutdown) {
+//        return 0;
+//    }
     int ret = kStatus_Success;
 
     char message_buffer[64];
@@ -748,16 +750,18 @@ int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
         Record *record = (Record *) pvPortMalloc(sizeof(Record));
         HexToStr(username, g_uu_id.UID, sizeof(g_uu_id.UID));
         strcpy(record->UUID, username);
-        //record->action = 3;//  操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁
+        record->action = FACE_UNLOCK;//  操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁
         char image_path[16];
         //record->status = 0; // 0,操作成功 1,操作失败.
         record->time_stamp = ws_systime; //时间戳 从1970年开始的秒数
-        record->power = power * 256 + power2;
+//        record->power = power * 256 + power2;
+        record->data[0]=power;
+        record->data[1]=power2;
         //sprintf(power_msg, "{\\\"batteryA\\\":%d\\,\\\"batteryB\\\":%d}", record->power, record->power2);
         //LOGD("power_msg is %s \r\n", power_msg);
 
-        //record->upload = 0; //   0代表没上传 1代表记录上传图片未上传 2代表均已
-        record->action_upload = 0x300;
+        record->upload = BOTH_UNUPLOAD; //   0代表没上传 1代表记录上传图片未上传 2代表均已
+//        record->action_upload = 0x300;
         memset(image_path, 0, sizeof(image_path)); // 对注册成功的用户保存一张压缩过的jpeg图片
         //snprintf(image_path, sizeof(image_path), "REC_%d_%d_%s.jpg", 0, record->time_stamp, record->UUID);
 #if    SUPPORT_PRESSURE_TEST != 0
@@ -783,6 +787,71 @@ int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
     return 0;
 }
 
+// 主控接收指令:测温响应
+int cmdTemperRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
+    LOGD("x7 收到mcu 的测温响应 \r\n");
+    uint16_t ret = -1;
+//    unsigned char *pop = NULL;
+    char szBuffer[128]={0};
+
+    // MCU到face_loop，0代表开锁成功，1代表开锁失败
+    memcpy(szBuffer, pszMessage, nMessageLen);
+    LOGD("收到的测温数据  \r\n");
+    for(int i=0; i<nMessageLen; i++){
+        LOGD( "%d  0x%02x \r\n", i, szBuffer[i]);
+    }
+    //    pop = pszMessage;
+
+    // MCU到face_loop，0代表开锁成功，1代表开锁失败
+//    ret = StrGetUInt16(pszMessage);
+    // 如果开锁成功 更新数据库状态 ,请求mqtt上传本次操作记录。
+    if (nMessageLen != 0) {
+        //					xshx add
+//        char power_msg[32] = {0};
+//        pop += 1;
+//        uint8_t power = StrGetUInt8(pop);
+//        pop += 1;
+//        uint8_t  power2 = StrGetUInt8(pop);
+
+        Record *record = (Record *) pvPortMalloc(sizeof(Record));
+        memset( record, 0, sizeof(Record));
+        HexToStr(username, g_uu_id.UID, sizeof(g_uu_id.UID));
+        strcpy(record->UUID, username);
+        record->action = FACE_TEMPER;//  操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁 10 测温
+        char image_path[16];
+        //record->status = 0; // 0,操作成功 1,操作失败.
+        record->time_stamp = ws_systime; //时间戳 从1970年开始的秒数
+
+//        record->power = power * 256 + power2;
+        //sprintf(power_msg, "{\\\"batteryA\\\":%d\\,\\\"batteryB\\\":%d}", record->power, record->power2);
+        //LOGD("power_msg is %s \r\n", power_msg);
+
+        record->upload = BOTH_UNUPLOAD; //   0代表没上传 1代表记录上传图片未上传 2代表均已
+//        record->action_upload = 0x1000;
+        memset(image_path, 0, sizeof(image_path)); // 对注册成功的用户保存一张压缩过的jpeg图片
+        //snprintf(image_path, sizeof(image_path), "REC_%d_%d_%s.jpg", 0, record->time_stamp, record->UUID);
+        snprintf(image_path, sizeof(image_path), "C%d", record->time_stamp);
+        memcpy(record->image_path, image_path, sizeof(image_path));//image_path
+
+//        蓝牙测温
+        char* ret = base64_encode( szBuffer, record->data, nMessageLen );
+        LOGD(" record->data %s \r\n",  record->data);
+        DBManager::getInstance()->addRecord(record);
+
+        Oasis_SetOasisFileName(record->image_path);
+        Oasis_WriteJpeg();
+
+//        WriteTemper(record->image_path, (char *)szBuffer, sizeof(szBuffer) );//写温度文件
+
+        int ID = DBManager::getInstance()->getLastRecordID();
+        LOGD("测温成功, 更新数据库状态.请求MQTT上传本次测温的记录 \r\n");
+        cmdRequestMqttUpload(ID);
+    } else {
+        LOGD("测温失败,不更新数据库状态. 不上传记录 \r\n");
+    }
+
+    return 0;
+}
 int cmdPowerDownRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
     LOGD("收到MCU发来的下电回复 \r\n");
     for (int i = 0; i < nMessageLen; i++) {
@@ -816,16 +885,18 @@ int cmdMechicalLockRsp(unsigned char nMessageLen, const unsigned char *pszMessag
         Record *record = (Record *) pvPortMalloc(sizeof(Record));
         HexToStr(username, g_uu_id.UID, sizeof(g_uu_id.UID));
         strcpy(record->UUID, username);
-        //record->action = 3;//  操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁
+        record->action = MECH_UNLOCK;//  操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁  机械开锁
         char image_path[16];
         //record->status = 0; // 0,操作成功 1,操作失败.
         record->time_stamp = ws_systime; //时间戳 从1970年开始的秒数
-        record->power = power * 256 + power2;
+//        record->power = power * 256 + power2;
+        record->data[0]=power;
+        record->data[1]=power2;
         //sprintf(power_msg, "{\\\"batteryA\\\":%d\\,\\\"batteryB\\\":%d}", record->power, record->power2);
         //LOGD("power_msg is %s \r\n", power_msg);
 
-        //record->upload = 0; //   0代表没上传 1代表记录上传图片未上传 2代表均已
-        record->action_upload = 0xB00;
+        record->upload = BOTH_UNUPLOAD; //   0代表没上传 1代表记录上传图片未上传 2代表均已
+//        record->action_upload = 0xB00;
         memset(image_path, 0, sizeof(image_path)); // 对注册成功的用户保存一张压缩过的jpeg图片
         //snprintf(image_path, sizeof(image_path), "REC_%d_%d_%s.jpg", 0, record->time_stamp, record->UUID);
         //snprintf(image_path, sizeof(image_path), "C%d", record->time_stamp);
@@ -924,14 +995,18 @@ int cmdCloseFaceBoardReqExt(bool save_file) {
     unsigned short cal_crc16 = CRC16_X25((uint8_t *) szBuffer, MsgLen + sizeof(MESSAGE_HEAD));
     memcpy((uint8_t *) pop, &cal_crc16, sizeof(cal_crc16));
 
-    SendMsgToMCU((uint8_t *) szBuffer, iBufferSize + CRC16_LEN);
+    
     g_is_shutdown = true;
     vTaskDelay(pdMS_TO_TICKS(100));
     if (save_file) {
         save_files_before_pwd();
     } else {
-    	LOGD("No need to save file before shutdown the device\r\n");
+        LOGD("No need to save file before shutdown the device\r\n");
     }
+
+
+    SendMsgToMCU((uint8_t *) szBuffer, iBufferSize + CRC16_LEN);
+
 
     return 0;
 }
@@ -1182,7 +1257,7 @@ int cmdDeleteUserReqProcByHead(unsigned char nHead, unsigned char nMessageLen, c
         }
         //DB_Save(0);
     }
-
+    DBManager::getInstance()->flushRecordList();//写回 记录文件
     LOGD("delete uuid : <0x%08x>, <0x%08x> result %d nHead 0x%2x.\r\n", uu_id.tUID.H, uu_id.tUID.L, ret, nHead);
     if (nHead == HEAD_MARK_MQTT) {
         cmdCommRsp2MqttByHead(HEAD_MARK_MQTT, CMD_FACE_DELETE_USER, ret);
@@ -1453,6 +1528,10 @@ int ProcMessageByHead(
 #endif
             break;
         }
+        case CMD_TEMPER_DATA:{//测温请求回复
+            cmdTemperRsp( nMessageLen, pszMessage );
+            break;
+        }
         case CMD_CLOSE_FACEBOARD: {
             cmdPowerDownRsp(nMessageLen, pszMessage);
             break;
@@ -1626,7 +1705,7 @@ static void uart5_QMsg_task(void *pvParameters) {
                         Record *record = (Record *) pvPortMalloc(sizeof(Record));
                         memset(record, 0, sizeof(Record));
                         strcpy(record->UUID, username);
-                        //record->action = 0;// 0 代表注册
+                        record->action = REGISTE;// 0 代表注册
                         record->time_stamp = ws_systime;//当前时间
                         memset(image_path, 0, sizeof(image_path)); // 对注册成功的用户保存一张压缩过的jpeg图片
                         //snprintf(image_path, sizeof(image_path), "REG_%d_%d_%s.jpg", g_reging_flg, record->time_stamp,
@@ -1634,11 +1713,13 @@ static void uart5_QMsg_task(void *pvParameters) {
                         snprintf(image_path, sizeof(image_path), "%x.jpg", record->time_stamp);
                         memcpy(record->image_path, image_path, sizeof(image_path));//image_path
                         //record->status = SUCCESS;// 本次注册成功
-                        record->power = 0xFFFF;
+//                        record->power = 0xFFFF;
+                        record->data[0]=0xFF;
+                        record->data[1]=0xFF;
                         //record->power1 = -1;//当前电池电量
                         //record->power2 = -1;//当前电池电量
-                        //record->upload = 0;// 0代表没上传 1代表记录上传图片未上传 2代表均已
-                        record->action_upload = 0;    //代表注册且未上传
+                        record->upload = BOTH_UNUPLOAD;// 0代表没上传 1代表记录上传图片未上传 2代表均已
+//                        record->action_upload = 0;	//代表注册且未上传
                         LOGD("往数据库中插入本次注册记录 \n");
                         DBManager::getInstance()->addRecord(record);
 

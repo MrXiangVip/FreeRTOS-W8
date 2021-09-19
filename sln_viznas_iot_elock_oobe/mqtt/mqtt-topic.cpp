@@ -15,7 +15,7 @@ char *generate_topic(char *cmd) {
 	memset(topic, '\0', MQTT_AT_TOPIC_LEN);
 	sprintf(topic, cmd, mqttConfig.username);
     //sprintf(topic, cmd, "CECADED19DB9");
-	//LOGD("generate topic is %s\n", topic);
+	LOGD("generate topic is %s\n", topic);
 	return topic;
 }
 
@@ -86,7 +86,10 @@ char *get_pub_topic_cmd_res() {
 char *get_pub_topic_record_request() {
 	return generate_topic("WAVE/DEVICE/%s/W7/RECORD/REQUEST");
 }
-
+// 数据上报
+char *get_pub_topic_data_report(){
+    return generate_topic("WAVE/DEVICE/%s/DATA/REPORT");
+}
 #ifdef HOST5
 int main() {
 	char *topic = get_sub_topic_cmd();

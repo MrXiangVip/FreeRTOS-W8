@@ -37,6 +37,8 @@ char *get_pub_topic_last_will();
 char *get_pub_topic_cmd_res();
 // 开门记录上报
 char *get_pub_topic_record_request();
+// 数据上报
+char *get_pub_topic_data_report();
 
 #ifdef __cplusplus
 }

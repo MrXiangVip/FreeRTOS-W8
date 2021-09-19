@@ -90,19 +90,21 @@ bool DBManager::saveRecordToFile(list<Record*> recordList,char *filePath){
     for ( it = recordList.begin( ); it != recordList.end( ); it++ ){
         Record  *tmpRecord = (Record*)*it;
         //保存未上传的记录
-        if( (tmpRecord->action_upload & 0xFF) != 2 ){
+//        if( (tmpRecord->action_upload & 0xFF) != 2 ){
+        if( tmpRecord->upload != BOTH_UPLOAD ){
             cJSON * cObj = cJSON_CreateObject();
             cJSON_AddNumberToObject(cObj, DB_KEY_ID, tmpRecord->ID);
             cJSON_AddStringToObject(cObj, DB_KEY_UUID, tmpRecord->UUID);
-            //cJSON_AddNumberToObject(cObj, DB_KEY_ACTION, tmpRecord->action);
+            cJSON_AddNumberToObject(cObj, DB_KEY_ACTION, tmpRecord->action);
             cJSON_AddNumberToObject(cObj, DB_KEY_TIME_STAMP, tmpRecord->time_stamp);
             //cJSON_AddNumberToObject(cObj, DB_KEY_STATUS, tmpRecord->status);
             cJSON_AddStringToObject(cObj, DB_KEY_IMAGE_PATH, tmpRecord->image_path);
-            cJSON_AddNumberToObject(cObj, DB_KEY_POWER,  tmpRecord->power);
+//            cJSON_AddNumberToObject(cObj, DB_KEY_POWER,  tmpRecord->power);
+            cJSON_AddStringToObject(cObj, DB_KEY_DATA, tmpRecord->data);// 蓝牙测温
             //cJSON_AddNumberToObject(cObj, DB_KEY_POWER1,  tmpRecord->power);
             //cJSON_AddNumberToObject(cObj, DB_KEY_POWER2, tmpRecord->power2);
-            //cJSON_AddNumberToObject(cObj, DB_KEY_UPLOAD, tmpRecord->upload);
-            cJSON_AddNumberToObject(cObj, DB_KEY_ACTION_UPLOAD, tmpRecord->action_upload);
+            cJSON_AddNumberToObject(cObj, DB_KEY_UPLOAD, tmpRecord->upload);
+//            cJSON_AddNumberToObject(cObj, DB_KEY_ACTION_UPLOAD, tmpRecord->action_upload);
             //4.2 把对象添加到数组
             cJSON_AddItemToArray(ObjArr, cObj);
         }
@@ -167,15 +169,16 @@ list<Record*> DBManager::readRecordFromFile(char *filePath){
 					Record *record = (Record *) pvPortMalloc(sizeof(Record));
 					record->ID = i;
 					strcpy(record->UUID, cJSON_GetObjectItem(SubObj, DB_KEY_UUID)->valuestring);
-					//record->action = cJSON_GetObjectItem(SubObj, DB_KEY_ACTION)->valueint;
+					record->action = cJSON_GetObjectItem(SubObj, DB_KEY_ACTION)->valueint;
 					record->time_stamp = cJSON_GetObjectItem(SubObj, DB_KEY_TIME_STAMP)->valuedouble;
 					//record->status = cJSON_GetObjectItem(SubObj, DB_KEY_STATUS)->valueint;
 					strcpy(record->image_path , cJSON_GetObjectItem(SubObj, DB_KEY_IMAGE_PATH)->valuestring);
-					record->power = cJSON_GetObjectItem(SubObj, DB_KEY_POWER)->valueint;
+//					record->power = cJSON_GetObjectItem(SubObj, DB_KEY_POWER)->valueint;
+					strcpy(record->data,  cJSON_GetObjectItem(SubObj, DB_KEY_DATA)->valuestring);//蓝牙测温
 					//record->power1 = cJSON_GetObjectItem(SubObj, DB_KEY_POWER1)->valueint;
 					//record->power2 = cJSON_GetObjectItem(SubObj, DB_KEY_POWER2)->valueint;
-					//record->upload = cJSON_GetObjectItem(SubObj, DB_KEY_UPLOAD)->valueint;
-					record->action_upload = cJSON_GetObjectItem(SubObj, DB_KEY_ACTION_UPLOAD)->valueint;
+					record->upload = cJSON_GetObjectItem(SubObj, DB_KEY_UPLOAD)->valueint;
+//					record->action_upload = cJSON_GetObjectItem(SubObj, DB_KEY_ACTION_UPLOAD)->valueint;
 					
 				    Record_Lock();
 					recordList.push_back(record);
@@ -267,7 +270,8 @@ list<Record*>  DBManager::getAllUnuploadRecord()
     list <Record*>::iterator it;
     for ( it = recordList.begin( ); it != recordList.end( ); ) {
         Record *tmpRecord = (Record *) *it;
-        if( (tmpRecord->action_upload & 0xFF) == 2 ){
+//        if( (tmpRecord->action_upload & 0xFF) == 2 ){
+          if( tmpRecord->upload  == BOTH_UPLOAD ){
         	vPortFree(*it);
             it = recordList.erase(it);
         }else{
@@ -360,13 +364,20 @@ int DBManager::clearRecord()
 
     int ret = 0;
     list <Record*>::iterator it;
+    LOGD("clear records before vPortFree\r\n");
 
     for ( it = recordList.begin( ); it != recordList.end( );it++ ) {
     	vPortFree(*it);
     }
+    LOGD("clear records after vPortFree\r\n");
+
     recordList.clear();
     Record_UnLock();
+    LOGD("clear records before fatfs_delete\r\n");
+
     ret = fatfs_delete(RECORD_PATH);
+    LOGD("clear records after fatfs_delete %d\r\n", ret);
+
     return  ret;
 }
 bool DBManager::deleteRecordByUUID(char *UUID )
