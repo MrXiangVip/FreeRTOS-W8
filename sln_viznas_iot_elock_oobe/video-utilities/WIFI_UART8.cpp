@@ -1831,7 +1831,7 @@ static void msghandle_task(void *pvParameters)
 
     memset(wifi_rssi, '\0', sizeof(wifi_rssi));
     wifi_rssi[0] = '0';
-    int TIMEOUT_COUNT = 30;
+    int TIMEOUT_COUNT = 20;
 	//mqtt_init_done = 1;
     do {
         vTaskDelay(pdMS_TO_TICKS(1000));
@@ -1888,7 +1888,7 @@ static void msghandle_task(void *pvParameters)
                 vTaskDelay(pdMS_TO_TICKS(20));
 			}
         } else if (g_is_online == 0) {
-            // 30秒，如果还没有连接上后台，可以下电
+            // 20秒，如果还没有连接上后台，可以下电
 			if (count >= TIMEOUT_COUNT) {
 				// TODO: 后续可以使用下电指令来代替
 				// notifyShutdown();
