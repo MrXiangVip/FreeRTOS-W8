@@ -830,8 +830,7 @@ int cmdTemperRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
         record->upload = BOTH_UNUPLOAD; //   0代表没上传 1代表记录上传图片未上传 2代表均已
 //        record->action_upload = 0x1000;
         memset(image_path, 0, sizeof(image_path)); // 对注册成功的用户保存一张压缩过的jpeg图片
-        //snprintf(image_path, sizeof(image_path), "REC_%d_%d_%s.jpg", 0, record->time_stamp, record->UUID);
-        snprintf(image_path, sizeof(image_path), "C%d", record->time_stamp);
+        snprintf(image_path, sizeof(image_path), "%x.jpg", record->time_stamp);
         memcpy(record->image_path, image_path, sizeof(image_path));//image_path
 
 //        蓝牙测温

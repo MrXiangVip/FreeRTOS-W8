@@ -119,10 +119,14 @@ bool DBManager::saveRecordToFile(list<Record*> recordList,char *filePath){
 #ifdef  FIX_SIZE
 		//LOGD("%s sizeof(Record) is %d, strlen(cjson_str) is %d\r\n", __FUNCTION__, sizeof(Record), strlen(cjson_str));
 		//LOGD("%s cjson_str is %s \r\n", __FUNCTION__, cjson_str);
+        LOGD("%d , max size %d \r\n", strlen(cjson_str), MAX_BYTE);
+        assert( (strlen(cjson_str) < MAX_BYTE) );
 		memset(buf, 0, sizeof(buf));
 		memcpy(buf, cjson_str, strlen(cjson_str));
 		fatfs_write( filePath, buf, 0, MAX_BYTE);
 #else
+		LOGD("%d , max size %d \r\n", strlen(cjson_str), MAX_BYTE);
+        assert( (strlen(cjson_str) < MAX_BYTE) );
 		fatfs_write( filePath, cjson_str, 0, strlen(cjson_str));
 #endif
 		vPortFree(cjson_str);

@@ -45,7 +45,7 @@
 //记录最大column
 #define MAX_COLUMN 200    //200
 //记录最大字节数
-#define MAX_BYTE (MAX_COLUMN*100)
+#define MAX_BYTE (MAX_COLUMN*200)
 
 #define FIX_SIZE   1
 
@@ -74,7 +74,7 @@ typedef struct {
     char image_path[16];    //64
     //int     status;   // 0,操作成功 1,操作失败.(暂时不要,每次都是上传0)
     long time_stamp; //时间戳 从1970年开始的秒数
-    char     data[128];  //data , 用作蓝牙锁时, 存储锁电量.  用作蓝牙测温时,存储蓝牙测温信息.
+    char     data[32];  //data , 用作蓝牙锁时, 存储锁电量.  用作蓝牙测温时,存储蓝牙测温信息.
     int     upload; //   enum UPLOAD
     // short power;    // 电池电量 高8位为power1, 低8位为power2
     //int     power1;    // 电池电量
