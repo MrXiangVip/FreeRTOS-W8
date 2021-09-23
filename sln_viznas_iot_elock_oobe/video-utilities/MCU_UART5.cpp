@@ -1640,6 +1640,7 @@ int cmdRequestMqttUpload(int id) {
     int count = 0;
     while (1) {
         // 发送指令给 wifi 相关的mqtt 模块
+
         //usleep(100000);//0.1秒
         vTaskDelay(pdMS_TO_TICKS(300));
         if (count++ > 50) {//如果超过15秒 还没有连接上则退出

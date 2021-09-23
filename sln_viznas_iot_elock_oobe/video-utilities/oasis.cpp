@@ -148,10 +148,16 @@ void Oasis_SetOasisFileName(const char *filename)
 
 void Oasis_WriteJpeg()
 {
-    if(((oasis_flag == 1) || (oasis_flag == 2)) && (bOasisRecordUpload == false)) {
-        int ret = fatfs_write(oasis_filename, (char *) s_tmpBuffer4Jpeg, 0, s_dataSizeInJpeg);
+    if(((oasis_flag == 1) || (oasis_flag == 2)) && (bOasisRecordUpload == false) ) {
+        if(  strlen(oasis_filename ) != 0 ){
+            int ret = fatfs_write(oasis_filename, (char *) s_tmpBuffer4Jpeg, 0, s_dataSizeInJpeg);
+            LOGD("[OASIS]:%s saved ret:%d\r\n", oasis_filename, ret);
+            memset( oasis_filename, 0, sizeof(oasis_filename));
+        } else{
+            LOGD("[OASIS]:%s not need saved \r\n", oasis_filename);
+
+        }
         //UsbShell_Printf("[OASIS]:%s saved ret:%d\r\n", oasis_filename, ret);
-        LOGD("[OASIS]:%s saved ret:%d\r\n", oasis_filename, ret);
     }
 }
 
