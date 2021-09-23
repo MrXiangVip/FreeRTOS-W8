@@ -781,8 +781,9 @@ int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
         cmdRequestMqttUpload(ID);
     } else {
 //    	g_command_executed = 1;
+        LOGD("开锁失败,不更新数据库状态. 不上传记录,请求下电\r\n");
         cmdCloseFaceBoardReq();
-        LOGD("开锁失败,不更新数据库状态. 不上传记录\r\n");
+
     }
 
     return 0;
@@ -847,7 +848,9 @@ int cmdTemperRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
         LOGD("测温成功, 更新数据库状态.请求MQTT上传本次测温的记录 \r\n");
         cmdRequestMqttUpload(ID);
     } else {
-        LOGD("测温失败,不更新数据库状态. 不上传记录 \r\n");
+        LOGD("测温失败,不更新数据库状态. 不上传记录,请求下电 \r\n");
+        cmdCloseFaceBoardReq();
+
     }
 
     return 0;

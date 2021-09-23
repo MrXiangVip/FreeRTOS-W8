@@ -14,7 +14,7 @@
 
 #include "commondef.h"
 
-#define RTFFI_USE_FATFS 1
+#define RTFFI_USE_FATFS 0
 
 #if RTFFI_USE_FATFS
 #include "fatfs_op.h"
