@@ -78,7 +78,7 @@ static int Oasis_Printf(const char *formatString);
 static int Oasis_Exit();
 static void Oasis_Task(void *param);
 static int Oasis_SetModelClass(OASISLTModelClass_t *model_class);
-static int Oasis_SetImgType(OASISLTImageType_t *imgType);
+static int Oasis_SetImgType(OASISLTImageType_t *img_type);
 
 /*******************************************************************************
  * Variables
@@ -801,8 +801,8 @@ static void Oasis_Task(void *param)
     BaseType_t ret;
     QMsg *rxQMsg              = NULL;
     OASISLTInitPara_t *init_p = (OASISLTInitPara_t *)param;
-    ImageFrame_t frameRGB     = {(short)init_p->height, (short)init_p->width, OASIS_IMG_FORMAT_BGR888, NULL};
-    ImageFrame_t frameIR      = {(short)init_p->height, (short)init_p->width, OASIS_IMG_FORMAT_BGR888, NULL};
+    ImageFrame_t frameRGB     = {(short)init_p->height, (short)init_p->width, 0, NULL};
+    ImageFrame_t frameIR      = {(short)init_p->height, (short)init_p->width, 0, NULL};
     ImageFrame_t *frames[]    = {&frameRGB, &frameIR, NULL};
 //    uint8_t reg_mode          = 0;
     uint8_t run_flag          = OASIS_DET_REC;
@@ -835,7 +835,7 @@ static void Oasis_Task(void *param)
                         frameIR.data         = s_FaceRecBuf.dataIR;
                         // if user request to add new user, enable reg mode, it not, use default mode (get enrolment
                         // mode)
-                        int ret = OASISLT_run_extend(frames, run_flag, init_p->minFace, &gTimeStat);
+                        int ret = OASISLT_run_extend(frames, run_flag, init_p->min_face, &gTimeStat);
                         if (ret)
                         {
                             //UsbShell_Printf("N:%d %d\r\n", ret, g_OASISLT_heap_debug);
@@ -949,19 +949,19 @@ static void Oasis_Task(void *param)
     }
 }
 
-static int Oasis_SetImgType(OASISLTImageType_t *imgType)
+static int Oasis_SetImgType(OASISLTImageType_t *img_type)
 {
     if (s_appType == APP_TYPE_USERID)
     {
-        *imgType = OASIS_IMG_TYPE_RGB_SINGLE;
+        *img_type = OASIS_IMG_TYPE_RGB_SINGLE;
     }
     else if (s_appType == APP_TYPE_ELOCK_LIGHT || s_appType == APP_TYPE_ELOCK_HEAVY)
     {
-        *imgType = OASIS_IMG_TYPE_IR_RGB_DUAL;
+        *img_type = OASIS_IMG_TYPE_IR_RGB_DUAL;
     }
     else if (s_appType == APP_TYPE_DOOR_ACCESS_LIGHT || s_appType == APP_TYPE_DOOR_ACCESS_HEAVY)
     {
-        *imgType = OASIS_IMG_TYPE_RGB_IR_DUAL;
+        *img_type = OASIS_IMG_TYPE_RGB_IR_DUAL;
     }
     else
     {
@@ -1017,12 +1017,12 @@ int Oasis_Start()
 
     memset(&s_InitPara, 0, sizeof(s_InitPara));
 
-    //s_InitPara.img_format = OASIS_IMG_FORMAT_BGR888;
+    s_InitPara.img_format = OASIS_IMG_FORMAT_BGR888;
 
-    Oasis_SetImgType(&s_InitPara.imgType);
-    Oasis_SetModelClass(&s_InitPara.modClass);
+    Oasis_SetImgType(&s_InitPara.img_type);
+    Oasis_SetModelClass(&s_InitPara.mod_class);
 
-    s_InitPara.minFace = OASIS_DETECT_MIN_FACE;
+    s_InitPara.min_face = OASIS_DETECT_MIN_FACE;
     s_InitPara.cbs.EvtCb = EvtHandler;
 	s_InitPara.cbs.GetFaces = GetRegisteredFacesHandler;
 	s_InitPara.cbs.AddFace = AddNewFaceHandler;
@@ -1034,14 +1034,13 @@ int Oasis_Start()
     }
     s_InitPara.cbs.lock = s_InitPara.cbs.unlock = NULL;
 
-    s_InitPara.enableFlags = 0;
+    s_InitPara.enable_flags = 0;
     if (s_appType != APP_TYPE_USERID)
     {
-        s_InitPara.enableFlags |= 0;//OASIS_ENABLE_MULTI_VIEW;
-        s_InitPara.enableFlags |= OASIS_ENABLE_FACE_REC_BRIGHTNESS_CHECK;
+        s_InitPara.enable_flags |= OASIS_ENABLE_MULTI_VIEW;
     }
-    s_InitPara.falseAcceptRate = OASIS_FAR_1_1000000;
-    s_InitPara.enableFlags |= (Cfg_AppDataGetLivenessMode() == LIVENESS_MODE_ON) ? OASIS_ENABLE_LIVENESS : 0;
+    s_InitPara.false_accept_rate = OASIS_FAR_1_1000000;
+    s_InitPara.enable_flags |= (Cfg_AppDataGetLivenessMode() == LIVENESS_MODE_ON) ? OASIS_ENABLE_LIVENESS : 0;
 
 
     s_InitPara.height = REC_RECT_HEIGHT;
@@ -1054,19 +1053,19 @@ int Oasis_Start()
 #if configSUPPORT_STATIC_ALLOCATION
         if (s_InitPara.size <= (int)sizeof(s_OasisMemPool))
         {
-            s_InitPara.memPool = (char *)s_OasisMemPool;
+            s_InitPara.mem_pool = (char *)s_OasisMemPool;
             s_InitPara.size = sizeof(s_OasisMemPool);
         }
         else
         {
         	//allocate from heap
-        	s_InitPara.memPool = (char *)pvPortMalloc(s_InitPara.size);
+        	s_InitPara.mem_pool = (char *)pvPortMalloc(s_InitPara.size);
         }
 #else
-        s_InitPara.memPool = (char *)pvPortMalloc(s_InitPara.size);
+        s_InitPara.mem_pool = (char *)pvPortMalloc(s_InitPara.size);
 #endif
 
-        if (s_InitPara.memPool == NULL)
+        if (s_InitPara.mem_pool == NULL)
         {
             //UsbShell_Printf("[ERROR]: Unable to allocate memory for oasis mem pool\r\n");
             LOGD("[ERROR]: Unable to allocate memory for oasis mem pool\r\n");
@@ -1136,17 +1135,17 @@ static int Oasis_Exit()
     		s_FaceRecBuf.dataIR = NULL;
     	}
     }
-    if (s_InitPara.memPool)
+    if (s_InitPara.mem_pool)
     {
 #if configSUPPORT_STATIC_ALLOCATION
 		if (s_InitPara.size > (int)sizeof(s_OasisMemPool))
 		{
-			vPortFree(s_InitPara.memPool);
+			vPortFree(s_InitPara.mem_pool);
 		}
 #else
-    	vPortFree(s_InitPara.memPool);
+    	vPortFree(s_InitPara.mem_pool);
 #endif
-    	s_InitPara.memPool = NULL;
+    	s_InitPara.mem_pool = NULL;
     }
 
     if (s_FaceRecBuf.dataRGB != NULL)
