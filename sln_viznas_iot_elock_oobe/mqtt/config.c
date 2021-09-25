@@ -12,11 +12,16 @@
 #include "fatfs_op.h"
 #include "board_rt106f_elock.h"
 
+#define CONFIG_USE_FATFS 0
+//
+#define CONFIG_FS_ADDR  (0xF20000U)
+
+
 VERSIONCONFIG versionConfig;
 BTWIFICONFIG btWifiConfig;
 MQTTCONFIG mqttConfig;
 
-static char buf[512] = {0};
+static char buf[4096] = {0};
 //char buf2[1024] = {0};
 static bool config_json_changed = false;
 
@@ -30,9 +35,13 @@ void init_config() {
 
     //fatfs_mount_with_mkfs();
 
+#if  CONFIG_USE_FATFS
     int status = fatfs_read(DEFAULT_CONFIG_FILE, buf, 0, sizeof(buf));
-    LOGD("buf length is %d, size is %d, status is %d\r\n", strlen(buf), sizeof(buf), status);
-
+    LOGD("read fatfs, buf length is %d, size is %d, status is %d\r\n", strlen(buf), sizeof(buf), status);
+#else
+    int status = SLN_Read_Flash_At_Address(CONFIG_FS_ADDR, buf, sizeof(buf));
+    LOGD( "read flash , buf length is %d, size is %d , status id %d \r\n", strlen(buf), sizeof(buf), status );
+#endif
     {
         cJSON *root = NULL;
         root = cJSON_CreateObject();
@@ -60,12 +69,30 @@ void init_config() {
             char* tmp = NULL;
 
             tmp = cJSON_Print(root);
-            if((status != 0) || ((status == 0) && (strlen(buf) < strlen(tmp)))) {
+#if CONFIG_USE_FATFS
+            cJSON *bufRoot = NULL;
+            bufRoot = cJSON_Parse(buf);
+            if( bufRoot ==NULL ){
 				memset(buf, 0, sizeof(buf));
 				memcpy(buf, tmp, strlen(tmp));
 	            LOGD("%s tmp is %s\r\n", __FUNCTION__, tmp);
+
 	            fatfs_write(DEFAULT_CONFIG_FILE, buf, 0, sizeof(buf));
             }
+
+#else
+            cJSON *bufRoot = NULL;
+            bufRoot = cJSON_Parse(buf);
+            if( bufRoot == NULL ) {
+                memset(buf, 0, sizeof(buf));
+                memcpy(buf, tmp, strlen(tmp));
+                int status = SLN_Write_Sector(CONFIG_FS_ADDR, buf);
+                if (status != 0) {
+                    LOGD("write flash failed %d \r\n", status);
+                }
+            }
+#endif
+            LOGD("buf %s \r\n", buf);
             if(tmp != NULL) {
                 vPortFree(tmp);
             }
@@ -89,7 +116,7 @@ void check_config() {
 }
 
 int update_section_key(char *section, char *key) {
-	//LOGD("%s\n", __FUNCTION__);
+	LOGD("%s section:%s key:%s \r\n", __FUNCTION__, section, key);
 	cJSON *root = NULL;
 	//LOGD("buf is %s\n", buf);
 
@@ -109,6 +136,8 @@ int update_section_key(char *section, char *key) {
 
 		cJSON_Delete(root);
         config_json_changed = true;
+	}else{
+	    LOGD("ERROR  root  is NULL \r\n");
 	}
 
 	return 0;
@@ -249,23 +278,33 @@ int read_config_value(char *dst, char *key) {
         }
 
         cJSON_Delete(root);
+    }else{
+        LOGD("Error root is NULL \r\n");
     }
     return 0;
 }
 
 int read_config() {
+    LOGD("read_config \r\n");
     memset(&versionConfig, '\0', sizeof(VERSIONCONFIG));
     memset(&btWifiConfig, '\0', sizeof(BTWIFICONFIG));
     memset(&mqttConfig, '\0', sizeof(MQTTCONFIG));
 
     memset(buf, 0, sizeof(buf));
-
+#if  CONFIG_USE_FATFS
     if(fatfs_read(DEFAULT_CONFIG_FILE, buf, 0, sizeof(buf)) != 0) {
         LOGD("%s read error\r\n", __FUNCTION__);
         return -1;
     }
+#else
+    int status = SLN_Read_Flash_At_Address(CONFIG_FS_ADDR, buf, sizeof(buf));
+    if( status != 0 ){
+        LOGD("%s read error\r\n", __FUNCTION__);
+        return -1;
+    }
+#endif
     //LOGD("buf is %s\r\n", buf);
-    LOGD("buf length is %d, size is %d\r\n", strlen(buf), sizeof(buf));
+    LOGD("buf %s  buf length is %d, size is %d\r\n",buf,  strlen(buf), sizeof(buf));
 
     LOGD("========= reading config =========\r\n");
     read_config_value(versionConfig.sys_ver, CONFIG_KEY_SYS_VERSION);
@@ -318,10 +357,23 @@ void print_project_config(void) {
 }
 
 int save_json_config_file() {
+    LOGD("保存 config 文件 %d \r\n", config_json_changed);
     if (config_json_changed) {
+#if CONFIG_USE_FATFS
         fatfs_write(DEFAULT_CONFIG_FILE, buf, 0, sizeof(buf));
+        LOGD("write fatfs %s \r\n", buf);
+
+#else
+        int status = SLN_Write_Sector(CONFIG_FS_ADDR, buf);
+        if (status != 0)
+        {
+            LOGD("write flash  %s failed %d \r\n", buf, status);
+        }
+#endif
         config_json_changed = false;
+
     }
+    LOGD("保存config 文件结束 \r\n");
     return 0;
 }
 
