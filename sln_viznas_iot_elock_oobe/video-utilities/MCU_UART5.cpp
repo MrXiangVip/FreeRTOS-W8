@@ -1843,9 +1843,9 @@ static void uart5_QMsg_task(void *pvParameters) {
 //                                vTaskDelay(pdMS_TO_TICKS(100));
                                 fatfs_delete(record->image_path);
 #endif
-                                LOGD("feature.map size:%d\r\n", fatfs_getsize("feature.map"));
-                                LOGD("config size:%d\r\n", fatfs_getsize("config.jsn"));
-                                LOGD("record size:%d\r\n", fatfs_getsize("record.jsn"));
+//                                LOGD("feature.map size:%d\r\n", fatfs_getsize("feature.map"));
+//                                LOGD("config size:%d\r\n", fatfs_getsize("config.jsn"));
+//                                LOGD("record size:%d\r\n", fatfs_getsize("record.jsn"));
 
                             }
                             pressure_test = 1;

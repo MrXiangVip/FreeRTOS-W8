@@ -412,8 +412,8 @@ void DBManager::flushRecordList(){
         bool flag=false;
         flag = saveRecordToFile( recordList, RECORD_PATH);
         if( flag ){
-            LOGD("保存文件成功 \r\n");
+            LOGD("保存记录文件成功 \r\n");
         }else{
-            LOGD("保存文件失败 \r\n");
+            LOGD("保存记录文件失败 \r\n");
         }
 }

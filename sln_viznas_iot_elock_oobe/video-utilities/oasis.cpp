@@ -40,8 +40,8 @@
 #define IR_PWM_INTERVAL 5   //10
 
 #define WHITE_PWM_MIN      0
-#define WHITE_PWM_MAX      30
-#define WHITE_PWM_INTERVAL 5
+#define WHITE_PWM_MAX      40
+#define WHITE_PWM_INTERVAL 10
 
 struct TimeStat
 {
