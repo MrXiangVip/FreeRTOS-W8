@@ -17,7 +17,7 @@
 #define VERSION_MAJOR 4
 #define VERSION_MINOR 41
 /*this version number only used for hot fix on frozen release or branch*/
-#define VERSION_HOTFIX 0
+#define VERSION_HOTFIX 1
 
 
 #define INVALID_FACE_ID (0xFFFFUL)
