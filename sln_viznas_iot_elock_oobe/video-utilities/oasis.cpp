@@ -450,10 +450,26 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
 
             //save face into jpeg
             //void util_crop(unsigned char* src, int srcw, int srch, unsigned char* dst, int dstw, int dsth, int top, int left, int elemsize);
-            if ((para->faceBoxRGB != NULL) && (recResult == OASIS_REC_RESULT_KNOWN_FACE))
+//            if ((para->faceBoxRGB != NULL) && (recResult == OASIS_REC_RESULT_KNOWN_FACE))
+            if (  recResult == OASIS_REC_RESULT_KNOWN_FACE )
             {
-            	int w = para->faceBoxRGB->rect[2] - para->faceBoxRGB->rect[0] + 1;
-            	int h = para->faceBoxRGB->rect[3] - para->faceBoxRGB->rect[1] + 1;
+//            	int w = para->faceBoxRGB->rect[2] - para->faceBoxRGB->rect[0] + 1;
+//            	int h = para->faceBoxRGB->rect[3] - para->faceBoxRGB->rect[1] + 1;
+                int w,h,top,left;
+                if (para->faceBoxRGB != NULL)
+                {
+                    w = para->faceBoxRGB->rect[2] - para->faceBoxRGB->rect[0] + 1;
+                    h = para->faceBoxRGB->rect[3] - para->faceBoxRGB->rect[1] + 1;
+                    top = para->faceBoxRGB->rect[1];
+                    left = para->faceBoxRGB->rect[0];
+                }else
+                {
+                    w = para->faceBoxIR->rect[2] - para->faceBoxIR->rect[0] + 1;
+                    h = para->faceBoxIR->rect[3] - para->faceBoxIR->rect[1] + 1;
+                    top = para->faceBoxIR->rect[1];
+                    left = para->faceBoxIR->rect[0];
+
+                }
             	uint8_t* croped = (uint8_t*)pvPortMalloc(w*h*3);
             	assert(croped != NULL);
             	util_crop(frames[OASISLT_INT_FRAME_IDX_RGB]->data,
@@ -462,8 +478,8 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
 						croped,
 						w,
 						h,
-						para->faceBoxRGB->rect[1],
-						para->faceBoxRGB->rect[0],
+						top,//para->faceBoxRGB->rect[1],
+						left,//para->faceBoxRGB->rect[0],
 						3);
 
 
