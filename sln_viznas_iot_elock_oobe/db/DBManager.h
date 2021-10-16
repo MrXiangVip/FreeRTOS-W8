@@ -54,8 +54,8 @@ typedef enum {
     UNLOCK,			        /* (1) 一键开锁*/
     KEY_UNLOCK,				/* (2)  钥匙开锁 */
     FACE_UNLOCK,			/* (3) 人脸识别蓝牙开锁 */
-    MECH_UNLOCK,            /* (4) 机械开锁 */
-    FACE_TEMPER				/* (5) 先识别再测温 */
+    FACE_TEMPER=5,				/* (5) 先识别再测温 */
+    MECH_UNLOCK=11,            /* (11) 机械开锁 */
 } ACTION;
 
 typedef enum {

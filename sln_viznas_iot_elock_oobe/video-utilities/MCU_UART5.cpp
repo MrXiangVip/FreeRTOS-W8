@@ -911,7 +911,7 @@ int cmdMechicalLockRsp(unsigned char nMessageLen, const unsigned char *pszMessag
         //Oasis_WriteJpeg();
 
         int ID = DBManager::getInstance()->getLastRecordID();
-        LOGD("开锁成功, 更新数据库状态.请求MQTT上传本次开门的记录 \r\n");
+        LOGD("机械开锁成功, 更新数据库状态.请求MQTT上传本次开门的记录 \r\n");
         cmdRequestMqttUpload(ID);
     } else {
 //    	g_command_executed = 1;

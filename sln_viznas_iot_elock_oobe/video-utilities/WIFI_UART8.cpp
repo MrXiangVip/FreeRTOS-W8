@@ -1454,12 +1454,12 @@ int uploadRecord(char *msgId, Record *record) {
     LOGD("action 0x%x \r\n", action);
 //	if( action_upload == 0x1000  ){// 注册
 	if( action == FACE_TEMPER  ){// 测温的记录
-        LOGD("识别测温记录 \r\n");
+        LOGD("识别测温记录 %d \r\n",record->ID);
         sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"userId\\\":\\\"%s\\\"\\, \\\"type\\\":%d\\,\\\"time\\\":%d\\,\\\"data\\\":\\\"%s\\\"}", msgId,  record->UUID, type, record->time_stamp,  data /*record->status*/);
         pub_topic = get_pub_topic_data_report();
 
     }else{//识别
-        LOGD("注册或识别记录 %d \r\n");
+        LOGD("注册或识别记录 %d \r\n", record->ID);
         uint8_t power = record->data[0];
         uint8_t power2 = record->data[1];
         int status=0;
