@@ -123,6 +123,16 @@ int update_section_key(char *section, char *key) {
 
 	root = cJSON_Parse(buf);
 	if(root != NULL) {
+        cJSON *item = cJSON_GetObjectItem(root, section);
+        if(item != NULL) {
+            char *item_string;
+            item_string = cJSON_GetStringValue(item);
+            if( strcmp( item_string, key)==0 ){
+                cJSON_Delete(root);
+                return 0;
+            }
+        }
+
 		cJSON_ReplaceItemInObject(root, section, cJSON_CreateString((const char *)key));
         char *tmp = NULL;
         tmp = cJSON_Print(root);
@@ -372,6 +382,8 @@ int save_json_config_file() {
 #endif
         config_json_changed = false;
 
+    }else{
+        LOGD("config 文件没有更新  \r\n");
     }
     LOGD("保存config 文件结束 \r\n");
     return 0;
