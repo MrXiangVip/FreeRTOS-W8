@@ -17,7 +17,7 @@
 
 #include "fsl_disp_spi.h"
 
-#define ALLEN_TECH 0
+#define ALLEN_TECH 1
 
 /*
 CS GPIO3_IO27
