@@ -17,7 +17,7 @@
 
 #include "fsl_disp_spi.h"
 
-#define ALLEN_TECH 1
+#define ALLEN_TECH 0
 
 /*
 CS GPIO3_IO27
@@ -165,7 +165,7 @@ static void ST77889V2_Init(ST77889V2_send_byte_t _writeData, ST77889V2_send_byte
     _delay_ms(120);                
 
     _writeCommand(0x36);     
-    _writeData(0x00);   
+    _writeData(0x00);
 
     _writeCommand(0x3A);     
     _writeData(0x55);  
@@ -181,7 +181,7 @@ static void ST77889V2_Init(ST77889V2_send_byte_t _writeData, ST77889V2_send_byte
     _writeData(0x71);   
 
     _writeCommand(0xBB);     
-    _writeData(0x3b); //0X3B
+    _writeData(0x40); //0X3e
 
     _writeCommand(0xC0);     
     _writeData(0x2C);   
@@ -264,7 +264,7 @@ static void ST77889V3_Init(ST77889V2_send_byte_t _writeData, ST77889V2_send_byte
     uint16_t k,j;
     _writeCommand(0x11);
 
-    _delay_ms(150);
+    _delay_ms(120);
 
     _writeCommand(0x36);
     _writeData(0x00);
@@ -347,7 +347,7 @@ static void ST77889V3_Init(ST77889V2_send_byte_t _writeData, ST77889V2_send_byte
     _writeData(0x14);
 
     _writeCommand(0x29);
-    _delay_ms(150);
+    //_delay_ms(150);
 
     _writeCommand(0x2a);
     _writeData(0x00);
@@ -378,19 +378,19 @@ static void ST77889V3_Init(ST77889V2_send_byte_t _writeData, ST77889V2_send_byte
 int PJDisp_Init(void)
 {
 	uint8_t lcd_module_fac = ALLEN_TECH;
-    ST77889V2_Delay_Ms(10);
     RST_HI;
-    ST77889V2_Delay_Ms(50);
+    ST77889V2_Delay_Ms(20);
     RST_LO;
-    ST77889V2_Delay_Ms(120);
+    ST77889V2_Delay_Ms(150);
     RST_HI;
     ST77889V2_Delay_Ms(120);
     Disp_Spi_Init(10000000U);
 
-    if(lcd_module_fac == ALLEN_TECH)
+    if(lcd_module_fac == ALLEN_TECH){
     	ST77889V3_Init(ST77889V2_Write_Dat, ST77889V2_Write_Cmd, ST77889V2_Delay_Ms);
-    else
-    	ST77889V2_Init(ST77889V2_Write_Dat, ST77889V2_Write_Cmd, ST77889V2_Delay_Ms);
+    }else{
+        ST77889V2_Init(ST77889V2_Write_Dat, ST77889V2_Write_Cmd, ST77889V2_Delay_Ms);
+    }
     return 1;
 }
 
