@@ -260,9 +260,11 @@ static void ST77889V2_Init(ST77889V2_send_byte_t _writeData, ST77889V2_send_byte
 
 static void ST77889V3_Init(ST77889V2_send_byte_t _writeData, ST77889V2_send_byte_t _writeCommand, ST77889V2_delay_ms_t _delay_ms)
 {
+
+    uint16_t k,j;
     _writeCommand(0x11);
 
-    _delay_ms(120);
+    _delay_ms(150);
 
     _writeCommand(0x36);
     _writeData(0x00);
@@ -345,21 +347,44 @@ static void ST77889V3_Init(ST77889V2_send_byte_t _writeData, ST77889V2_send_byte
     _writeData(0x14);
 
     _writeCommand(0x29);
+    _delay_ms(150);
+
+    _writeCommand(0x2a);
+    _writeData(0x00);
+    _writeData(0x00);
+    _writeData(0x00);
+    _writeData(0xef);
+
+    _writeCommand(0x2b);
+    _writeData(0x00);
+    _writeData(0x00);
+    _writeData(0x01);
+    _writeData(0x3f);
+
     _writeCommand(0x2C);
-    _delay_ms(120);
+
+    for (k= 0;k<240; k++)
+    {
+        for (j= 0;j<320; j++)
+        {
+            _writeData(0x00);
+            _writeData(0x00);
+        }
+
+    }
 
 }
 
 int PJDisp_Init(void)
 {
 	uint8_t lcd_module_fac = ALLEN_TECH;
-    RST_HI;
-    ST77889V2_Delay_Ms(1);
-    RST_LO;
     ST77889V2_Delay_Ms(10);
     RST_HI;
+    ST77889V2_Delay_Ms(50);
+    RST_LO;
     ST77889V2_Delay_Ms(120);
-
+    RST_HI;
+    ST77889V2_Delay_Ms(120);
     Disp_Spi_Init(10000000U);
 
     if(lcd_module_fac == ALLEN_TECH)
@@ -383,6 +408,7 @@ int PJDisp_TurnOnBacklight(void)
 
 int PJDisp_TurnOffBacklight(void)
 {
+
     BL_LO;
     return 0;
 }
