@@ -17,8 +17,13 @@
 
 #include "fsl_disp_spi.h"
 
-#define ALLEN_TECH 0
-
+typedef enum _screen_model
+{
+    SCREEN_MODEL_TYPE_NONE = 0, /*!< Default  */
+    SCREEN_MODEL_ZMA_IPS,              /*!< 众铭安科技 */
+    SCREEN_MODEL_JSX_IPS,      /*!< 靖顺兴SPI */
+    SCREEN_MODEL_JSX_TN,       /*!< 靖顺兴TN  */
+} screen_model_t;
 /*
 CS GPIO3_IO27
 SCL GPIO2_IO20
@@ -41,6 +46,9 @@ RESET GPIO1_IO14
 
 typedef void (*ST77889V2_send_byte_t)(uint8_t);
 typedef void (*ST77889V2_delay_ms_t)(uint32_t);
+
+//
+static screen_model_t  screenModel = SCREEN_MODEL_ZMA_IPS;
 
 static void ST77889V2_Delay_Ms (uint32_t ms)
 {
@@ -180,8 +188,12 @@ static void ST77889V2_Init(ST77889V2_send_byte_t _writeData, ST77889V2_send_byte
     _writeCommand(0xB7);     
     _writeData(0x71);   
 
-    _writeCommand(0xBB);     
-    _writeData(0x40); //0X3e
+    _writeCommand(0xBB);
+    if( screenModel == SCREEN_MODEL_ZMA_IPS ) {
+        _writeData(0x3B);
+    }else{
+        _writeData(0x40); //0X3e
+    }
 
     _writeCommand(0xC0);     
     _writeData(0x2C);   
@@ -377,7 +389,6 @@ static void ST77889V3_Init(ST77889V2_send_byte_t _writeData, ST77889V2_send_byte
 
 int PJDisp_Init(void)
 {
-	uint8_t lcd_module_fac = ALLEN_TECH;
     RST_HI;
     ST77889V2_Delay_Ms(20);
     RST_LO;
@@ -386,7 +397,8 @@ int PJDisp_Init(void)
     ST77889V2_Delay_Ms(120);
     Disp_Spi_Init(10000000U);
 
-    if(lcd_module_fac == ALLEN_TECH){
+    if( screenModel ==  SCREEN_MODEL_JSX_TN ){
+
     	ST77889V3_Init(ST77889V2_Write_Dat, ST77889V2_Write_Cmd, ST77889V2_Delay_Ms);
     }else{
         ST77889V2_Init(ST77889V2_Write_Dat, ST77889V2_Write_Cmd, ST77889V2_Delay_Ms);
