@@ -192,7 +192,7 @@ static void ST77889V2_Init(ST77889V2_send_byte_t _writeData, ST77889V2_send_byte
     if( screenModel == SCREEN_MODEL_ZMA_IPS ) {
         _writeData(0x3B);
     }else{
-        _writeData(0x40); //0X3e
+        _writeData(0x3E); //0X3e
     }
 
     _writeCommand(0xC0);     
