@@ -42,7 +42,7 @@ extern "C" {
 #define HEAD_MARK_MQTT		0x24     /*  ‘for mqtt’*/
 #define CRC16_LEN			2  
 #define Version_LEN			5   /*版本长度固定为5, e.g 1.0.1*/
-#define SYS_VERSION		"0.0.2"
+//#define SYS_VERSION		"0.0.2"
 #define VERSION         "0.1"
 #define REG_ACTIVE_OUTTIME   6000 //6s
 
