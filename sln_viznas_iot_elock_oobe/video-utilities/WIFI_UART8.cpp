@@ -498,6 +498,7 @@ static void mqttinit_task(void *pvParameters) {
         LOGD("--------- connect to WIFI done\r\n");
     } else {
         LOGD("--------- auto connect to WIFI done\r\n");
+        notifyWifiConnected(0);
     }
     vTaskDelay(pdMS_TO_TICKS(300));
 
