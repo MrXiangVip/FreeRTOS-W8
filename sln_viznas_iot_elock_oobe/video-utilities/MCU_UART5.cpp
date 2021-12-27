@@ -921,7 +921,38 @@ int cmdMechicalLockRsp(unsigned char nMessageLen, const unsigned char *pszMessag
 
     return 0;
 }
+//MCU通知主机,MCU即将下单
+int cmdReqPoweDown(unsigned char nMessageLen, const unsigned char *pszMessage) {
+    LOGD("MCU通知主机,MCU请求下电");
 
+    char szBuffer[64] = {0};
+    int iBufferSize;
+    char *pop = NULL;
+    unsigned char MsgLen = nMessageLen;
+
+    pop = szBuffer+sizeof(MESSAGE_HEAD);
+    /*填充消息体*/
+    memcpy(pop, pszMessage, nMessageLen);
+    pop+=nMessageLen;
+    /*填充消息头*/
+    iBufferSize = MsgHead_Packet(
+            szBuffer,
+            HEAD_MARK,
+            CMD_REQ_POWER_DOWN,
+            MsgLen);
+
+    /*计算FCS*/
+    unsigned short cal_crc16 = CRC16_X25((uint8_t *) szBuffer, MsgLen + sizeof(MESSAGE_HEAD));
+    memcpy((uint8_t *) pop, &cal_crc16, sizeof(cal_crc16));
+
+    save_files_before_pwd();
+
+    vTaskDelay(pdMS_TO_TICKS(100));
+
+    SendMsgToMCU((uint8_t *) szBuffer, iBufferSize + CRC16_LEN);
+
+    return 0;
+}
 
 // 主控接收指令:远程wifi开门响应
 int cmdWifiOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
@@ -1599,6 +1630,9 @@ int ProcMessageByHead(
         case CMD_MECHANICAL_LOCK: {
             cmdMechicalLockRsp(nMessageLen, pszMessage);
             break;
+        }
+        case CMD_REQ_POWER_DOWN:{//MCU 通知116 MCU 即将下单
+            cmdReqPoweDown(nMessageLen, pszMessage);
         }
         default:
             LOGD("No effective cmd from MCU!\n");

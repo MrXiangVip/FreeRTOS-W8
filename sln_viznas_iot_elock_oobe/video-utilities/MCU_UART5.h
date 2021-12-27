@@ -74,7 +74,9 @@ extern "C" {
 #define CMD_NETWORK_OPT					0x1A		// 网络参数设置
 #define CMD_MQTT_UPLOAD					0x1B		// 请求mqtt 上传记录
 
-#define CMD_TEMPER_DATA                  0x30        //蓝牙测温
+#define CMD_TEMPER_DATA                 0x30        //蓝牙测温
+
+#define CMD_REQ_POWER_DOWN              0x40        //mcu 请求下电
 
 #define CMD_BOOT_MODE                   0x82  //上报开机模式 (与其它命令有区别 06.21)
 #define CMD_WIFI_OPEN_DOOR				0x83	// 远程wifi开门
