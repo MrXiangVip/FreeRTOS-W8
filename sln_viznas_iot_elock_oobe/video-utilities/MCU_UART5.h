@@ -144,6 +144,7 @@ typedef enum
 	BOOT_MODE_REMOTE = 1,		// 长按--远程开锁模式
 	BOOT_MODE_BLE = 2,      	// 蓝牙设置
 	BOOT_MODE_REG = 3,			//蓝牙人脸注册
+	BOOT_MODE_PREVIEW = 4,      // 预览
 	BOOT_MODE_MECHANICAL_LOCK = 0xB,	//机械锁模式
 	BOOT_MODE_INVALID = 0XFF,	//非法模式
 }BootMode_Status;

@@ -484,6 +484,14 @@ int cmdSysInitOKSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessa
         }
     } else if (boot_mode == BOOT_MODE_REMOTE) {
         cmdRemoteRequestRsp(HEAD_MARK, CMD_BOOT_MODE, 1);
+    } else if (boot_mode == BOOT_MODE_PREVIEW) {
+        if (oasis_task_start == false) {
+            oasis_task_start = true;
+            OpenLcdBackground();
+            Display_Start();
+//            Oasis_Start();
+            //Display_Update((uint32_t)wave_logo_v3);
+        }
     }
 
     return 0;
