@@ -107,6 +107,8 @@ extern "C" {
 #define ID_REG_ROLL_RIGHT_TOO_BIG		0xff62	//0xff62头靠右肩角度过大
 #define ID_REG_ROLL_RIGHT_TOO_SMALL		0xff63	//0xff63头靠右肩角度过小
 
+#define TEST_ANY_FACE_REC // 任意人脸均可识别成功
+
 typedef struct _stRpMsgHead
 {
 	unsigned char		HeadMark;		/* 前导标识符（长度为1bytes）用于校验消息是否合法 */

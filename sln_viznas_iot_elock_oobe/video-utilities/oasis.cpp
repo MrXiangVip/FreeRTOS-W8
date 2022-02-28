@@ -426,6 +426,7 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
             }
             memset(gui_info.name, 0x0, sizeof(gui_info.name));
 
+//            recResult = OASIS_REC_RESULT_KNOWN_FACE;
             if (recResult == OASIS_REC_RESULT_KNOWN_FACE)
             {
                 std::string name;
@@ -626,6 +627,11 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
 
         }
 		if(evt == OASISLT_EVT_REC_COMPLETE) {
+#ifdef TEST_ANY_FACE_REC
+		    if (para->reserved[5] != 1 || para->reserved[6] < 80) {
+		        return;
+		    }
+#endif
 		    Uart5_GetFaceRecResult((uint8_t)face_info.recognize, gui_info.name);
 		}else if(evt == OASISLT_EVT_REG_COMPLETE) {
 		    Uart5_GetFaceRegResult((uint8_t)face_info.enrolment, gui_info.name);
