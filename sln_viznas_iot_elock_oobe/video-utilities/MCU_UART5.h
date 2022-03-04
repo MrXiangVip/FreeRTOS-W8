@@ -108,6 +108,7 @@ extern "C" {
 #define ID_REG_ROLL_RIGHT_TOO_SMALL		0xff63	//0xff63头靠右肩角度过小
 
 #define TEST_ANY_FACE_REC // 任意人脸均可识别成功
+#undef TEST_ANY_FACE_REC
 
 typedef struct _stRpMsgHead
 {
