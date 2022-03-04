@@ -1817,10 +1817,10 @@ static void uart5_QMsg_task(void *pvParameters) {
                         continue;
                     }
 #ifdef TEST_ANY_FACE_REC
-                    if (recognize_times == 2) {
+//                    if (recognize_times == 2) {
                         pQMsg->msg.val = true;
                         strcpy(pQMsg->msg.info.name, "00000000");
-                    }
+//                    }
 #endif
 
                     if (pQMsg->msg.val) {//success
