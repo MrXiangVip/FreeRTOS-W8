@@ -112,7 +112,8 @@ void CfgData_GetDefault(sln_cfg_data_t *cfg)
             .detect_resolution_mode     = DETECT_RESOLUTION_VGA,
             .output_mode                = DISPLAY_LCD,
             .display_interface          = DISPLAY_INTERFACE_INFOBAR,
-            .app_type                   = APP_TYPE_ELOCK_LIGHT,
+//            .app_type                   = APP_TYPE_ELOCK_LIGHT,
+             .app_type                   = APP_TYPE_DOOR_ACCESS_LIGHT,
             .audio_amp_calibration_state= 0,
             .low_power_mode             = LOW_POWER_MODE_OFF,
     };
