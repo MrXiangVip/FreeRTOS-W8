@@ -1980,6 +1980,10 @@ static void uploaddata_task(void *pvParameters)
 int WIFI_UART8_Start()
 {
 	char const *logTag = "[UART8_WIFI]:main-";
+#if !MQTT_SUPPORT
+    LOGD("%s stopped...\r\n", logTag);
+	return 0;
+#endif
     LOGD("%s starting...\r\n", logTag);
     NVIC_SetPriority(LPUART8_IRQn, 4);
 

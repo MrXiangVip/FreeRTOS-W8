@@ -28,6 +28,34 @@
  * Definitions
  *******************************************************************************/
 
+#define W8 1
+#define W81 2
+#define R60 3
+#define L25 4
+
+#define PROJECT_NAME L25
+
+#define MQTT_SUPPORT 1			// 1 支持MQTT 0 不支持MQTT
+#define RECOGNIZE_ONCE 1		// 1 识别一次， 0 连续识别直到超时
+#define SAVE_FACE_PICTURE 1		// 1 保存用户注册/识别图片 0 不保存
+
+#if (PROJECT_NAME == W8)
+#warning("PROJECT_NAME is W8")
+#elif (PROJECT_NAME == W81)
+#warning("PROJECT_NAME is W81")
+#elif (PROJECT_NAME == R60)
+#warning("PROJECT_NAME is R60")
+#elif (PROJECT_NAME == L25)
+#warning("PROJECT_NAME is L25")
+#define MQTT_SUPPORT 0
+#define RECOGNIZE_ONCE 0
+#define SAVE_FACE_PICTURE 0
+#else
+#warning("PROJECT_NAME is not defined")
+#endif
+
+
+
 #if CAMERA_SUPPORT_3D
 #define APP_CAMERA_HEIGHT  400//800
 #define APP_CAMERA_WIDTH   640//1280

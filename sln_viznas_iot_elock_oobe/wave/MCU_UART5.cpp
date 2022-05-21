@@ -319,16 +319,16 @@ static void uart5_QMsg_task(void *pvParameters) {
 
                     cmdRegResultNotifyReq(g_uu_id, g_reging_flg);
                     if (g_reging_flg == REG_STATUS_FAILED) {
-//                        CloseLcdBackground();
+                        CloseLcdBackground();
                         vTaskDelay(pdMS_TO_TICKS(1000));
-//                        Uart5_SendDeinitCameraMsg();
+                        Uart5_SendDeinitCameraMsg();
                         vTaskDelay(pdMS_TO_TICKS(200));
                         cmdCloseFaceBoardReq();
                     } else {
                         //shut_down = true;
-//                        CloseLcdBackground();
+                        CloseLcdBackground();
                         vTaskDelay(pdMS_TO_TICKS(1000));
-//                        Uart5_SendDeinitCameraMsg();
+                        Uart5_SendDeinitCameraMsg();
                         vTaskDelay(pdMS_TO_TICKS(200));
 
                         save_config_feature_file();
@@ -336,7 +336,11 @@ static void uart5_QMsg_task(void *pvParameters) {
 
                         LOGD("注册成功,请求MQTT上传本次用户注册记录 \n");
                         int ID = DBManager::getInstance()->getLastRecordID();
+#if MQTT_SUPPORT
                         cmdRequestMqttUpload(ID);
+#else
+                        cmdCloseFaceBoardReq();//关主控电源
+#endif
                     }
                 }
                     break;
@@ -361,9 +365,11 @@ static void uart5_QMsg_task(void *pvParameters) {
 
                     if (pQMsg->msg.val) {//success
                         LOGD("User face recognize success!\r\n");
-//                        CloseLcdBackground();
+#if RECOGNIZE_ONCE
+                        CloseLcdBackground();
                         vTaskDelay(pdMS_TO_TICKS(1000));
-//                        Uart5_SendDeinitCameraMsg();
+                        Uart5_SendDeinitCameraMsg();
+#endif
                         //LOGD("gFaceInfo.name is %s!\n", gFaceInfo.name);
                         LOGD("pQMsg->msg.info.name is %s!\r\n", pQMsg->msg.info.name);
                         char name[64];
@@ -409,7 +415,9 @@ static void uart5_QMsg_task(void *pvParameters) {
 
                                 //LOGD("feature.map 1size:%d\r\n", fatfs_getsize("feature.map"));
                                 if (!SUPPORT_POWEROFF || g_is_shutdown == 0) {
+#if SAVE_FACE_PICTURE
                                     Oasis_WriteJpeg();
+#endif
                                 }
 
                                 notifyKeepAlive();
@@ -437,19 +445,24 @@ static void uart5_QMsg_task(void *pvParameters) {
                         }
 #endif
                         cmdOpenDoorReq(g_uu_id);
+#if !RECOGNIZE_ONCE
+                        LOGD("Reset recognize timeout trigger\r\n");
+                        recognize_times = 0;
+#endif
                     } else {//failed
                         recognize_times++;
                         LOGD("User face recognize failed %d times\r\n", recognize_times);
-//#if    SUPPORT_POWEROFF
+#if    SUPPORT_POWEROFF
                         if (recognize_times > 30) {
+                        	LOGD("User face recognize timeout closeLcdBackgroud\r\n");
                             recognize_times = 0;
-//                            CloseLcdBackground();
+                            CloseLcdBackground();
                             vTaskDelay(pdMS_TO_TICKS(1000));
-//                            Uart5_SendDeinitCameraMsg();
+                            Uart5_SendDeinitCameraMsg();
                             cmdCloseFaceBoardReq();//关主控电源
                             break;
                         }
-//#endif
+#endif
                     }
 
                 }

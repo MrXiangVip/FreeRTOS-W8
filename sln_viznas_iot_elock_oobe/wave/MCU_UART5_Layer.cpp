@@ -743,7 +743,9 @@ int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
 
         int ID = DBManager::getInstance()->getLastRecordID();
         LOGD("开锁成功, 更新数据库状态.请求MQTT上传本次开门的记录 \r\n");
+#if MQTT_SUPPORT
         cmdRequestMqttUpload(ID);
+#endif
     } else {
 //    	g_command_executed = 1;
         LOGD("开锁失败,不更新数据库状态. 不上传记录,请求下电\r\n");
@@ -1490,6 +1492,9 @@ int cmdWifiOrderTimeSyncRsp(unsigned char nMessageLen, const unsigned char *pszM
  * Op: 注册、开门
  * */
 int cmdRequestMqttUpload(int id) {
+#if !MQTT_SUPPORT
+	return 0;
+#endif
     LOGD("%s\r\n", __func__);
     char szBuffer[32] = {0};
     int iBufferSize;
