@@ -65,8 +65,6 @@ static void SwTimerCallback(TimerHandle_t xTimer);
 ws_time_t ws_systime = 0;
 static bool timer_started = false;
 // 20201120 wszgx end
-QueueHandle_t Uart5MsgQ = NULL;
-
 
 /*******************************************************************************
  * Definitions
@@ -1550,26 +1548,4 @@ void SwTimerCallback(TimerHandle_t xTimer) {
 }
 
 
-int Uart5_SendQMsg(void *msg) {
-    BaseType_t ret;
-
-#if    SUPPORT_POWEROFF
-    if (g_is_shutdown) {
-        return -3;
-    }
-#endif
-    if (Uart5MsgQ) {
-        ret = xQueueSend(Uart5MsgQ, msg, (TickType_t) 0);
-    } else {
-        LOGE("[ERROR]:Uart5MsgQ is NULL\r\n");
-        return -2;
-    }
-
-    if (ret != pdPASS) {
-        LOGE("[ERROR]:Uart5_SendQMsg failed %d\r\n", ret);
-        return -1;
-    }
-
-    return 0;
-}
 

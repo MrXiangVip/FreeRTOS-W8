@@ -80,6 +80,8 @@ static uint32_t g_reg_start = 0;    //记录注册响应发出的时间
 
 struct _lpuart_handle t_handle5;
 
+QueueHandle_t Uart5MsgQ = NULL;
+
 lpuart_rtos_config_t lpuart_config5 = {
         .baudrate    = 115200,
         .parity      = kLPUART_ParityDisabled,
@@ -87,6 +89,29 @@ lpuart_rtos_config_t lpuart_config5 = {
         .buffer      = background_buffer5,
         .buffer_size = sizeof(background_buffer5),
 };
+
+int Uart5_SendQMsg(void *msg) {
+    BaseType_t ret;
+
+#if    SUPPORT_POWEROFF
+    if (g_is_shutdown) {
+        return -3;
+    }
+#endif
+    if (Uart5MsgQ) {
+        ret = xQueueSend(Uart5MsgQ, msg, (TickType_t) 0);
+    } else {
+        LOGE("[ERROR]:Uart5MsgQ is NULL\r\n");
+        return -2;
+    }
+
+    if (ret != pdPASS) {
+        LOGE("[ERROR]:Uart5_SendQMsg failed %d\r\n", ret);
+        return -1;
+    }
+
+    return 0;
+}
 
 int SendMsgToSelf(unsigned char *MsgBuf, unsigned char MsgLen) {
 
@@ -256,6 +281,7 @@ int Uart5_SendDeinitCameraMsg(void) {
 #endif
     return 0;
 }
+
 static void uart5_QMsg_task(void *pvParameters) {
     BaseType_t ret;
     QMsg *pQMsg;

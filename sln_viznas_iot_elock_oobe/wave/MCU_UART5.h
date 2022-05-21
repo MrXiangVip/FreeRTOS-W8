@@ -20,6 +20,7 @@ extern "C" {
 #include "MCU_UART5_Layer.h"
 #define UART5_DRV_RX_RING_BUF_SIZE 256
 extern lpuart_rtos_config_t lpuart_config5;
+extern QueueHandle_t Uart5MsgQ;
 
 int ProcMessage(
         uint8_t nCommand,
@@ -35,12 +36,14 @@ int ProcMessageFromMQTT(
         uint8_t nMessageLen,
         const uint8_t *pszMessage);
 int MCU_UART5_Start();
+
 extern int  Uart5_GetFaceRegResult(uint8_t result, char *pszMessage);
 //send qMsg to uart5 task when face recognize over
 extern int  Uart5_GetFaceRecResult(uint8_t result, char *pszMessage);
 
 extern int SendMsgToSelf(uint8_t *MsgBuf, uint8_t MsgLen);
 extern int Uart5_SendDeinitCameraMsg(void);
+extern int Uart5_SendQMsg(void *msg);
 
 #ifdef __cplusplus
 }

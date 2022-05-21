@@ -254,7 +254,6 @@ extern int cmdCommRsp2Mqtt(unsigned char CmdId, uint8_t ret);//106F->MQTT: 通�
 //
 extern int save_config_feature_file();
 //
-extern int Uart5_SendQMsg(void *msg);
 //
 extern int save_files_before_pwd();
 
@@ -281,5 +280,4 @@ extern  char username[17];
 extern  uUID g_uu_id;  //记录当前应用的uuid
 extern  int boot_mode;
 extern  lpuart_rtos_handle_t handle5;
-extern QueueHandle_t Uart5MsgQ;
 #endif //W8_MCU_UART5_LAYER_H
