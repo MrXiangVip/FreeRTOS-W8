@@ -236,6 +236,26 @@ int ProcMessageByHead(
     return 0;
 }
 
+
+int Uart5_SendDeinitCameraMsg(void) {
+#if  SUPPORT_POWEROFF
+    QMsg *pQMsgCamera;
+    /* Camera */
+    pQMsgCamera             = (QMsg *)pvPortMalloc(sizeof(QMsg));
+    if (NULL == pQMsgCamera) {
+        LOGE("[ERROR]: pQMsg pvPortMalloc failed\r\n");
+        return -1;
+    }
+    pQMsgCamera->id         = QMSG_CMD;
+    pQMsgCamera->msg.cmd.id = QCMD_DEINIT_CAMERA;
+    int status =  Camera_SendQMsg((void *)&pQMsgCamera);
+
+    if (status) {
+        vPortFree(pQMsgCamera);
+    }
+#endif
+    return 0;
+}
 static void uart5_QMsg_task(void *pvParameters) {
     BaseType_t ret;
     QMsg *pQMsg;

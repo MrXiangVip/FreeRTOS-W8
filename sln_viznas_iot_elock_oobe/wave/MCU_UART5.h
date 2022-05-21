@@ -40,6 +40,7 @@ extern int  Uart5_GetFaceRegResult(uint8_t result, char *pszMessage);
 extern int  Uart5_GetFaceRecResult(uint8_t result, char *pszMessage);
 
 extern int SendMsgToSelf(uint8_t *MsgBuf, uint8_t MsgLen);
+extern int Uart5_SendDeinitCameraMsg(void);
 
 #ifdef __cplusplus
 }
