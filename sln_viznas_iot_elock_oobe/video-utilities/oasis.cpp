@@ -319,7 +319,7 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
         case OASISLT_EVT_QUALITY_CHK_COMPLETE:
         {
             //UsbShell_Printf("[OASIS]:quality chk res:%d\r\n", para->qualityResult);
-            LOGD("[OASIS]:quality chk res:%d\r\n", para->qualityResult);
+//            LOGD("[OASIS]:quality chk res:%d\r\n", para->qualityResult);
 
             gui_info.irLive  = para->reserved[5];
             gui_info.front   = para->reserved[1];
@@ -335,7 +335,7 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
             //LOGD("[irBrightness]:%d\r\n",gui_info.irBrightness);
             //UsbShell_DbgPrintf(VERBOSE_MODE_L2,"[rgbBrightness]:%d\r\n",gui_info.rgbBrightness);
             //LOGD("[rgbBrightness]:%d\r\n",gui_info.rgbBrightness);
-            LOGD("[Brightness]:ir %d, rgb %d\r\n",gui_info.irBrightness, gui_info.rgbBrightness);
+//            LOGD("[Brightness]:ir %d, rgb %d\r\n",gui_info.irBrightness, gui_info.rgbBrightness);
 
             if (para->qualityResult == OASIS_QUALITY_RESULT_FACE_OK)
             {
@@ -443,7 +443,7 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
             {
                 // face is not recognized, do nothing
                 //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[OASIS]:face unrecognized\r\n");
-                LOGD("[OASIS]:face unrecognized\r\n");
+//                LOGD("[OASIS]:face unrecognized\r\n");
                 face_info.recognize = false;
             }
 
@@ -622,8 +622,9 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
             //LOGD("[EVT]:Blur[%d][%d]\r\n", para->reserved[3], para->reserved[4]);
             //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]:Liveness[%d][%d]\r\n", para->reserved[5], para->reserved[6]);
             //LOGD("[EVT]:Liveness[%d][%d]\r\n", para->reserved[5], para->reserved[6]);
-            LOGD("[EVT]:sim:[%d] FF[%d][%d] Blur[%d][%d] Liveness[%d][%d]\r\n", para->reserved[0], para->reserved[1], para->reserved[2],
-            		para->reserved[3], para->reserved[4], para->reserved[5], para->reserved[6]);
+//            LOGD("[EVT]:sim:[%d] FF[%d][%d] Blur[%d][%d] Liveness[%d][%d]\r\n", para->reserved[0], para->reserved[1], para->reserved[2],
+//            		para->reserved[3], para->reserved[4], para->reserved[5], para->reserved[6]);
+            ;
 
         }
 		if(evt == OASISLT_EVT_REC_COMPLETE) {

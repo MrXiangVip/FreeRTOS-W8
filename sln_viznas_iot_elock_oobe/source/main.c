@@ -100,7 +100,7 @@ int main(void)
     init_config();
     MCU_UART5_Start();
 #if WIFI_SUPPORT != 0
-    WIFI_UART8_Start();
+//    WIFI_UART8_Start();
 #endif
     Camera_Start();
     APP_PXP_Start();

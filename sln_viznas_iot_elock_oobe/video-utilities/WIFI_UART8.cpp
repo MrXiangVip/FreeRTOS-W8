@@ -29,6 +29,7 @@
 #include <ctype.h>
 #include <stdio.h>
 #include "MCU_UART5.h"
+#include "../wave/MCU_UART5_Layer.h"
 #include "cJSON.h"
 #include "util.h"
 #include "util_crc16.h"
@@ -2007,7 +2008,6 @@ int WIFI_UART8_Start()
     if (xTaskCreate(mqttinit_task, "mqttinit_task", MQTTTASK_STACKSIZE, NULL, MQTTTASK_PRIORITY, NULL) != pdPASS)
 #endif
     {
-//        PRINTF("Task mqttinit_task creation failed!.\r\n");
         LOGD("%s failed to create mqttinit_task\r\n", logTag);
         while (1);
     }
