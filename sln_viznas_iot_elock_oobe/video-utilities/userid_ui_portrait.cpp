@@ -878,7 +878,7 @@ static void UIInfo_Elock(uint16_t *pBufferAddr, QUIInfoMsg* infoMsg, uint8_t p_D
         VIZN_GetEvents(NULL, &s_OasisEvents);
         UIInfo_UpdateFaceInfo2(pBufferAddr, infoMsg);
         UIInfo_UpdateQualityInfo(pBufferAddr, infoMsg);
-        if((boot_mode == BOOT_MODE_NORMAL) || (boot_mode == BOOT_MODE_REG)) {
+        if((boot_mode == BOOT_MODE_RECOGNIZE) || (boot_mode == BOOT_MODE_REGIST)) {
         	UIInfo_DrawFocusRectV2(pBufferAddr, infoMsg);
         }
     }

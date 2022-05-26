@@ -1946,7 +1946,7 @@ static void uploaddata_task(void *pvParameters)
     do {
         vTaskDelay(pdMS_TO_TICKS(1000));
 
-        if((boot_mode == BOOT_MODE_NORMAL) || (boot_mode == BOOT_MODE_MECHANICAL_LOCK)) {
+        if((boot_mode == BOOT_MODE_RECOGNIZE) || (boot_mode == BOOT_MODE_MECHANICAL_LOCK)) {
             if (g_has_more_download_data == 0 && g_has_more_upload_data == 1) {
                 if ((mqtt_init_done == 1) && (g_priority == 0) && (bPubOasisImage == false) && (pressure_test == 1)) {
                     if (mqtt_upload_records_run == false) {

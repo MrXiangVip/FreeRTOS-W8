@@ -18,6 +18,7 @@
 #include "sln_dev_cfg.h"
 #include "sln_api.h"
 #include "sln_connection.h"
+#include "../wave/UART_FAKER.h"
 /*******************************************************************************
  * Prototypes
  *******************************************************************************/
@@ -228,7 +229,7 @@ static shell_status_t UsbShell_QueueSendFromISR(shell_handle_t shellContextHandl
     queueMsg.argc               = argc;
     queueMsg.shellContextHandle = shellContextHandle;
     queueMsg.shellCommand       = shellCommand;
-
+    SHELL_Printf(shellContextHandle, "xx: send command to shell processing queue\r\n");
     if (pdTRUE != xQueueSendFromISR(g_UsbShellQueue, (void *)&queueMsg, NULL))
     {
         SHELL_Printf(shellContextHandle, "ERROR: Cannot send command to shell processing queue\r\n");
@@ -240,6 +241,7 @@ static shell_status_t UsbShell_QueueSendFromISR(shell_handle_t shellContextHandl
 
 static shell_status_t FFI_CLI_ListCommand(shell_handle_t shellContextHandle, int32_t argc, char **argv)
 {
+#if 0
     if (argc > 1)
     {
         SHELL_Printf(shellContextHandle, "Wrong parameters\r\n");
@@ -247,6 +249,22 @@ static shell_status_t FFI_CLI_ListCommand(shell_handle_t shellContextHandle, int
     }
 
     return UsbShell_QueueSendFromISR(shellContextHandle, argc, argv, SHELL_EV_FFI_CLI_LIST);
+#else
+    SHELL_Printf(shellContextHandle, "list [0:init , 1:registe]\r\n");
+    if( argc !=2 ){
+        SHELL_Printf(shellContextHandle, "input command : list index \r\n");
+    }else{
+        if (strlen(argv[1]) == 1) {
+            int index = atoi( argv[1]);
+            SHELL_Printf(shellContextHandle, "input command: list index[%d]\r\n", index);
+            vSetFakeCommandIndex( index);
+        } else {
+            vSetFakeCommandBuffer( argv[1]);
+        }
+    }
+    return kStatus_SHELL_Success;
+#endif
+
 }
 
 static shell_status_t FFI_CLI_AddCommand(shell_handle_t shellContextHandle, int32_t argc, char **argv)

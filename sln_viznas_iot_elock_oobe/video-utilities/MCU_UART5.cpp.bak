@@ -471,11 +471,11 @@ int cmdSysInitOKSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessa
     boot_mode = StrGetUInt8(pszMessage + i);
     if (boot_mode > BOOT_MODE_MECHANICAL_LOCK) {
 //        boot_mode = BOOT_MODE_INVALID;
-        boot_mode = BOOT_MODE_NORMAL;
+        boot_mode = BOOT_MODE_RECOGNIZE;
     }
     LOGD("boot_mode: %d\r\n", boot_mode);
     receive_boot_mode = 1;
-    if ((boot_mode == BOOT_MODE_NORMAL) || (boot_mode == BOOT_MODE_REG)) {
+    if ((boot_mode == BOOT_MODE_RECOGNIZE) || (boot_mode == BOOT_MODE_REGIST)) {
         if (oasis_task_start == false) {
             oasis_task_start = true;
             OpenLcdBackground();
@@ -619,7 +619,7 @@ int cmdUserRegReqProc(unsigned char nMessageLen, const unsigned char *pszMessage
     }
 
     g_reging_flg = REG_STATUS_ING;
-    boot_mode = BOOT_MODE_REG;
+    boot_mode = BOOT_MODE_REGIST;
     if (lcd_back_ground == false) {
         OpenLcdBackground();
     }
@@ -1818,7 +1818,7 @@ static void uart5_QMsg_task(void *pvParameters) {
                 case QMSG_FACEREC_RECFACE: {//处理人脸识别结果
                     //LOGD("%s g_reging_flg is %d lcd_back_ground is %d\r\n", __FUNCTION__, g_reging_flg, lcd_back_ground);
                     //LOGD("处理人脸识别结果 %d flg %d\r\n", pQMsg->msg.val, g_reging_flg);
-                    if ((boot_mode != BOOT_MODE_NORMAL) || (REG_STATUS_WAIT != g_reging_flg)
+                    if ((boot_mode != BOOT_MODE_RECOGNIZE) || (REG_STATUS_WAIT != g_reging_flg)
                         || (lcd_back_ground == false))//如果正在注册流程，就过滤掉该识别结果
                     {
                     	LOGD("Face rec continue!\r\n");

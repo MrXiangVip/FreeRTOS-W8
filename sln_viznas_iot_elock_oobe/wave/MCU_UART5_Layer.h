@@ -156,14 +156,15 @@ typedef enum
 //0:短按;1：长按;2:蓝牙设置;3:蓝牙人脸注册;4:睡眠状态
 typedef enum
 {
-    BOOT_MODE_NORMAL = 0,		// 短按--识别模式
+    BOOT_MODE_POWERON  =  -1,     //  只是上电
+    BOOT_MODE_RECOGNIZE = 0,		// 短按--识别模式
     BOOT_MODE_REMOTE = 1,		// 长按--远程开锁模式
     BOOT_MODE_BLE = 2,      	// 蓝牙设置
-    BOOT_MODE_REG = 3,			//蓝牙人脸注册
+    BOOT_MODE_REGIST = 3,			//蓝牙人脸注册
     BOOT_MODE_PREVIEW = 4,      // 预览
     BOOT_MODE_MECHANICAL_LOCK = 0xB,	//机械锁模式
     BOOT_MODE_INVALID = 0XFF,	//非法模式
-}BootMode_Status;
+}EBootMode;
 
 /*8字节UUID*/
 typedef union{
@@ -187,6 +188,7 @@ typedef struct userInfo_data_t
     uUID uuId;  /**APP 端产生的UUID，8字节 */
     uint8_t userName[12];     /**NXP 算法维护的username*/
 } userInfo_data_t;
+
 
 
 //
@@ -280,4 +282,7 @@ extern  char username[17];
 extern  uUID g_uu_id;  //记录当前应用的uuid
 extern  int boot_mode;
 extern  lpuart_rtos_handle_t handle5;
+//用户注册信息
+extern  RegisteClass  sRegisteInst;
+
 #endif //W8_MCU_UART5_LAYER_H

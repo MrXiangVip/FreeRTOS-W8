@@ -77,6 +77,8 @@ static bool timer_started = false;
 #define SUPPORT_PRESSURE_TEST   0
 #define SUPPORT_POWEROFF        1
 
+
+static const char *logtag ="[MCU_UART5_Layer] ";
 int pressure_test = 1;
 
 
@@ -105,7 +107,8 @@ int boot_mode = BOOT_MODE_INVALID;  //0:短按;1：长按;2:蓝牙设置;3:蓝�
 int receive_boot_mode = 0;
 bool oasis_task_start = false;
 
-
+//注册时发来的数据
+RegisteClass  sRegisteInst;
 /*******************************************************************************
  * Prototypes
  ******************************************************************************/
@@ -417,11 +420,11 @@ int cmdSysInitOKSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessa
     boot_mode = StrGetUInt8(pszMessage + i);
     if (boot_mode > BOOT_MODE_MECHANICAL_LOCK) {
 //        boot_mode = BOOT_MODE_INVALID;
-        boot_mode = BOOT_MODE_NORMAL;
+        boot_mode = BOOT_MODE_RECOGNIZE;
     }
     LOGD("boot_mode: %d\r\n", boot_mode);
     receive_boot_mode = 1;
-    if ((boot_mode == BOOT_MODE_NORMAL) || (boot_mode == BOOT_MODE_REG)) {
+    if ((boot_mode == BOOT_MODE_RECOGNIZE) || (boot_mode == BOOT_MODE_REGIST)) {
         if (oasis_task_start == false) {
             oasis_task_start = true;
             OpenLcdBackground();
@@ -516,7 +519,7 @@ int cmdReqResumeFactoryProc(unsigned char nMessageLen, const unsigned char *pszM
     return 0;
 }
 
-//主控返回响应指令: 用户注册
+//主控返回响应指令: 用户注册回复
 int cmdUserRegRsp(uint8_t ret) {
     LOGD("用户注册回复 \r\n");
     char szBuffer[32] = {0};
@@ -554,30 +557,51 @@ int cmdUserRegRsp(uint8_t ret) {
 int cmdUserRegReqProc(unsigned char nMessageLen, const unsigned char *pszMessage) {
     LOGD("用户注册请求 \r\n");
     uint8_t ret = SUCCESS, len = 0;
-    unsigned char szBuffer[32] = {0};
-    unsigned char *pos = szBuffer;
-    memcpy(szBuffer, pszMessage, nMessageLen);
+    const unsigned char *pos = pszMessage;
 
-    //解析指令
-    if ((nMessageLen < sizeof(szBuffer)) && nMessageLen == 8) {
+    uint8_t uDeviceIds[48]={0};//最大48个柜子
+//  将当前状态设置为 注册
+    boot_mode = BOOT_MODE_REGIST;
+
+    //1. 解析指令, 获取UUID, 开始时间,结束时间,柜门编号
+    if (  nMessageLen >= 8) {
         memcpy(&g_uu_id, pos + len, 8);
         len += 8;
+        pos+=8;
     }
 
     g_reging_flg = REG_STATUS_ING;
-    boot_mode = BOOT_MODE_REG;
     if (lcd_back_ground == false) {
         OpenLcdBackground();
     }
 
     //LOGD("reg uuid<len=%d> : L<0x%08x>, H<0x%08x>.\n", sizeof(g_uu_id), g_uu_id.tUID.L, g_uu_id.tUID.H);
-
     memset(username, 0, sizeof(username));
     HexToStr(username, g_uu_id.UID, sizeof(g_uu_id.UID));
     username[16] = '\0';//NXP的人脸注册API的username最大只能16byte
-    LOGD("=====UUID<len:%d>:%s.\r\n", sizeof(username), username);
+    LOGD("%s UUID<len:%d>:%s.\r\n",logtag, sizeof(username), username);
 
 
+    unsigned  int uStartTime = StrGetUInt32(pos);
+    pos+=4;
+    len+=4;
+    LOGD("StartTime %d\r\n", uStartTime);
+    unsigned  int uEndTime =StrGetUInt32( pos );
+    pos+=4;
+    len+=4;
+    LOGD("EndTime %d\r\n", uEndTime);
+    LOGD("Device NUM: %d\r\n", nMessageLen-len);
+    for( int i =0; i<nMessageLen-len; i++ ){
+        uDeviceIds[i] = StrGetUInt8( pos );
+        pos+=1;
+    }
+
+    memcpy( sRegisteInst.UUID,  username, sizeof(username));
+    sRegisteInst.uStartTime = uStartTime;
+    sRegisteInst.uEndTime =uEndTime;
+    memcpy( sRegisteInst.cDeviceId, uDeviceIds, sizeof(uDeviceIds));
+
+//2.发起注册
     vizn_api_status_t status;
     status = VIZN_AddUser(NULL, username);
     switch (status) {
@@ -603,13 +627,9 @@ int cmdUserRegReqProc(unsigned char nMessageLen, const unsigned char *pszMessage
 
     if (kStatus_API_Layer_Success != status) {
         ret = FAILED;
-    }else{ //注册成功
-        LOGD( "注册成功 %d\r\n", ret);
-        UserExtend userExtend;
-        memset( &userExtend, 0, sizeof(UserExtend) );
-        memcpy(userExtend.UUID,username, sizeof(username));
-        int result = UserExtendManager::getInstance()->addUserExtend(   &userExtend );
-        LOGD( "add user extend %d\r\n", result);
+    }else{
+        //注册成功, 则往人员拓展表中增加拓展的记录
+        LOGD( "%s VIZEN_ADD_User %d\r\n",logtag, ret);
     }
 
     //返回响应消息
@@ -773,7 +793,7 @@ int cmdTemperRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
 //    ret = StrGetUInt16(pszMessage);
     // 如果开锁成功 更新数据库状态 ,请求mqtt上传本次操作记录。
     if (nMessageLen != 0) {
-        //					xshx add
+//  xshx add
 //        char power_msg[32] = {0};
 //        pop += 1;
 //        uint8_t power = StrGetUInt8(pop);

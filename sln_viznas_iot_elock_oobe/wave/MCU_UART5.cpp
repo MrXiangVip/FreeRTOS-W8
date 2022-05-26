@@ -47,6 +47,7 @@
 #include "aw_wave_logo_v3.h"
 #include "MCU_UART5.h"
 
+static const char *logtag ="[UART5]-";
 
 /*!< Queue used by Uart5 Task to receive messages*/
 enum {
@@ -202,7 +203,7 @@ int ProcMessageByHead(
             break;
         }
         case CMD_FACE_DELETE_USER: {
-            cmdDeleteUserReqProcByHead(/*HEAD_MARK*/nHead, nMessageLen, pszMessage);
+//            cmdDeleteUserReqProcByHead(/*HEAD_MARK*/nHead, nMessageLen, pszMessage);
             break;
         }
         case CMD_REQ_RESUME_FACTORY: {
@@ -282,14 +283,14 @@ int Uart5_SendDeinitCameraMsg(void) {
     return 0;
 }
 
-static void uart5_QMsg_task(void *pvParameters) {
+static void vReceiveOasisTask(void *pvParameters) {
     BaseType_t ret;
     QMsg *pQMsg;
     int recognize_times = 0;
     char image_path[16] = {0};
 
     while (1) {
-        //LOGD("uart5_QMsg_task()  -> xQueueReceive()!\n");
+        //LOGD("vReceiveOasisTask()  -> xQueueReceive()!\n");
         // pick up message
         ret = xQueueReceive(Uart5MsgQ, (void *) &pQMsg, portMAX_DELAY);
         if (ret == pdTRUE) {
@@ -310,7 +311,7 @@ static void uart5_QMsg_task(void *pvParameters) {
 
 //						增加注册记录
                         //增加本次操作记录
-                        LOGD("增加注册记录");
+                        LOGD("增加注册记录 \r\n");
                         Record *record = (Record *) pvPortMalloc(sizeof(Record));
                         memset(record, 0, sizeof(Record));
                         strcpy(record->UUID, username);
@@ -329,13 +330,21 @@ static void uart5_QMsg_task(void *pvParameters) {
                         //record->power2 = -1;//当前电池电量
                         record->upload = BOTH_UNUPLOAD;// 0代表没上传 1代表记录上传图片未上传 2代表均已
 //                        record->action_upload = 0;	//代表注册且未上传
-                        LOGD("往数据库中插入本次注册记录 \n");
+                        LOGD("往数据库中插入本次注册记录 \r\n");
                         DBManager::getInstance()->addRecord(record);
 
                         Oasis_SetOasisFileName(record->image_path);
                         //Oasis_WriteJpeg();
 //                        g_face.WriteJPG(image_path, faceBuf.color_buf, CAM_HEIGHT,CAM_WIDTH, 3, 50);
 //                        log_info("保存 UID<%s> 注册图片到 path<%s>!\n", record.UID, image_path);
+
+//   保存用户拓展信息, 开始结束时间,柜门号
+                        LOGD( "%s 增加用户附加信息 %s\r\n",logtag, sRegisteInst.UUID);
+                        UserExtend userExtend;
+                        memset( &userExtend, 0, sizeof(UserExtend) );
+                        vConvertRegistClass2UserExtend( &sRegisteInst,  &userExtend );
+                        int result = UserExtendManager::getInstance()->addUserExtend(   &userExtend );
+                        LOGD( "%s 增加用户附加信息 %d\r\n",logtag, result);
                     } else {//failed
                         LOGD("User face register failed!\r\n");
                         g_reging_flg = REG_STATUS_FAILED;
@@ -367,132 +376,144 @@ static void uart5_QMsg_task(void *pvParameters) {
 #else
                         cmdCloseFaceBoardReq();//关主控电源
 #endif
+//                      注册成功后转识别
+                        boot_mode = BOOT_MODE_RECOGNIZE;
                     }
+
                 }
-                    break;
+                break;
 
                 case QMSG_FACEREC_RECFACE: {//处理人脸识别结果
                     //LOGD("%s g_reging_flg is %d lcd_back_ground is %d\r\n", __FUNCTION__, g_reging_flg, lcd_back_ground);
                     //LOGD("处理人脸识别结果 %d flg %d\r\n", pQMsg->msg.val, g_reging_flg);
-                    if ((boot_mode != BOOT_MODE_NORMAL) || (REG_STATUS_WAIT != g_reging_flg)
-                        || (lcd_back_ground == false))//如果正在注册流程，就过滤掉该识别结果
-                    {
-                        LOGD("Face rec continue!\r\n");
-                        vPortFree(pQMsg);
-
-                        continue;
-                    }
+//                    if ((boot_mode != BOOT_MODE_RECOGNIZE) || (REG_STATUS_WAIT != g_reging_flg)
+//                        || (lcd_back_ground == false))//如果正在注册流程，就过滤掉该识别结果
+//                    {
+//                        LOGD("Face rec continue!\r\n");
+//                        vPortFree(pQMsg);
+//
+//                        continue;
+//                    }
 #ifdef TEST_ANY_FACE_REC
 //                    if (recognize_times == 2) {
                         pQMsg->msg.val = true;
                         strcpy(pQMsg->msg.info.name, "00000000");
 //                    }
 #endif
-
-                    if (pQMsg->msg.val) {//success
-                        LOGD("User face recognize success!\r\n");
-#if RECOGNIZE_ONCE
-                        CloseLcdBackground();
-                        vTaskDelay(pdMS_TO_TICKS(1000));
-                        Uart5_SendDeinitCameraMsg();
-#endif
-                        //LOGD("gFaceInfo.name is %s!\n", gFaceInfo.name);
-                        LOGD("pQMsg->msg.info.name is %s!\r\n", pQMsg->msg.info.name);
-                        char name[64];
-                        //memcpy(name, gFaceInfo.name.c_str(), gFaceInfo.name.size());
-                        memcpy(name, pQMsg->msg.info.name, 64);
-                        StrToHex(g_uu_id.UID, name, sizeof(g_uu_id.UID));
-
-#if    SUPPORT_PRESSURE_TEST != 0
-                        int record_count = DBManager::getInstance()->getRecordCount();
-                        LOGD("record_count is %d \r\n", record_count);
-                        if (record_count <= 180) {
-                        	pressure_test = 0;
-                            for (int i = 0; i < 20; i++) {
-                                vTaskDelay(pdMS_TO_TICKS(10));
-                                Record *record = (Record *) pvPortMalloc(sizeof(Record));
-                                HexToStr(username, g_uu_id.UID, sizeof(g_uu_id.UID));
-                                strcpy(record->UUID, username);
-                                //record->status = 0; // 0,操作成功 1,操作失败.
-                                record->time_stamp = ws_systime; //时间戳 从1970年开始的秒数
-//                                record->power = 100 * 256 + 0;
-                                record->data[0]=0xFF;
-                                record->data[1]=0xFF;
-                                //sprintf(power_msg, "{\\\"batteryA\\\":%d\\,\\\"batteryB\\\":%d}", record->power, record->power2);
-                                //LOGD("power_msg is %s \r\n", power_msg);
-
-                                //record->upload = 0; //   0代表没上传 1代表记录上传图片未上传 2代表均已
-//                                record->action_upload = 0x300;
-                                record->action = FACE_UNLOCK;//  操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁
-                                record->upload = BOTH_UNUPLOAD; //   0代表没上传 1代表记录上传图片未上传 2代表均已
-
-                                memset(image_path, 0, sizeof(image_path)); // 对注册成功的用户保存一张压缩过的jpeg图片
-                                //snprintf(image_path, sizeof(image_path), "REC_%d_%d_%s.jpg", 0, record->time_stamp, record->UUID);
-
-                                snprintf(image_path, sizeof(image_path), "%x%02d.jpg", record->time_stamp & 0x00FFFFFF, i);
-                                memcpy(record->image_path, image_path, sizeof(image_path));//image_path
-
-                                LOGD("[%d] record->image_path is %s \r\n", i, record->image_path);
-
-                                Oasis_SetOasisFileName(record->image_path);
-
-                                DBManager *dbManager = DBManager::getInstance();
-                                dbManager->addRecord(record);
-
-                                //LOGD("feature.map 1size:%d\r\n", fatfs_getsize("feature.map"));
-                                if (!SUPPORT_POWEROFF || g_is_shutdown == 0) {
-#if SAVE_FACE_PICTURE
-                                    Oasis_WriteJpeg();
-#endif
-                                }
-
-                                notifyKeepAlive();
-                                vTaskDelay(pdMS_TO_TICKS(20));
-#if	0
-                                vTaskDelay(pdMS_TO_TICKS(100));
-
-//                                char *buffer = (char *) pvPortMalloc(10 * 1024);
-//                                for (int j = 0; j < 1; j++) {
-//                                    int status = fatfs_read(record->image_path, buffer, 0, 10 * 1024);
-//                                }
-//                                vPortFree(buffer);
-
-                                //LOGD("feature.map 2size:%d\r\n", fatfs_getsize("feature.map"));
-//                                vTaskDelay(pdMS_TO_TICKS(100));
-                                fatfs_delete(record->image_path);
-#endif
-//                                LOGD("feature.map size:%d\r\n", fatfs_getsize("feature.map"));
-//                                LOGD("config size:%d\r\n", fatfs_getsize("config.jsn"));
-//                                LOGD("record size:%d\r\n", fatfs_getsize("record.jsn"));
-
-                            }
-                            pressure_test = 1;
-                            vTaskDelay(pdMS_TO_TICKS(100));
-                        }
-#endif
-                        cmdOpenDoorReq(g_uu_id);
-#if !RECOGNIZE_ONCE
-                        LOGD("Reset recognize timeout trigger\r\n");
-                        recognize_times = 0;
-#endif
-                    } else {//failed
-                        recognize_times++;
-                        LOGD("User face recognize failed %d times\r\n", recognize_times);
-#if    SUPPORT_POWEROFF
-                        if (recognize_times > 30) {
-                        	LOGD("User face recognize timeout closeLcdBackgroud\r\n");
-                            recognize_times = 0;
+//                  如果是在识别状态
+                    if( boot_mode ==  BOOT_MODE_RECOGNIZE ){
+                        if (pQMsg->msg.val ) {//success
+                            LOGD("%s 人脸识别成功!\r\n", logtag);
+    #if RECOGNIZE_ONCE
                             CloseLcdBackground();
                             vTaskDelay(pdMS_TO_TICKS(1000));
                             Uart5_SendDeinitCameraMsg();
-                            cmdCloseFaceBoardReq();//关主控电源
-                            break;
+    #endif
+                            //LOGD("gFaceInfo.name is %s!\n", gFaceInfo.name);
+                            LOGD("识别到的用户名 is %s!\r\n", pQMsg->msg.info.name);
+                            char name[64];
+                            //memcpy(name, gFaceInfo.name.c_str(), gFaceInfo.name.size());
+                            memcpy(name, pQMsg->msg.info.name, 64);
+                            StrToHex(g_uu_id.UID, name, sizeof(g_uu_id.UID));
+
+    //                      根据用户名查找柜子的信息
+                            UserExtend userExtend;
+                            memset( &userExtend, 0, sizeof(UserExtend) );
+                            int ret = UserExtendManager::getInstance()->queryUserExtendByUUID( name, &userExtend);
+                            LOGD("%s,%d, %s, %s \r\n", logtag, ret,  userExtend.UUID, userExtend.jsonData);
+
+    #if    SUPPORT_PRESSURE_TEST != 0
+                            int record_count = DBManager::getInstance()->getRecordCount();
+                            LOGD("record_count is %d \r\n", record_count);
+                            if (record_count <= 180) {
+                                pressure_test = 0;
+                                for (int i = 0; i < 20; i++) {
+                                    vTaskDelay(pdMS_TO_TICKS(10));
+                                    Record *record = (Record *) pvPortMalloc(sizeof(Record));
+                                    HexToStr(username, g_uu_id.UID, sizeof(g_uu_id.UID));
+                                    strcpy(record->UUID, username);
+                                    //record->status = 0; // 0,操作成功 1,操作失败.
+                                    record->time_stamp = ws_systime; //时间戳 从1970年开始的秒数
+    //                                record->power = 100 * 256 + 0;
+                                    record->data[0]=0xFF;
+                                    record->data[1]=0xFF;
+                                    //sprintf(power_msg, "{\\\"batteryA\\\":%d\\,\\\"batteryB\\\":%d}", record->power, record->power2);
+                                    //LOGD("power_msg is %s \r\n", power_msg);
+
+                                    //record->upload = 0; //   0代表没上传 1代表记录上传图片未上传 2代表均已
+    //                                record->action_upload = 0x300;
+                                    record->action = FACE_UNLOCK;//  操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁
+                                    record->upload = BOTH_UNUPLOAD; //   0代表没上传 1代表记录上传图片未上传 2代表均已
+
+                                    memset(image_path, 0, sizeof(image_path)); // 对注册成功的用户保存一张压缩过的jpeg图片
+                                    //snprintf(image_path, sizeof(image_path), "REC_%d_%d_%s.jpg", 0, record->time_stamp, record->UUID);
+
+                                    snprintf(image_path, sizeof(image_path), "%x%02d.jpg", record->time_stamp & 0x00FFFFFF, i);
+                                    memcpy(record->image_path, image_path, sizeof(image_path));//image_path
+
+                                    LOGD("[%d] record->image_path is %s \r\n", i, record->image_path);
+
+                                    Oasis_SetOasisFileName(record->image_path);
+
+                                    DBManager *dbManager = DBManager::getInstance();
+                                    dbManager->addRecord(record);
+
+                                    //LOGD("feature.map 1size:%d\r\n", fatfs_getsize("feature.map"));
+                                    if (!SUPPORT_POWEROFF || g_is_shutdown == 0) {
+    #if SAVE_FACE_PICTURE
+                                        Oasis_WriteJpeg();
+    #endif
+                                    }
+
+                                    notifyKeepAlive();
+                                    vTaskDelay(pdMS_TO_TICKS(20));
+    #if	0
+                                    vTaskDelay(pdMS_TO_TICKS(100));
+
+    //                                char *buffer = (char *) pvPortMalloc(10 * 1024);
+    //                                for (int j = 0; j < 1; j++) {
+    //                                    int status = fatfs_read(record->image_path, buffer, 0, 10 * 1024);
+    //                                }
+    //                                vPortFree(buffer);
+
+                                    //LOGD("feature.map 2size:%d\r\n", fatfs_getsize("feature.map"));
+    //                                vTaskDelay(pdMS_TO_TICKS(100));
+                                    fatfs_delete(record->image_path);
+    #endif
+    //                                LOGD("feature.map size:%d\r\n", fatfs_getsize("feature.map"));
+    //                                LOGD("config size:%d\r\n", fatfs_getsize("config.jsn"));
+    //                                LOGD("record size:%d\r\n", fatfs_getsize("record.jsn"));
+
+                                }
+                                pressure_test = 1;
+                                vTaskDelay(pdMS_TO_TICKS(100));
+                            }
+    #endif
+                            cmdOpenDoorReq(g_uu_id);
+    #if !RECOGNIZE_ONCE
+                            LOGD("Reset recognize timeout trigger\r\n");
+                            recognize_times = 0;
+    #endif
+                        } else {//failed
+                            recognize_times++;
+    //                        LOGD("User face recognize failed %d times\r\n", recognize_times);
+    #if    SUPPORT_POWEROFF
+                            if (recognize_times > 30) {
+                                LOGD("User face recognize timeout closeLcdBackgroud\r\n");
+                                recognize_times = 0;
+                                CloseLcdBackground();
+                                vTaskDelay(pdMS_TO_TICKS(1000));
+                                Uart5_SendDeinitCameraMsg();
+                                cmdCloseFaceBoardReq();//关主控电源
+                                break;
+                            }
+    #endif
                         }
-#endif
                     }
 
+
                 }
-                    break;
+                break;
                 default:
                     assert(0);
                     break;
@@ -508,7 +529,8 @@ static void uart5_QMsg_task(void *pvParameters) {
 
 }
 
-static void uart5_sync_task(void *pvParameters) {
+//static void uart5_sync_task(void *pvParameters) {
+static void vUartInitTask(void *pvParameters) {
     //vTaskDelay(pdMS_TO_TICKS(200));
     //check_config();
     vTaskDelay(pdMS_TO_TICKS(300));
@@ -517,7 +539,7 @@ static void uart5_sync_task(void *pvParameters) {
 }
 
 
-static void uart5_task(void *pvParameters) {
+static void vReceiveUartTask(void *pvParameters) {
     int error;
     size_t rcvlen = 0;
     int msglen = 0;
@@ -530,12 +552,12 @@ static void uart5_task(void *pvParameters) {
     char message_buffer[64] = {0};
 
 //    uint8_t data_tmp;
-    LOGD("[uart5_task]:starting...\r\n");
+    LOGD("[vReceiveUartTask]:starting...\r\n");
     lpuart_config5.srcclk = DEMO_LPUART_CLK_FREQ;
     lpuart_config5.base = DEMO_LPUART;
 
     if (kStatus_Success != LPUART_RTOS_Init(&handle5, &t_handle5, &lpuart_config5)) {
-        LOGD("[uart5_task]:Error,LPUART_RTOS_Init failed!\r\n");
+        LOGD("[vReceiveUartTask]:Error,LPUART_RTOS_Init failed!\r\n");
         vTaskSuspend(NULL);
     }
 
@@ -546,7 +568,7 @@ static void uart5_task(void *pvParameters) {
     /* Receive user input and send it back to terminal. */
     do {
 
-        //LOGD("[uart5_task]:Recv New Msg ...\r\n");
+        //LOGD("[vReceiveUartTask]:Recv New Msg ...\r\n");
         memset(recv_buffer, 0, sizeof(recv_buffer));
         uint8_t rx_status = UART5_RX_MSG_STATUS_WAITING_HEADER;
         msglen = 0;
@@ -571,15 +593,15 @@ static void uart5_task(void *pvParameters) {
             }
 
             if (error == kStatus_Success) {
-                //LOGD("[uart5_task]:receive return!\r\n");
+                //LOGD("[vReceiveUartTask]:receive return!\r\n");
                 if (req_len != rcvlen) {
-                    LOGD("[uart5_task]:part of data received, expect:%d received:%d!\r\n", req_len, rcvlen);
+                    LOGD("[vReceiveUartTask]:part of data received, expect:%d received:%d!\r\n", req_len, rcvlen);
                     rx_status = UART5_RX_MSG_STATUS_WAITING_HEADER;
 
 
                 } else if (UART5_RX_MSG_STATUS_WAITING_HEADER == rx_status) {
                     if (HEAD_MARK != recv_buffer[0]) {
-                        LOGD("[uart5_task]:wrong header received, expect:0x%x received:0x%x!\r\n", HEAD_MARK,
+                        LOGD("[vReceiveUartTask]:wrong header received, expect:0x%x received:0x%x!\r\n", HEAD_MARK,
                              recv_buffer[0]);
                         rx_status = UART5_RX_MSG_STATUS_WAITING_HEADER;
                     } else {
@@ -587,7 +609,7 @@ static void uart5_task(void *pvParameters) {
                     }
                 } else if (UART5_RX_MSG_STATUS_WAITING_LENGTH == rx_status) {
                     if (recv_buffer[2] > UART5_RX_MAX_DATA_PACKAGE_SIZE) {
-                        LOGD("[uart5_task]:wrong msg length received, length:%d\r\n", recv_buffer[2]);
+                        LOGD("[vReceiveUartTask]:wrong msg length received, length:%d\r\n", recv_buffer[2]);
                         rx_status = UART5_RX_MSG_STATUS_WAITING_HEADER;
                     } else {
                         rx_status = UART5_RX_MSG_STATUS_WAITING_DATA;
@@ -599,7 +621,7 @@ static void uart5_task(void *pvParameters) {
                 }
 
             } else {
-                LOGD("[uart5_task]:LPUART_RTOS_Receive error:%d sts:%d!\r\n", error, rx_status);
+                LOGD("[vReceiveUartTask]:LPUART_RTOS_Receive error:%d sts:%d!\r\n", error, rx_status);
                 rx_status = UART5_RX_MSG_STATUS_WAITING_HEADER;
                 continue;
             }
@@ -611,7 +633,7 @@ static void uart5_task(void *pvParameters) {
             memset(message_buffer, 0, sizeof(message_buffer));
             HexToStr(message_buffer, recv_buffer, msglen);
             LOGD("\n===receive msg<len:%d %s>: \r\n", msglen, message_buffer);
-            /*for(i=0; i<msglen; i++)
+            /*for(int i=0; i<msglen; i++)
             {
                 LOGD("0x%02x	", recv_buffer[i]);
             }
@@ -641,18 +663,59 @@ static void uart5_task(void *pvParameters) {
     LPUART_RTOS_Deinit(&handle5);
     vTaskSuspend(NULL);
 }
+static void vReceiveFakeMessageTask( void *pvParameters){
+
+    int msglen = 0;
+    uint8_t recv_buffer[128] = {0};
+    unsigned char HeadMark;
+    unsigned char CmdId = 0;
+    unsigned char datalen = 0;
+    const unsigned char *pszMsgInfo = NULL;
+
+    printf("%s 创建 ReceiveFakeMessageTask  \n", logtag);
+    while (1) {
+        //LOGD("vReceiveOasisTask()  -> xQueueReceive()!\n");
+        // pick up message
+        UartMessage message;
+        memset( &message, 0, sizeof(UartMessage));
+        int ret = xQueueReceive( Uart5FromFakeUartMsgQueue, (void *) &message, portMAX_DELAY);
+        if (ret == pdTRUE) {
+            LOGD("%s  fake data: %s \r\n", logtag,  message.Data);
+//            1. 将message.Data 转成 16进制
+            int msglen = strlen( message.Data );
+            StrToHex(recv_buffer, message.Data, msglen);
+            for(int i=0; i<msglen; i++)
+            {
+                LOGD("0x%02x	", recv_buffer[i]);
+            }
+            LOGD("\r\n");
+//            2. 解包
+            pszMsgInfo = MsgHead_Unpacket(
+                    recv_buffer,
+                    msglen,
+                    &HeadMark,
+                    &CmdId,
+                    &datalen);
+
+//            3.处理指令
+            ProcMessage(CmdId,
+                        datalen,
+                        pszMsgInfo);
+        }
+    }
+}
 
 int MCU_UART5_Start() {
-    LOGD("[MCU_UART5_Start]:starting...\r\n");
+    LOGD("%s:starting...\r\n", logtag);
 
     NVIC_SetPriority(LPUART5_IRQn, 5);
 
     //创建uart5串口数据通信task
 #if (configSUPPORT_STATIC_ALLOCATION == 1)
-    if (NULL == xTaskCreateStatic(uart5_task, "Uart5_task", UART5TASK_STACKSIZE, NULL, UART5TASK_PRIORITY,
+    if (NULL == xTaskCreateStatic(vReceiveUartTask, "ReceiveUartTask", UART5TASK_STACKSIZE, NULL, UART5TASK_PRIORITY,
                                         Uart5TaskStack, &s_Uart5TaskTCB))
 #else
-    if (xTaskCreate(uart5_task, "Uart5_task", UART5TASK_STACKSIZE, NULL, UART5TASK_PRIORITY, NULL) != pdPASS)
+    if (xTaskCreate(vReceiveUartTask, "ReceiveUartTask", UART5TASK_STACKSIZE, NULL, UART5TASK_PRIORITY, NULL) != pdPASS)
 #endif
     {
         PRINTF("Task creation failed!.\r\n");
@@ -661,14 +724,14 @@ int MCU_UART5_Start() {
 
     //创建uart5 开机同步task
 #if (configSUPPORT_STATIC_ALLOCATION == 1)
-    if (NULL == xTaskCreateStatic(uart5_sync_task, "Uart5_sync_task", UART5SYNCTASK_STACKSIZE, NULL, UART5SYNCTASK_PRIORITY,
+    if (NULL == xTaskCreateStatic(vUartInitTask, "UartInitTask", UART5SYNCTASK_STACKSIZE, NULL, UART5SYNCTASK_PRIORITY,
                                         Uart5SyncTaskStack, &s_Uart5SyncTaskTCB))
 #else
-    if (xTaskCreate(uart5_sync_task, "Uart5_sync_task", UART5SYNCTASK_STACKSIZE, NULL, UART5SYNCTASK_PRIORITY, NULL) !=
+    if (xTaskCreate(vUartInitTask, "UartInitTask", UART5SYNCTASK_STACKSIZE, NULL, UART5SYNCTASK_PRIORITY, NULL) !=
         pdPASS)
 #endif
     {
-        PRINTF("Task uart5_sync_task creation failed!.\r\n");
+        PRINTF("Task vUartInitTask creation failed!.\r\n");
         while (1);
     }
     //创建UART5 Task的消息接收队列QMSG
@@ -680,10 +743,10 @@ int MCU_UART5_Start() {
 
     //创建uart5的QMsg接收task
 #if (configSUPPORT_STATIC_ALLOCATION == 1)
-    if (NULL == xTaskCreateStatic(uart5_QMsg_task, "Uart5_QMsg_task", UART5QMSGTASK_STACKSIZE, NULL, UART5QMSGTASK_PRIORITY,
+    if (NULL == xTaskCreateStatic(vReceiveOasisTask, "ReceiveOasisTask", UART5QMSGTASK_STACKSIZE, NULL, UART5QMSGTASK_PRIORITY,
                                         Uart5QmsgTaskStack, &s_Uart5QmsgTaskTCB))
 #else
-    if (xTaskCreate(uart5_QMsg_task, "Uart5_QMsg_task", UART5QMSGTASK_STACKSIZE, NULL, UART5QMSGTASK_PRIORITY, NULL) !=
+    if (xTaskCreate(vReceiveOasisTask, "ReceiveOasisTask", UART5QMSGTASK_STACKSIZE, NULL, UART5QMSGTASK_PRIORITY, NULL) !=
         pdPASS)
 #endif
     {
@@ -691,26 +754,31 @@ int MCU_UART5_Start() {
         while (1);
     }
 
-    //创建循环定时处理的task
-#if    0
-    #if (configSUPPORT_STATIC_ALLOCATION == 1)
-    if (NULL == xTaskCreateStatic(uart5_Loop_task, "Uart5_Loop_task", UART5LOOPTASK_STACKSIZE, NULL, UART5LOOPTASK_PRIORITY,
-                                        Uart5LoopTaskStack, &s_Uart5LoopTaskTCB))
+// 创建收取模拟消息的task  xshx add 20220524
+    Uart5FromFakeUartMsgQueue = xQueueCreate(UART5_MSG_Q_COUNT, sizeof(UartMessage));
+    if (Uart5FromFakeUartMsgQueue == NULL) {
+        LOGE("[ERROR]:xQueueCreate Uart5FromFakeUartMsgQueue queue\r\n");
+        return -1;
+    }
+#if (configSUPPORT_STATIC_ALLOCATION == 1)
+    if (NULL == xTaskCreateStatic(  vReceiveFakeMessageTask, "ReceiveFakeMessageTask", FakeUartTASK_STACKSIZE, NULL, FakeUartTASK_PRIORITY,
+                                        UartFakeTaskStack, &s_UartFakeTaskTCB))
 #else
-    if (xTaskCreate(uart5_Loop_task, "Uart5_Loop_task", UART5LOOPTASK_STACKSIZE, NULL, UART5LOOPTASK_PRIORITY, NULL) != pdPASS)
+    if (xTaskCreate(vReceiveFakeMessageTask, "ReceiveFakeMessageTask", FakeUartTASK_STACKSIZE, NULL, FakeUartTASK_PRIORITY, NULL) !=
+        pdPASS)
 #endif
     {
         PRINTF("Task creation failed!.\r\n");
         while (1);
     }
-#endif
-    //LOGD("[MCU_UART5_Start]:started...\r\n");
+    LOGD("%s:started...\r\n", logtag);
 
     return 0;
 }
 
 //send qMsg to uart5 task when face register over
 int Uart5_GetFaceRegResult(uint8_t result, char *pszMessage) {
+    LOGE("注册完成 \r\n");
     int status;
     QMsg *pQMsg = (QMsg *) pvPortMalloc(sizeof(QMsg));
     if (NULL == pQMsg) {
@@ -730,6 +798,7 @@ int Uart5_GetFaceRegResult(uint8_t result, char *pszMessage) {
 }
 //send qMsg to uart5 task when face recognize over
 int Uart5_GetFaceRecResult(uint8_t result, char *pszMessage) {
+//    LOGE("识别完成  %d\r\n", result);
     int status;
     QMsg *pQMsg = (QMsg *) pvPortMalloc(sizeof(QMsg));
     if (NULL == pQMsg) {

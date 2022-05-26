@@ -9,16 +9,18 @@
 
 #include "fsl_log.h"
 
+
+static  const char * logtag="[UserExtendManager] ";
 UserExtendManager* UserExtendManager::m_instance = NULL;
 uint32_t UserExtendManager::userExtend_FS_Head = NULL;
 UserExtendManager::UserExtendManager() {
     // Create a database lock semaphore
     userExtend_FS_Head = USER_EXTEND_FS_ADDR;
-    printf("Init UserExtendManager \n");
+    LOGD("%s Init UserExtendManager \r\n",logtag);
 }
 UserExtendManager* UserExtendManager::getInstance()
 {
-    printf("getInstance UserExtendManager \n");
+    LOGD("%s getInstance UserExtendManager \r\n", logtag);
 
     if(NULL == m_instance)
     {
@@ -29,18 +31,18 @@ UserExtendManager* UserExtendManager::getInstance()
 
 int UserExtendManager::get_free_index(){
 
-    int item_max = MAX_COUNT;
+    int item_max = MAX_EXTEND_COUNT;
     // find new map index
     for (int i = 0; i < item_max; i++)
     {
         UserExtend userExtend;
-        int status = SLN_Read_Flash_At_Address( userExtend_FS_Head+i*USER_EXTEND_SECTOR_SIZE, (uint8_t *)&userExtend, sizeof(UserExtend)  );
+        int status = SLN_Read_Flash_At_Address( userExtend_FS_Head+i*sizeof(UserExtend), (uint8_t *)&userExtend, sizeof(UserExtend)  );
 
         if( status == 0 ){
             if ( strcmp( userExtend.UUID , UUID_MAGIC_UNUSE) !=0)
                 return i;
         }else{
-            printf("error \n");
+            LOGD("error \n");
         }
     }
 
@@ -48,11 +50,13 @@ int UserExtendManager::get_free_index(){
 }
 
 int UserExtendManager::get_index_by_uuid(char *uuid) {
-    printf("get_index_by_uuid %s", uuid);
-    for( int i=0; i<MAX_COUNT; i++){
+    LOGD("%s get_index_by_uuid %s \r\n",logtag, uuid);
+    for( int i=0; i<MAX_EXTEND_COUNT; i++){
 
         UserExtend userExtend;
-        int status = SLN_Read_Flash_At_Address( userExtend_FS_Head+i*USER_EXTEND_SECTOR_SIZE, (uint8_t *)&userExtend, sizeof(UserExtend)  );
+        memset( &userExtend, 0, sizeof(UserExtend));
+        int status = SLN_Read_Flash_At_Address( userExtend_FS_Head+i*sizeof(UserExtend), (uint8_t *)&userExtend, sizeof(UserExtend)  );
+        LOGD("%s %i, %s, %s \r\n", logtag, i, userExtend.UUID, userExtend.jsonData);
         if( status == 0 ){
             if( strcmp( userExtend.UUID, uuid) == 0 ){
                 return  i;
@@ -64,10 +68,10 @@ int UserExtendManager::get_index_by_uuid(char *uuid) {
 }
 
 int UserExtendManager::addUserExtend(UserExtend * userExtend){
-    LOGD("addUserExtend  %s\r\n", userExtend->UUID);
+    LOGD("%s addUserExtend  %s\r\n", logtag, userExtend->UUID);
     int index = get_free_index();
     if( index == -1 ){
-        printf("Error: Database is full \n");
+        LOGD("Error: Database is full \n");
     }
     int status = SLN_Write_Sector(userExtend_FS_Head+index* sizeof(UserExtend), (uint8_t *)userExtend);
 
@@ -79,6 +83,7 @@ int UserExtendManager::addUserExtend(UserExtend * userExtend){
 //input : uuid
 //output: userExtend
 int  UserExtendManager::queryUserExtendByUUID( char *uuid, UserExtend *userExtend){
+    LOGD("%s queryUserExtendByUUID  %s\r\n",logtag, uuid);
     int status =-1;
     int index = get_index_by_uuid(uuid);
     if( index != -1 ){
@@ -92,6 +97,7 @@ int  UserExtendManager::queryUserExtendByUUID( char *uuid, UserExtend *userExten
 }
 
 int UserExtendManager::updateUserExtendByUUID( char *uuid, UserExtend *userExtend){
+    LOGD("%s updateUserExtendByUUID  %s\r\n",logtag, uuid);
     int status =-1;
     int index = get_index_by_uuid( uuid );
     if( index != -1 ){
@@ -104,10 +110,11 @@ int UserExtendManager::updateUserExtendByUUID( char *uuid, UserExtend *userExten
 }
 
 int UserExtendManager::delUserExtendByUUID( char *uuid ){
+    LOGD("%s delUserExtendByUUID  %s\r\n",logtag, uuid);
     int status=-1;
     int index = get_index_by_uuid(uuid );
     if( index != -1 ){
-        status = SLN_Erase_Sector( userExtend_FS_Head+index*USER_EXTEND_SECTOR_SIZE);
+        status = SLN_Erase_Sector( userExtend_FS_Head+index*sizeof(UserExtend));
         if( status !=0 ){
             LOGD("erase flash failed %d \r\n", status);
         }

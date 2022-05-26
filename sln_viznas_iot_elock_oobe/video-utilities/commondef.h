@@ -274,6 +274,9 @@ typedef struct
 #define LPMTASK_STACKSIZE 256
 
 
+#define FakeUartTASK_PRIORITY (configMAX_PRIORITIES - 1)
+#define FakeUartTASK_STACKSIZE  1024
+
 #define UART5TASK_PRIORITY (configMAX_PRIORITIES - 1)
 #define UART5TASK_STACKSIZE  1024
 
