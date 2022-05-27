@@ -203,7 +203,7 @@ int ProcMessageByHead(
             break;
         }
         case CMD_FACE_DELETE_USER: {
-//            cmdDeleteUserReqProcByHead(/*HEAD_MARK*/nHead, nMessageLen, pszMessage);
+            cmdDeleteUserReqProcByHead(/*HEAD_MARK*/nHead, nMessageLen, pszMessage);
             break;
         }
         case CMD_REQ_RESUME_FACTORY: {
@@ -311,7 +311,7 @@ static void vReceiveOasisTask(void *pvParameters) {
 
 //						增加注册记录
                         //增加本次操作记录
-                        LOGD("增加注册记录 \r\n");
+                        LOGD("%s增加注册记录 \r\n", logtag);
                         Record *record = (Record *) pvPortMalloc(sizeof(Record));
                         memset(record, 0, sizeof(Record));
                         strcpy(record->UUID, username);
@@ -330,7 +330,7 @@ static void vReceiveOasisTask(void *pvParameters) {
                         //record->power2 = -1;//当前电池电量
                         record->upload = BOTH_UNUPLOAD;// 0代表没上传 1代表记录上传图片未上传 2代表均已
 //                        record->action_upload = 0;	//代表注册且未上传
-                        LOGD("往数据库中插入本次注册记录 \r\n");
+                        LOGD("%s往数据库中插入本次注册记录 \r\n", logtag);
                         DBManager::getInstance()->addRecord(record);
 
                         Oasis_SetOasisFileName(record->image_path);
@@ -339,10 +339,10 @@ static void vReceiveOasisTask(void *pvParameters) {
 //                        log_info("保存 UID<%s> 注册图片到 path<%s>!\n", record.UID, image_path);
 
 //   保存用户拓展信息, 开始结束时间,柜门号
-                        LOGD( "%s 增加用户附加信息 %s\r\n",logtag, sRegisteInst.UUID);
+                        LOGD( "%s 增加用户附加信息 %s\r\n",logtag, instUserExtend.UUID);
                         UserExtend userExtend;
                         memset( &userExtend, 0, sizeof(UserExtend) );
-                        vConvertRegistClass2UserExtend( &sRegisteInst,  &userExtend );
+                        vConvertUserExtendType2Json( &instUserExtend,  &userExtend );
                         int result = UserExtendManager::getInstance()->addUserExtend(   &userExtend );
                         LOGD( "%s 增加用户附加信息 %d\r\n",logtag, result);
                     } else {//failed
@@ -350,9 +350,9 @@ static void vReceiveOasisTask(void *pvParameters) {
                         g_reging_flg = REG_STATUS_FAILED;
                     }
                     //StrToHex(g_uu_id.UID,(char*)gFaceInfo.name.c_str(),sizeof(g_uu_id.UID));
-                    StrToHex(g_uu_id.UID, (char *) username, sizeof(g_uu_id.UID));
+//                    StrToHex(g_uu_id.UID, (char *) username, sizeof(g_uu_id.UID));
 
-                    cmdRegResultNotifyReq(g_uu_id, g_reging_flg);
+                    cmdRegResultNotifyReq( &instUserExtend, g_reging_flg);
                     if (g_reging_flg == REG_STATUS_FAILED) {
                         CloseLcdBackground();
                         vTaskDelay(pdMS_TO_TICKS(1000));
@@ -369,7 +369,7 @@ static void vReceiveOasisTask(void *pvParameters) {
                         save_config_feature_file();
                         vTaskDelay(pdMS_TO_TICKS(100));
 
-                        LOGD("注册成功,请求MQTT上传本次用户注册记录 \n");
+                        LOGD("注册成功,请求MQTT上传本次用户注册记录 \r\n");
                         int ID = DBManager::getInstance()->getLastRecordID();
 #if MQTT_SUPPORT
                         cmdRequestMqttUpload(ID);
@@ -489,7 +489,11 @@ static void vReceiveOasisTask(void *pvParameters) {
                                 vTaskDelay(pdMS_TO_TICKS(100));
                             }
     #endif
-                            cmdOpenDoorReq(g_uu_id);
+//                          发送开门请求
+                            UserExtendType userExtendType;
+                            vConverUserExtendJson2Type(&userExtend, &userExtendType);
+//                            cmdOpenDoorReq(g_uu_id);
+                            cmdOpenDoorReq( &userExtendType);
     #if !RECOGNIZE_ONCE
                             LOGD("Reset recognize timeout trigger\r\n");
                             recognize_times = 0;
@@ -581,12 +585,12 @@ static void vReceiveUartTask(void *pvParameters) {
                     error = LPUART_RTOS_Receive(&handle5, &recv_buffer[0], req_len, &rcvlen);
                     break;
                 case UART5_RX_MSG_STATUS_WAITING_LENGTH:
-                    req_len = 2;
+                    req_len = 3;
                     error = LPUART_RTOS_Receive(&handle5, &recv_buffer[1], req_len, &rcvlen);
                     break;
                 case UART5_RX_MSG_STATUS_WAITING_DATA:
-                    req_len = recv_buffer[2] + 2;
-                    error = LPUART_RTOS_Receive(&handle5, &recv_buffer[3], req_len, &rcvlen);
+                    req_len = recv_buffer[3] + 1;
+                    error = LPUART_RTOS_Receive(&handle5, &recv_buffer[4], req_len, &rcvlen);
                     break;
                 default:
                     assert(0);
@@ -608,15 +612,15 @@ static void vReceiveUartTask(void *pvParameters) {
                         rx_status = UART5_RX_MSG_STATUS_WAITING_LENGTH;
                     }
                 } else if (UART5_RX_MSG_STATUS_WAITING_LENGTH == rx_status) {
-                    if (recv_buffer[2] > UART5_RX_MAX_DATA_PACKAGE_SIZE) {
-                        LOGD("[vReceiveUartTask]:wrong msg length received, length:%d\r\n", recv_buffer[2]);
+                    if (recv_buffer[3] > UART5_RX_MAX_DATA_PACKAGE_SIZE) {
+                        LOGD("[vReceiveUartTask]:wrong msg length received, length:%d\r\n", recv_buffer[3]);
                         rx_status = UART5_RX_MSG_STATUS_WAITING_HEADER;
                     } else {
                         rx_status = UART5_RX_MSG_STATUS_WAITING_DATA;
                     }
                 } else {
                     //a whole package received
-                    msglen = rcvlen + 3;
+                    msglen = rcvlen + 4;
                     break;
                 }
 
@@ -639,11 +643,15 @@ static void vReceiveUartTask(void *pvParameters) {
             }
             LOGD("\n");*/
         }
-        //收到完整的以HEAD_MARK开头的消息后校验处理
-        memcpy(&Msg_CRC16, recv_buffer + msglen - CRC16_LEN, CRC16_LEN);
-        Cal_CRC16 = CRC16_X25(recv_buffer, msglen - CRC16_LEN);
-        if (Msg_CRC16 != Cal_CRC16) {
-            LOGD("msg CRC error: Msg_CRC16<0x%02X>, Cal_CRC16<0x%02X>!\r\n", Msg_CRC16, Cal_CRC16);
+//        收到完整的以HEAD_MARK开头的消息后校验处理
+//        memcpy(&Msg_CRC16, recv_buffer + msglen - CRC16_LEN, CRC16_LEN);
+//        Cal_CRC16 = CRC16_X25(recv_buffer, msglen - CRC16_LEN);
+//        if (Msg_CRC16 != Cal_CRC16) {
+//            LOGD("msg CRC error: Msg_CRC16<0x%02X>, Cal_CRC16<0x%02X>!\r\n", Msg_CRC16, Cal_CRC16);
+//            continue;
+//        }
+        if( bCheckSum( recv_buffer, msglen )==false ){
+            LOGD("%s check sum failed \r\n", logtag);
             continue;
         }
 
@@ -672,7 +680,7 @@ static void vReceiveFakeMessageTask( void *pvParameters){
     unsigned char datalen = 0;
     const unsigned char *pszMsgInfo = NULL;
 
-    printf("%s 创建 ReceiveFakeMessageTask  \n", logtag);
+    printf("%s 创建 ReceiveFakeMessageTask  \r\n", logtag);
     while (1) {
         //LOGD("vReceiveOasisTask()  -> xQueueReceive()!\n");
         // pick up message
@@ -682,7 +690,7 @@ static void vReceiveFakeMessageTask( void *pvParameters){
         if (ret == pdTRUE) {
             LOGD("%s  fake data: %s \r\n", logtag,  message.Data);
 //            1. 将message.Data 转成 16进制
-            int msglen = strlen( message.Data );
+            int msglen = strlen( message.Data )/2;
             StrToHex(recv_buffer, message.Data, msglen);
             for(int i=0; i<msglen; i++)
             {
@@ -696,7 +704,7 @@ static void vReceiveFakeMessageTask( void *pvParameters){
                     &HeadMark,
                     &CmdId,
                     &datalen);
-
+            LOGD("%s 解包 HeadMark 0x%02x ,CmdId 0x%02x ,datalen 0x%02x   \r\n",logtag, HeadMark,CmdId, datalen );
 //            3.处理指令
             ProcMessage(CmdId,
                         datalen,

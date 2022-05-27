@@ -8,11 +8,6 @@
 #include "commondef.h"
 #include "../db/UserExtendManager.h"
 
-#define UERID  "UERID"
-#define TIMES   "TIMES"
-#define TIMEE   "TIMEE"
-#define ADEV    "ADEV"
-#define EXUSR   "EXUSR"
 
 typedef  struct
 {
@@ -21,21 +16,13 @@ typedef  struct
 } UartMessage, *pUartMessage;
 
 
-//注册时的结构体    uuid , 起始时间, 结束时间, 设备ID
-typedef struct{
-    char UUID[17];//
-    int  uStartTime;//
-    int  uEndTime;
-    char cDeviceId[48];//
-}RegisteClass, *PRegisteClass;
 
 
 
 extern bool lcd_back_ground;
 extern void OpenLcdBackground();
 extern void CloseLcdBackground();
-//xshx add
-extern void vConvertRegistClass2UserExtend(RegisteClass *regist, UserExtend  *userExtend);
+
 
 extern  void SendMessageToUart5FromFakeUart(  char *data);
 

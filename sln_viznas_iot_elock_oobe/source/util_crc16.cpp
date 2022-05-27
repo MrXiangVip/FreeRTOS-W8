@@ -112,3 +112,31 @@ unsigned short CRC16_X25(unsigned char *puchMsg, unsigned int usDataLen)
   InvertUint16(&wCRCin,&wCRCin);
   return (wCRCin^0xFFFF) ;
 }
+
+//从 pBuff 去头 去校验位 求和  再和pBuff 的第bBufLen-1 位比较
+bool  bCheckSum(uint8_t *p_Buf,uint16_t  uBufLen)
+{
+    uint8_t  i_sum=0;
+    uint8_t *pTmp = p_Buf+1;
+    int size = uBufLen-2;
+    for(int i=0;i<size;i++)
+    {
+        i_sum +=  *(pTmp +i);
+    }
+    if( *(p_Buf+uBufLen-1) == i_sum){
+        return true;
+    }
+    return false;
+}
+
+//从pBuff  往后数 len 位求和
+uint8_t  uGetCheckSum(uint8_t *pBuff, uint16_t uBuffLen )
+{
+    uint8_t  i_sum=0;
+
+    for(int i=0;i<uBuffLen;i++)
+    {
+        i_sum +=  *(pBuff +i);
+    }
+    return  i_sum;
+}

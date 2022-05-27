@@ -1,6 +1,3 @@
-//
-// Created by xshx on 2022/5/20.
-//
 /**************************************************************************
  * 	FileName:	 	MCU_UART5_Layer.cpp
  *	Description:	This file is including the function interface which is used to processing
@@ -9,7 +6,7 @@
  *	Version:		V 1.0
  *	Author:			tanqw
  *	Created:		2020-10-26
- *	Updated:
+ *	Updated:        xshx on 2022/5/20.
  *
 **************************************************************************/
 #include <vector>
@@ -108,7 +105,7 @@ int receive_boot_mode = 0;
 bool oasis_task_start = false;
 
 //注册时发来的数据
-RegisteClass  sRegisteInst;
+UserExtendType  instUserExtend;
 /*******************************************************************************
  * Prototypes
  ******************************************************************************/
@@ -117,6 +114,12 @@ static void uart5_task(void *pvParameters);
 
 /*******************************************************************************
  * Code
+ *
+ *______________________________________________________
+|   |      |    |       |                |      |      |
+|帧头|指令码 |方向|数据长度|内容             | 序列号|校验码|
+|___|______|____|_______|________________|______|______|
+*
  ******************************************************************************/
 
 /****************************************************************************************
@@ -144,12 +147,30 @@ int MsgHead_Packet(
     pTemp += sizeof(uint8_t);
     StrSetUInt8((uint8_t *) pTemp, CmdId);
     pTemp += sizeof(uint8_t);
+    StrSetUInt8( (uint8_t*)pTemp, DIRECT_SEND);
+    pTemp += sizeof(uint8_t);
     StrSetUInt8((uint8_t *) pTemp, MsgLen);
     pTemp += sizeof(uint8_t);
 
     return MsgLen + sizeof(MESSAGE_HEAD);
 }
-
+/*******************************************************************************
+ *
+ * 消息尾拼接
+ *tailIndex = head+ data
+ ******************************************************************************/
+int MsgTail_Pack(char *Message, int iTailIndex ){
+    char *pop = Message+iTailIndex;
+//  序列号
+    uint8_t orderIndex =0;
+    memcpy( pop, &orderIndex, sizeof(orderIndex));
+    pop += sizeof(orderIndex);
+//  校验码 =  不算帧头 和 检验位求和
+    uint8_t checkSum = uGetCheckSum( (uint8_t*)Message+1, iTailIndex  );
+    LOGD( "%s 校验码 %x \r\n",logtag, checkSum);
+    memcpy( pop, &checkSum, sizeof(checkSum));
+    return  iTailIndex+2;
+};
 /****************************************************************************************
 函数名称：MsgHead_Unpacket
 函数功能：解包
@@ -167,6 +188,7 @@ const unsigned char *MsgHead_Unpacket(
         unsigned char *HeadMark,
         unsigned char *CmdId,
         unsigned char *MsgLen) {
+
     if (!pszBuffer) {
         LOGD("pszBuffer is NULL\n");
         return NULL;
@@ -176,18 +198,20 @@ const unsigned char *MsgHead_Unpacket(
     *HeadMark = StrGetUInt8(pTemp);
     pTemp += sizeof(uint8_t);
     *CmdId = StrGetUInt8(pTemp);
+//   跳过方向
+    pTemp += sizeof(uint8_t);
     pTemp += sizeof(uint8_t);
     *MsgLen = StrGetUInt8(pTemp);
     pTemp += sizeof(uint8_t);
     if (*HeadMark != HEAD_MARK && *HeadMark != HEAD_MARK_MQTT) {
         LOGD("byVersion[0x%x] != MESSAGE_VERSION[0x%x|0x%x]\n", \
             *HeadMark, HEAD_MARK, HEAD_MARK_MQTT);
-        return NULL;
+//        return NULL;
     }
 
     if ((int) *MsgLen + sizeof(MESSAGE_HEAD) + CRC16_LEN > iBufferSize) {
-        LOGD("pstMessageHead->MsgLen + sizeof(MESSAGE_HEAD) + CRC16_LEN > iBufferSize\n");
-        return NULL;
+        LOGD("pstMessageHead->MsgLen + sizeof(MESSAGE_HEAD) + CRC16_LEN > iBufferSize\r\n");
+//        return NULL;
     }
 
     return pszBuffer + sizeof(MESSAGE_HEAD);
@@ -262,7 +286,6 @@ int SendMsgToMCU(unsigned char *MsgBuf, unsigned char MsgLen) {
 int cmdSysInitOKSyncReq(const char *strVersion) {
     LOGD(" 发送开机同步请求 \r\n");
     char szBuffer[32] = {0};
-    int iBufferSize;
     char *pop = NULL;
     unsigned char MsgLen = 0;
 
@@ -275,18 +298,18 @@ int cmdSysInitOKSyncReq(const char *strVersion) {
     pop += MsgLen;
 
     /*填充消息头*/
-    iBufferSize = MsgHead_Packet(
+    int iTailIndex = MsgHead_Packet(
             szBuffer,
             HEAD_MARK,
             CMD_INITOK_SYNC,
             MsgLen);
 
-    /*计算FCS*/
-    unsigned short cal_crc16 = CRC16_X25((uint8_t *) szBuffer, MsgLen + sizeof(MESSAGE_HEAD));
-    memcpy((uint8_t *) pop, &cal_crc16, sizeof(cal_crc16));
-    //LOGD("cal_crc16<0x%X>\n", cal_crc16);
 
-    SendMsgToMCU((uint8_t *) szBuffer, iBufferSize + CRC16_LEN);
+    int iTotalLen =MsgTail_Pack( szBuffer, iTailIndex);
+    if( iTotalLen > sizeof(szBuffer) ){
+        LOGD("%s ERROR  %d must <  %d \r\n",iTotalLen, sizeof(szBuffer) );
+    }
+    SendMsgToMCU((uint8_t *) szBuffer, iTailIndex + 2);
 
     return 0;
 }
@@ -523,7 +546,6 @@ int cmdReqResumeFactoryProc(unsigned char nMessageLen, const unsigned char *pszM
 int cmdUserRegRsp(uint8_t ret) {
     LOGD("用户注册回复 \r\n");
     char szBuffer[32] = {0};
-    int iBufferSize;
     char *pop = NULL;
     unsigned char MsgLen = 0;
     uint8_t status = 0;
@@ -537,17 +559,19 @@ int cmdUserRegRsp(uint8_t ret) {
     pop += sizeof(uint8_t);
 
     /*填充消息头*/
-    iBufferSize = MsgHead_Packet(
+    int iTailIndex = MsgHead_Packet(
             szBuffer,
             HEAD_MARK,
             CMD_FACE_REG,
             MsgLen);
 
-    /*计算FCS*/
-    unsigned short cal_crc16 = CRC16_X25((uint8_t *) szBuffer, MsgLen + sizeof(MESSAGE_HEAD));
-    memcpy((uint8_t *) pop, &cal_crc16, sizeof(cal_crc16));
 
-    SendMsgToMCU((uint8_t *) szBuffer, iBufferSize + CRC16_LEN);
+//  拼装消息尾
+    int iTotalLen =MsgTail_Pack( szBuffer, iTailIndex);
+    if( iTotalLen > sizeof(szBuffer) ){
+        LOGD("%s ERROR  %d must <  %d \r\n",iTotalLen, sizeof(szBuffer) );
+    }
+    SendMsgToMCU((uint8_t *) szBuffer, iTotalLen);
 
     return 0;
 }
@@ -559,13 +583,13 @@ int cmdUserRegReqProc(unsigned char nMessageLen, const unsigned char *pszMessage
     uint8_t ret = SUCCESS, len = 0;
     const unsigned char *pos = pszMessage;
 
-    uint8_t uDeviceIds[48]={0};//最大48个柜子
-//  将当前状态设置为 注册
+//  1.将当前状态设置为 注册
     boot_mode = BOOT_MODE_REGIST;
 
-    //1. 解析指令, 获取UUID, 开始时间,结束时间,柜门编号
+//  2. 解析指令, 获取UUID, 开始时间,结束时间,柜门编号
     if (  nMessageLen >= 8) {
-        memcpy(&g_uu_id, pos + len, 8);
+//        memcpy(&g_uu_id, pos + len, 8);
+        memcpy( (void*)instUserExtend.HexUID, pos+len, 8);
         len += 8;
         pos+=8;
     }
@@ -575,12 +599,8 @@ int cmdUserRegReqProc(unsigned char nMessageLen, const unsigned char *pszMessage
         OpenLcdBackground();
     }
 
-    //LOGD("reg uuid<len=%d> : L<0x%08x>, H<0x%08x>.\n", sizeof(g_uu_id), g_uu_id.tUID.L, g_uu_id.tUID.H);
-    memset(username, 0, sizeof(username));
-    HexToStr(username, g_uu_id.UID, sizeof(g_uu_id.UID));
-    username[16] = '\0';//NXP的人脸注册API的username最大只能16byte
-    LOGD("%s UUID<len:%d>:%s.\r\n",logtag, sizeof(username), username);
-
+    HexToStr(instUserExtend.UUID, instUserExtend.HexUID, sizeof(instUserExtend.HexUID)  );
+    LOGD("%s UUID<len:%d>:%s.\r\n",logtag, sizeof(instUserExtend.UUID), instUserExtend.UUID);
 
     unsigned  int uStartTime = StrGetUInt32(pos);
     pos+=4;
@@ -590,16 +610,15 @@ int cmdUserRegReqProc(unsigned char nMessageLen, const unsigned char *pszMessage
     pos+=4;
     len+=4;
     LOGD("EndTime %d\r\n", uEndTime);
-    LOGD("Device NUM: %d\r\n", nMessageLen-len);
-    for( int i =0; i<nMessageLen-len; i++ ){
-        uDeviceIds[i] = StrGetUInt8( pos );
-        pos+=1;
-    }
 
-    memcpy( sRegisteInst.UUID,  username, sizeof(username));
-    sRegisteInst.uStartTime = uStartTime;
-    sRegisteInst.uEndTime =uEndTime;
-    memcpy( sRegisteInst.cDeviceId, uDeviceIds, sizeof(uDeviceIds));
+
+    char cDeviceIds[48]={0};//最大48个柜子
+    HexToStr(cDeviceIds, pos, nMessageLen-len);
+    printf("cDeviceIds %s\n", cDeviceIds);
+
+    instUserExtend.uStartTime = uStartTime;
+    instUserExtend.uEndTime =uEndTime;
+    memcpy( instUserExtend.cDeviceId, cDeviceIds, sizeof(cDeviceIds));
 
 //2.发起注册
     vizn_api_status_t status;
@@ -642,9 +661,10 @@ int cmdUserRegReqProc(unsigned char nMessageLen, const unsigned char *pszMessage
 0-完成注册,待激活
 1-注册失败
 */
-int cmdRegResultNotifyReq(uUID uu_id, uint8_t regResult) {
+//int cmdRegResultNotifyReq(uUID uu_id, uint8_t regResult) {
+int cmdRegResultNotifyReq(UserExtendType *userExtendType, uint8_t regResult) {
+    LOGD("%s 注册结果通知 \r\n", logtag);
     char szBuffer[32] = {0};
-    int iBufferSize;
     char *pop = NULL;
     unsigned char MsgLen = 0;
 
@@ -652,33 +672,37 @@ int cmdRegResultNotifyReq(uUID uu_id, uint8_t regResult) {
     pop = szBuffer + sizeof(MESSAGE_HEAD);
 
     /*填充消息体*/
-    memcpy(pop, uu_id.UID, sizeof(uUID));
-    MsgLen += sizeof(uUID);
-    pop += sizeof(uUID);
+    memcpy(pop, userExtendType->HexUID, sizeof(userExtendType->HexUID));
+    MsgLen += sizeof( userExtendType->HexUID);
+    pop += sizeof( userExtendType->HexUID);
     StrSetUInt8((uint8_t *) pop, regResult);
     MsgLen += sizeof(uint8_t);
     pop += sizeof(uint8_t);
 
     /*填充消息头*/
-    iBufferSize = MsgHead_Packet(
+    int iTailIndex = MsgHead_Packet(
             szBuffer,
             HEAD_MARK,
             CMD_FACE_REG_RLT,
             MsgLen);
 
-    /*计算FCS*/
-    unsigned short cal_crc16 = CRC16_X25((uint8_t *) szBuffer, MsgLen + sizeof(MESSAGE_HEAD));
-    memcpy((uint8_t *) pop, &cal_crc16, sizeof(cal_crc16));
 
-    SendMsgToMCU((uint8_t *) szBuffer, iBufferSize + CRC16_LEN);
+//  拼装消息尾
+    int iTotalLen =MsgTail_Pack( szBuffer, iTailIndex);
+    if( iTotalLen > sizeof(szBuffer) ){
+        LOGD("%s ERROR  %d must <  %d \r\n",iTotalLen, sizeof(szBuffer) );
+    }
+
+    SendMsgToMCU((uint8_t *) szBuffer, iTotalLen);
 
     return 0;
 }
 
 //主控发送测试指令:  开门请求
-int cmdOpenDoorReq(uUID uu_id) {
-    LOGD("向mcu发送开门请求 \r\n");
-    char szBuffer[32] = {0};
+//int cmdOpenDoorReq(uUID uu_id) {
+int cmdOpenDoorReq(UserExtendType *userExtendType) {
+    LOGD("%s  向mcu发送开门请求 \r\n", logtag);
+    char szBuffer[64] = {0};
     int iBufferSize;
     char *pop = NULL;
     unsigned char MsgLen = 0;
@@ -687,10 +711,20 @@ int cmdOpenDoorReq(uUID uu_id) {
     pop = szBuffer + sizeof(MESSAGE_HEAD);
 
     /*填充消息体*/
-    memcpy(pop, uu_id.UID, sizeof(uUID));
-    MsgLen += sizeof(uUID);
-    pop += sizeof(uUID);
+//    填入uuid
+    LOGD("%s UUID %s\r\n",logtag, userExtendType->UUID);
+    memcpy(pop, userExtendType->HexUID, sizeof(userExtendType->HexUID));
+    MsgLen += sizeof(userExtendType->HexUID);
+    pop += sizeof(userExtendType->HexUID);
 
+//    填入device列表
+    LOGD( "%s DeviceList %s\r\n",logtag, userExtendType->cDeviceId);
+    unsigned char deviceList[48]={0};
+    int  iHexDeviceLen = strlen(userExtendType->cDeviceId)/2;
+    StrToHex( deviceList, userExtendType->cDeviceId, iHexDeviceLen);
+    memcpy(pop , deviceList, iHexDeviceLen);
+    MsgLen += iHexDeviceLen;
+    pop += iHexDeviceLen;
     /*填充消息头*/
     iBufferSize = MsgHead_Packet(
             szBuffer,
@@ -1239,11 +1273,11 @@ int cmdDeleteUserReqProcByHead(unsigned char nHead, unsigned char nMessageLen, c
         // 清空所有用户 和操作记录
         char strUUID[20] = {0};
         HexToStr(strUUID, uu_id.UID, UUID_LEN);
-        // 清空用户
-        //ret =DBManager::getInstance()->clearUser();
+
         // 清空操作记录
         ret = DBManager::getInstance()->clearRecord();
-
+        // 清空用户拓展信息
+        ret = UserExtendManager::getInstance()->clearAllUserExtend( );
         vizn_api_status_t status;
         status = VIZN_DelUser(NULL);
         LOGD("cmdDeleteUserReqProcByHead VIZN_DelUser status is %d\r\n", status);
@@ -1259,9 +1293,10 @@ int cmdDeleteUserReqProcByHead(unsigned char nHead, unsigned char nMessageLen, c
         //删除单个用户
         char strUUID[20] = {0};
         HexToStr(strUUID, uu_id.UID, UUID_LEN);
-        //ret = DBManager::getInstance()->deleteUserByUUID( strUUID );
         //删除用户的操作记录
         ret = DBManager::getInstance()->deleteRecordByUUID(strUUID);
+
+        ret = UserExtendManager::getInstance()->delUserExtendByUUID( strUUID );
 
         memset(username, 0, sizeof(username));
         HexToStr(username, uu_id.UID, sizeof(uu_id.UID));

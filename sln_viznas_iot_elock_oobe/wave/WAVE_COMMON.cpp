@@ -22,7 +22,6 @@
 #include "FreeRTOS.h"
 #endif
 
-#include "cJSON.h"
 #include "util.h"
 #include "fsl_pjdisp.h"
 #include "fatfs_op.h"
@@ -64,32 +63,14 @@ void SendMessageToUart5FromFakeUart(  char *data){
         memset(&message, 0, sizeof(UartMessage));
         strcpy(message.Data, data);
         if(xQueueSend( Uart5FromFakeUartMsgQueue, (void *)&message, 0 ) == pdPASS ){
-            LOGD("%s send [ DATA=%s] \n",logtag,   message.Data );
+            LOGD("%s send [ DATA=%s] \r\n",logtag,   message.Data );
 
         }else{
-            LOGD("%s could not send to the queue \n",logtag);
+            LOGD("%s could not send to the queue \r\n",logtag);
         }
         taskYIELD();
     }else{
-        LOGD("create  message queue first \n");
+        LOGD("create  message queue first \r\n");
     }
 }
 
-//
-void vConvertRegistClass2UserExtend(RegisteClass *regist, UserExtend  *userExtend){
-    LOGD("%s 转换注册类为用户扩展结构 \r\n",logtag );
-
-    char 	*cjson_str;
-    cJSON * cObj = cJSON_CreateObject();
-    cJSON_AddStringToObject(cObj, UERID,  regist->UUID);
-    cJSON_AddNumberToObject(cObj, TIMES, regist->uStartTime);
-    cJSON_AddNumberToObject(cObj, TIMEE, regist->uEndTime);
-    cJSON_AddStringToObject(cObj, ADEV, regist->cDeviceId);
-    cjson_str = cJSON_PrintUnformatted(cObj);
-
-    LOGD("cjson %s \r\n", cjson_str);
-    memcpy( userExtend->UUID, regist->UUID, sizeof(regist->UUID));
-    memcpy( userExtend->jsonData, cjson_str, strlen(cjson_str));
-    LOGD("UserExtend UUID:%s \r\n", userExtend->UUID);
-    LOGD("UserExtend jsonData:%s \r\n", userExtend->jsonData);
-};

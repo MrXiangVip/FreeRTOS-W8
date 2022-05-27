@@ -19,6 +19,10 @@ uint16_t crc16_ccitt_continue(uint16_t init_crc,const void *buf, int len);
 
 unsigned short CRC16_X25(unsigned char *puchMsg, unsigned int usDataLen);
 
+//累加校验
+bool  bCheckSum(uint8_t *p_Buf,uint16_t  uBufLen);
+//
+uint8_t  uGetCheckSum(uint8_t *pBuff, uint16_t uBuffLen );
 
 #ifdef __cplusplus
 }

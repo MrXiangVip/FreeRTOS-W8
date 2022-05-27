@@ -33,5 +33,5 @@ void StrSetUInt8( uint8_t * io_pDst, const uint8_t i_u8Src );
 void StrSetUInt16( uint8_t * io_pDst, const uint16_t i_u16Src );
 void StrSetUInt32( uint8_t * io_pDst, const uint32_t i_u32Src );
 void StrToHex(unsigned char *pbDest, char *pszSrc, int nLen);
-void HexToStr(char *pszDest, unsigned char *pbSrc, int nLen);
+void HexToStr(char *pszDest, const unsigned char *pbSrc, int nLen);
 #endif /* _FACEREC_UTIL_H_ */

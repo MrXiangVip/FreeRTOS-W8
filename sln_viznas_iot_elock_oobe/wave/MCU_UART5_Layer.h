@@ -1,6 +1,3 @@
-//
-// Created by xshx on 2022/5/20.
-//
 /**************************************************************************
  * 	FileName:	 	MCU_UART5.h
  *	Description:	This file is including the function interface which is used to processing
@@ -9,7 +6,7 @@
  *	Version:		V 1.0
  *	Author:			tanqw
  *	Created:		2020-10-26
- *	Updated:
+ *	Updated:        xshx on 2022/5/20.
  *
 **************************************************************************/
 #ifndef W8_MCU_UART5_LAYER_H
@@ -46,6 +43,7 @@ extern "C" {
 
 #define HEADMARK_LEN		1
 #define HEAD_MARK			0x23     /*  ‘#’*/
+#define DIRECT_SEND			0x01     /*  方向从w8 发出的 */
 #define HEAD_MARK_MQTT		0x24     /*  ‘for mqtt’*/
 #define CRC16_LEN			2
 #define Version_LEN			5   /*版本长度固定为5, e.g 1.0.1*/
@@ -127,6 +125,7 @@ typedef struct _stRpMsgHead
 {
     unsigned char		HeadMark;		/* 前导标识符（长度为1bytes）用于校验消息是否合法 */
     unsigned char  	CmdID;			/* 消息命令（长度为1bytes） */
+    unsigned char  	DirectFilt;			/* 方向过滤*/
     unsigned char 	MsgLen;			/* 数据长度（数据长度为1bytes） */
 }MESSAGE_HEAD, *PMESSAGE_HEAD;
 
@@ -166,14 +165,14 @@ typedef enum
     BOOT_MODE_INVALID = 0XFF,	//非法模式
 }EBootMode;
 
-/*8字节UUID*/
-typedef union{
-    struct{
-        uint32_t L;
-        uint32_t H;
-    }tUID;
-    uint8_t UID[8];
-}uUID;
+///*8字节UUID*/
+//typedef union{
+//    struct{
+//        uint32_t L;
+//        uint32_t H;
+//    }tUID;
+//    uint8_t UID[8];
+//}uUID;
 
 typedef struct wf_face_info{
     char name[64];
@@ -190,6 +189,7 @@ typedef struct userInfo_data_t
 } userInfo_data_t;
 
 
+int MsgTail_Pack(char *Message, int iTailIndex );
 
 //
 extern int cmdSysInitOKSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessage);
@@ -228,7 +228,8 @@ extern int cmdMechicalLockRsp(unsigned char nMessageLen, const unsigned char *ps
 //
 extern int cmdReqPoweDown(unsigned char nMessageLen, const unsigned char *pszMessage);
 
-extern int cmdRegResultNotifyReq(uUID uu_id, uint8_t regResult);
+//extern int cmdRegResultNotifyReq(uUID uu_id, uint8_t regResult);
+extern int cmdRegResultNotifyReq(UserExtendType *userExtendType, uint8_t regResult);
 
 extern int cmdWifiSSIDProc(unsigned char nMessageLen, const unsigned char *pszMessage);
 
@@ -247,7 +248,8 @@ extern void SysTimeSet(uint8_t year, uint8_t month, uint8_t day, uint8_t hour, u
 
 // 主控发送指令:请求MQTT 上传记录
 extern int cmdRequestMqttUpload(int id);
-extern int cmdOpenDoorReq(uUID uu_id);
+//extern int cmdOpenDoorReq(uUID uu_id);
+extern int cmdOpenDoorReq(UserExtendType *userExtendType);
 //关机请求
 extern int cmdCloseFaceBoardReq();
 extern int cmdCloseFaceBoardReqExt(bool save_file);
@@ -283,6 +285,6 @@ extern  uUID g_uu_id;  //记录当前应用的uuid
 extern  int boot_mode;
 extern  lpuart_rtos_handle_t handle5;
 //用户注册信息
-extern  RegisteClass  sRegisteInst;
+extern  UserExtendType  instUserExtend;
 
 #endif //W8_MCU_UART5_LAYER_H

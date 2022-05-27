@@ -25,6 +25,20 @@ extern "C"  {
 }
 #endif
 
+#define UERID  "UERID"
+#define TIMES   "TIMES"
+#define TIMEE   "TIMEE"
+#define ADEV    "ADEV"
+#define EXUSR   "EXUSR"
+/*8字节UUID*/
+typedef union{
+    struct{
+        uint32_t L;
+        uint32_t H;
+    }tUID;
+    uint8_t UID[8];
+}uUID;
+
 typedef union {
         struct {
             char UUID[20];
@@ -32,6 +46,19 @@ typedef union {
         };
         unsigned char raw[USER_EXTEND_PAGE_SIZE ]; // 4-->8
 }UserExtend, *pUserExtend;
+
+//注册时的结构体    uuid , 起始时间, 结束时间, 设备ID
+typedef struct{
+    uint8_t HexUID[8];//十六进制uuid
+    char    UUID[17];//uuid 的字符串
+    long    uStartTime;//
+    long    uEndTime;
+    char    cDeviceId[48];//
+}UserExtendType;
+//xshx add 将 UserExtendType 转成UserExtend json
+extern void vConvertUserExtendType2Json(UserExtendType *regist, UserExtend  *userExtend);
+//xshx 将UserExtend json 转成UserExtendType
+extern void vConverUserExtendJson2Type(UserExtend  *userExtend,  UserExtendType *userExtendType);
 
 #ifdef __cplusplus
 class UserExtendManager {
@@ -59,6 +86,9 @@ class UserExtendManager {
         int updateUserExtendByUUID( char *uuid, UserExtend *userExtend);
 
         int delUserExtendByUUID( char *uuid );
+
+        int clearAllUserExtend(  );
+
 
 };
 #endif

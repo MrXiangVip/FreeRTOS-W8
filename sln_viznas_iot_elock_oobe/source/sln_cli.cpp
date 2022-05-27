@@ -250,7 +250,7 @@ static shell_status_t FFI_CLI_ListCommand(shell_handle_t shellContextHandle, int
 
     return UsbShell_QueueSendFromISR(shellContextHandle, argc, argv, SHELL_EV_FFI_CLI_LIST);
 #else
-    SHELL_Printf(shellContextHandle, "list [0:init , 1:registe]\r\n");
+    SHELL_Printf(shellContextHandle, "list [0:init , 1:registe, 2:delete 3:clear]\r\n");
     if( argc !=2 ){
         SHELL_Printf(shellContextHandle, "input command : list index \r\n");
     }else{

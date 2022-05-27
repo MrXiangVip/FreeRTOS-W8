@@ -185,7 +185,7 @@ void StrToHex(unsigned char *pbDest, char *pszSrc, int nLen)
 // return value:
 // remarks : 将16进制数转化为字符串
 */
-void HexToStr(char *pszDest, unsigned char *pbSrc, int nLen)
+void HexToStr(char *pszDest, const  unsigned char *pbSrc, int nLen)
 {
     char	ddl, ddh;
     int i;

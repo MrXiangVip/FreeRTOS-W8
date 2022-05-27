@@ -29,11 +29,15 @@ static const char *logtag ="[FAKE-UART]-";
 MCU_STATUS   mcuStatus=MCU_READY;//默认休眠模式
 
 char Init_CMD[]="23010B15091B00281044014000013B76";
-char Regist_CMD[]="23051712345678300040001";
+char Regist_CMD[]="230500111522115947018588628EE335755E4A00020437";
+char Delete_CMD[]="23090812345678";
+char Clear_CMD[] ="230908FFFFFFFF";
 
 char* CMD_LIST[] = {
         Init_CMD,
-        Regist_CMD
+        Regist_CMD,
+        Delete_CMD,
+        Clear_CMD
 };
 
 int     gCommandIndex=-1;
