@@ -563,7 +563,8 @@ int cmdReqResumeFactoryProc(unsigned char nMessageLen, const unsigned char *pszM
 
     CloseLcdBackground();
     //返回响应
-    cmdReqResumeFactoryRsp(ret);
+    // cmdReqResumeFactoryRsp(ret);
+    cmdCommRsp2MCU(CMD_REQ_RESUME_FACTORY, ret);
 
     vTaskDelay(pdMS_TO_TICKS(10));
 
