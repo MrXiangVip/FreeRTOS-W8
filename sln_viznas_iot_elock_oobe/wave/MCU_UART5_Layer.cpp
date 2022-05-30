@@ -1068,7 +1068,6 @@ int save_files_before_pwd() {
 int cmdCloseFaceBoardReqExt(bool save_file) {
     LOGD("发送关机请求 \r\n");
     char szBuffer[32] = {0};
-    int iBufferSize;
     char *pop = NULL;
     unsigned char MsgLen = 0;
 
@@ -1078,16 +1077,17 @@ int cmdCloseFaceBoardReqExt(bool save_file) {
     /*填充消息体*/
 
     /*填充消息头*/
-    iBufferSize = MsgHead_Packet(
+    int iTailIndex = MsgHead_Packet(
             szBuffer,
             HEAD_MARK,
             CMD_CLOSE_FACEBOARD,
             MsgLen);
 
-    /*计算FCS*/
-    unsigned short cal_crc16 = CRC16_X25((uint8_t *) szBuffer, MsgLen + sizeof(MESSAGE_HEAD));
-    memcpy((uint8_t *) pop, &cal_crc16, sizeof(cal_crc16));
-
+//  拼装消息尾
+    int iTotalLen =MsgTail_Pack( szBuffer, iTailIndex);
+    if( iTotalLen > sizeof(szBuffer) ){
+        LOGD("%s ERROR  %d must <  %d \r\n",iTotalLen, sizeof(szBuffer) );
+    }
 
     g_is_shutdown = true;
     vTaskDelay(pdMS_TO_TICKS(100));
@@ -1097,9 +1097,7 @@ int cmdCloseFaceBoardReqExt(bool save_file) {
         LOGD("No need to save file before shutdown the device\r\n");
     }
 
-
-    SendMsgToMCU((uint8_t *) szBuffer, iBufferSize + CRC16_LEN);
-
+    SendMsgToMCU((uint8_t *) szBuffer, iTotalLen);
 
     return 0;
 }
