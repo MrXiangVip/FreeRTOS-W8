@@ -154,6 +154,39 @@ int MsgHead_Packet(
 
     return MsgLen + sizeof(MESSAGE_HEAD);
 }
+/****************************************************************************************
+函数名称：RspHead_Packet
+函数功能：组包
+入口参数：pszBuffer--数据
+		HeadMark--消息标记
+		CmdId--命令
+		MsgLen--消息长度
+出口参数：无
+返回值：成功返回消息的总长度(消息头+消息体+FCS长度)，失败返回-1
+****************************************************************************************/
+int RspHead_Packet(
+        char *pszBuffer,
+        unsigned char HeadMark,
+        unsigned char MsgLen) {
+    if (!pszBuffer) {
+        LOGD("pszBuffer is NULL\n");
+        return -1;
+    }
+    char *pTemp = pszBuffer;
+
+    StrSetUInt8((uint8_t *) pTemp, HeadMark);
+    pTemp += sizeof(uint8_t);
+    StrSetUInt8((uint8_t *) pTemp, 0xFE);
+    pTemp += sizeof(uint8_t);
+    StrSetUInt8( (uint8_t*)pTemp, DIRECT_SEND);
+    pTemp += sizeof(uint8_t);
+    StrSetUInt8((uint8_t *) pTemp, MsgLen);
+    pTemp += sizeof(uint8_t);
+//    StrSetUInt8((uint8_t *) pTemp, CmdId);
+//    pTemp += sizeof(uint8_t);
+
+    return MsgLen + sizeof(RESPONSE_HEAD);
+}
 /*******************************************************************************
  *
  * 消息尾拼接
@@ -652,7 +685,7 @@ int cmdUserRegReqProc(unsigned char nMessageLen, const unsigned char *pszMessage
     }
 
     //返回响应消息
-    cmdUserRegRsp(ret);
+    // cmdUserRegRsp(ret);
     return 0;
 }
 
@@ -669,21 +702,24 @@ int cmdRegResultNotifyReq(UserExtendType *userExtendType, uint8_t regResult) {
     unsigned char MsgLen = 0;
 
     memset(szBuffer, 0, sizeof(szBuffer));
-    pop = szBuffer + sizeof(MESSAGE_HEAD);
+    pop = szBuffer + sizeof(RESPONSE_HEAD);
 
     /*填充消息体*/
-    memcpy(pop, userExtendType->HexUID, sizeof(userExtendType->HexUID));
-    MsgLen += sizeof( userExtendType->HexUID);
-    pop += sizeof( userExtendType->HexUID);
+//    memcpy(pop, userExtendType->HexUID, sizeof(userExtendType->HexUID));
+//    MsgLen += sizeof( userExtendType->HexUID);
+//    pop += sizeof( userExtendType->HexUID);
+    StrSetUInt8((uint8_t *) pop, CMD_FACE_REG);
+    MsgLen += sizeof(uint8_t); 
+    pop += sizeof(uint8_t);
+
     StrSetUInt8((uint8_t *) pop, regResult);
     MsgLen += sizeof(uint8_t);
     pop += sizeof(uint8_t);
 
     /*填充消息头*/
-    int iTailIndex = MsgHead_Packet(
+    int iTailIndex = RspHead_Packet(
             szBuffer,
             HEAD_MARK,
-            CMD_FACE_REG_RLT,
             MsgLen);
 
 
