@@ -589,7 +589,7 @@ static void vReceiveUartTask(void *pvParameters) {
                     error = LPUART_RTOS_Receive(&handle5, &recv_buffer[1], req_len, &rcvlen);
                     break;
                 case UART5_RX_MSG_STATUS_WAITING_DATA:
-                    req_len = recv_buffer[3] + 1;
+                    req_len = recv_buffer[3] + 2;
                     error = LPUART_RTOS_Receive(&handle5, &recv_buffer[4], req_len, &rcvlen);
                     break;
                 default:
