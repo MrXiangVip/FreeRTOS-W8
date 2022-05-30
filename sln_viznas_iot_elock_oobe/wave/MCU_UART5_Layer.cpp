@@ -253,31 +253,33 @@ const unsigned char *MsgHead_Unpacket(
 //106F->MCU:通用响应
 int cmdCommRsp2MCU(unsigned char CmdId, uint8_t ret) {
     char szBuffer[32] = {0};
-    int iBufferSize;
     char *pop = NULL;
     unsigned char MsgLen = 0;
 
     memset(szBuffer, 0, sizeof(szBuffer));
-    pop = szBuffer + sizeof(MESSAGE_HEAD);
+    pop = szBuffer + sizeof(RESPONSE_HEAD);
 
     /* 填充消息体 */
+    StrSetUInt8((uint8_t *) pop, CmdId);
+    MsgLen += sizeof(uint8_t);
+    pop += sizeof(uint8_t);
     StrSetUInt8((uint8_t *) pop, ret);
     MsgLen += sizeof(uint8_t);
     pop += sizeof(uint8_t);
 
-    /* 填充消息头 */
-    iBufferSize = MsgHead_Packet(
+    /*填充消息头*/
+    int iTailIndex = RspHead_Packet(
             szBuffer,
             HEAD_MARK,
-            CmdId,
             MsgLen);
 
-    /* 计算FCS */
-    unsigned short cal_crc16 = CRC16_X25((uint8_t *) szBuffer, MsgLen + sizeof(MESSAGE_HEAD));
-    memcpy((uint8_t *) pop, &cal_crc16, sizeof(cal_crc16));
+    //  拼装消息尾
+    int iTotalLen =MsgTail_Pack( szBuffer, iTailIndex);
+    if( iTotalLen > sizeof(szBuffer) ){
+        LOGD("%s ERROR  %d must <  %d \r\n",iTotalLen, sizeof(szBuffer) );
+    }
 
-    SendMsgToMCU((uint8_t *) szBuffer, iBufferSize + CRC16_LEN);
-    //usleep(10);
+    SendMsgToMCU((uint8_t *) szBuffer, iTotalLen);
     vTaskDelay(pdMS_TO_TICKS(1));
 
     return 0;
@@ -1161,30 +1163,33 @@ int cmdReqActiveByPhoneProc(unsigned char nMessageLen, const unsigned char *pszM
 //主控返回响应指令: 删除用户响应
 int cmdUserDeleteRsp(uint8_t result) {
     char szBuffer[32] = {0};
-    int iBufferSize;
     char *pop = NULL;
     unsigned char MsgLen = 0;
 
     memset(szBuffer, 0, sizeof(szBuffer));
-    pop = szBuffer + sizeof(MESSAGE_HEAD);
+    pop = szBuffer + sizeof(RESPONSE_HEAD);
 
     /*填充消息体*/
+    StrSetUInt8((uint8_t *) pop, CMD_FACE_DELETE_USER);
+    MsgLen += sizeof(uint8_t);
+    pop += sizeof(uint8_t);
     StrSetUInt8((uint8_t *) pop, result);
     MsgLen += sizeof(uint8_t);
     pop += sizeof(uint8_t);
 
     /*填充消息头*/
-    iBufferSize = MsgHead_Packet(
+    int iTailIndex = RspHead_Packet(
             szBuffer,
             HEAD_MARK,
-            CMD_FACE_DELETE_USER,
             MsgLen);
 
-    /*计算FCS*/
-    unsigned short cal_crc16 = CRC16_X25((uint8_t *) szBuffer, MsgLen + sizeof(MESSAGE_HEAD));
-    memcpy((uint8_t *) pop, &cal_crc16, sizeof(cal_crc16));
+//  拼装消息尾
+    int iTotalLen =MsgTail_Pack( szBuffer, iTailIndex);
+    if( iTotalLen > sizeof(szBuffer) ){
+        LOGD("%s ERROR  %d must <  %d \r\n",iTotalLen, sizeof(szBuffer) );
+    }
 
-    SendMsgToMCU((uint8_t *) szBuffer, iBufferSize + CRC16_LEN);
+    SendMsgToMCU((uint8_t *) szBuffer, iTotalLen);
 
     return 0;
 }
