@@ -252,6 +252,7 @@ const unsigned char *MsgHead_Unpacket(
 
 //106F->MCU:通用响应
 int cmdCommRsp2MCU(unsigned char CmdId, uint8_t ret) {
+    LOGD("通用响应 0x%02x\r\n", CmdId);
     char szBuffer[32] = {0};
     char *pop = NULL;
     unsigned char MsgLen = 0;
@@ -514,10 +515,14 @@ void SetSysToFactory() {
         fatfs_delete(tmpRecord->image_path);
     }
 
-    // 清空操作记录
+//  清空操作记录
     int clear_status = DBManager::getInstance()->clearRecord();
     LOGD("Clear Records status is %d\r\n", clear_status);
 
+//  清空用戶附加信息
+    int ret= UserExtendManager::getInstance()->clearAllUserExtend();
+    LOGD("%s result: %s \r\n", logtag, ret);
+//    清空用户注册表
     clear_status = VIZN_DelUser(NULL);
     LOGD("Clear Users status is %d\r\n", clear_status);
 
@@ -567,8 +572,6 @@ int cmdReqResumeFactoryProc(unsigned char nMessageLen, const unsigned char *pszM
     cmdCommRsp2MCU(CMD_REQ_RESUME_FACTORY, ret);
 
     vTaskDelay(pdMS_TO_TICKS(10));
-
-
 
     //消息处理
     SetSysToFactory();
@@ -656,9 +659,11 @@ int cmdUserRegReqProc(unsigned char nMessageLen, const unsigned char *pszMessage
     instUserExtend.uEndTime =uEndTime;
     memcpy( instUserExtend.cDeviceId, cDeviceIds, sizeof(cDeviceIds));
 
+    memcpy( username, instUserExtend.UUID, sizeof(username));
 //2.发起注册
     vizn_api_status_t status;
     status = VIZN_AddUser(NULL, username);
+    LOGD("%s, VIZN AddUser %s\r\n",logtag, username);
     switch (status) {
         case kStatus_API_Layer_AddUser_NoAddCommand:
             LOGD("No add command registered\r\n");
@@ -742,7 +747,6 @@ int cmdRegResultNotifyReq(UserExtendType *userExtendType, uint8_t regResult) {
 int cmdOpenDoorReq(UserExtendType *userExtendType) {
     LOGD("%s  向mcu发送开门请求 \r\n", logtag);
     char szBuffer[64] = {0};
-    int iBufferSize;
     char *pop = NULL;
     unsigned char MsgLen = 0;
 
@@ -750,6 +754,10 @@ int cmdOpenDoorReq(UserExtendType *userExtendType) {
     pop = szBuffer + sizeof(MESSAGE_HEAD);
 
     /*填充消息体*/
+    uint8_t L25MAC[6]={0};//十六进制uuid
+    memcpy( pop, L25MAC, sizeof(L25MAC));
+    MsgLen += sizeof(L25MAC);
+    pop += sizeof(L25MAC);
 //    填入uuid
     LOGD("%s UUID %s\r\n",logtag, userExtendType->UUID);
     memcpy(pop, userExtendType->HexUID, sizeof(userExtendType->HexUID));
@@ -765,17 +773,18 @@ int cmdOpenDoorReq(UserExtendType *userExtendType) {
     MsgLen += iHexDeviceLen;
     pop += iHexDeviceLen;
     /*填充消息头*/
-    iBufferSize = MsgHead_Packet(
+    int iTailIndex = MsgHead_Packet(
             szBuffer,
             HEAD_MARK,
             CMD_OPEN_DOOR,
             MsgLen);
 
-    /*计算FCS*/
-    unsigned short cal_crc16 = CRC16_X25((uint8_t *) szBuffer, MsgLen + sizeof(MESSAGE_HEAD));
-    memcpy((uint8_t *) pop, &cal_crc16, sizeof(cal_crc16));
+    int iTotalLen = MsgTail_Pack( szBuffer, iTailIndex);
+    if( iTotalLen > sizeof(szBuffer) ){
+        LOGD("%s ERROR  %d must <  %d \r\n",iTotalLen, sizeof(szBuffer) );
+    }
 
-    SendMsgToMCU((uint8_t *) szBuffer, iBufferSize + CRC16_LEN);
+    SendMsgToMCU((uint8_t *) szBuffer, iTotalLen );
 
     return 0;
 }
@@ -1299,68 +1308,36 @@ int cmdSetSysTimeSynProc(unsigned char nMessageLen, const unsigned char *pszMess
 // 主控接收指令: 删除用户请求
 int cmdDeleteUserReqProcByHead(unsigned char nHead, unsigned char nMessageLen, const unsigned char *pszMessage) {
     LOGD(" 删除用户请求 \r\n");
-    uint8_t ret = FAILED;
-    char szBuffer[32] = {0};
-    uUID uu_id;
+    const unsigned char *pos = pszMessage;
 
-    // 解析指令
-    if ((nMessageLen < sizeof(szBuffer)) && nMessageLen == UUID_LEN) {
-        memcpy(&uu_id, pszMessage, nMessageLen);
-    }
+    memcpy( instUserExtend.HexUID, pos, sizeof(instUserExtend.HexUID));
+    HexToStr(instUserExtend.UUID, instUserExtend.HexUID, sizeof(instUserExtend.HexUID));
+//    删除用户的操作记录
+    int ret = DBManager::getInstance()->deleteRecordByUUID( instUserExtend.UUID );
+    LOGD("删除用户操作记录 %d\r\n", ret);
+//    删除用户附加信息
+    ret = UserExtendManager::getInstance()->delUserExtendByUUID( instUserExtend.UUID );
+    LOGD("删除用户附加信息 %d \r\n", ret);
+//    删除用户
+    vizn_api_status_t status = VIZN_DelUser(NULL, username);
+    LOGD("删除用户注册表中用户 %d \r\n", status);
 
-    LOGD("delete uuid : <0x%08x>, <0x%08x>.\r\n", uu_id.tUID.H, uu_id.tUID.L);
-    if (uu_id.tUID.H == 0xFFFFFFFF && uu_id.tUID.L == 0xFFFFFFFF) {
-        // 清空所有用户 和操作记录
-        char strUUID[20] = {0};
-        HexToStr(strUUID, uu_id.UID, UUID_LEN);
-
-        // 清空操作记录
-        ret = DBManager::getInstance()->clearRecord();
-        // 清空用户拓展信息
-        ret = UserExtendManager::getInstance()->clearAllUserExtend( );
-        vizn_api_status_t status;
-        status = VIZN_DelUser(NULL);
-        LOGD("cmdDeleteUserReqProcByHead VIZN_DelUser status is %d\r\n", status);
-        if (kStatus_API_Layer_Success == status) {
-            ret = SUCCESS;
-        } else {
-            ret = FAILED;
-        }
-        //DB_Save(0);
+    if (kStatus_API_Layer_Success == status) {
+        ret = SUCCESS;
     } else {
-        // 删除单个用户 和其操作记录
-        LOGD("delete single user start");
-        //删除单个用户
-        char strUUID[20] = {0};
-        HexToStr(strUUID, uu_id.UID, UUID_LEN);
-        //删除用户的操作记录
-        ret = DBManager::getInstance()->deleteRecordByUUID(strUUID);
-
-        ret = UserExtendManager::getInstance()->delUserExtendByUUID( strUUID );
-
-        memset(username, 0, sizeof(username));
-        HexToStr(username, uu_id.UID, sizeof(uu_id.UID));
-        username[16] = '\0';//NXP的人脸注册API的username最大只能16byte
-        LOGD("=====UUID<len:%d>:%s.\r\n", sizeof(username), username);
-
-        vizn_api_status_t status;
-        status = VIZN_DelUser(NULL, username);
-        if (kStatus_API_Layer_Success == status) {
-            ret = SUCCESS;
-        } else {
-            ret = FAILED;
-        }
-        //DB_Save(0);
+        ret = FAILED;
     }
+
     DBManager::getInstance()->flushRecordList();//写回 记录文件
-    LOGD("delete uuid : <0x%08x>, <0x%08x> result %d nHead 0x%2x.\r\n", uu_id.tUID.H, uu_id.tUID.L, ret, nHead);
+    LOGD("delete uuid :  %s nHead 0x%2x.\r\n", instUserExtend.UUID, nHead);
     if (nHead == HEAD_MARK_MQTT) {
         cmdCommRsp2MqttByHead(HEAD_MARK_MQTT, CMD_FACE_DELETE_USER, ret);
     } else {
         cmdCommRsp2MCU(CMD_FACE_DELETE_USER, ret);
     }
 
-    return 0;
+    return  0;
+
 }
 
 //串口接收消息处理

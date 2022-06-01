@@ -492,7 +492,6 @@ static void vReceiveOasisTask(void *pvParameters) {
 //                          发送开门请求
                             UserExtendType userExtendType;
                             vConverUserExtendJson2Type(&userExtend, &userExtendType);
-//                            cmdOpenDoorReq(g_uu_id);
                             cmdOpenDoorReq( &userExtendType);
     #if !RECOGNIZE_ONCE
                             LOGD("Reset recognize timeout trigger\r\n");
@@ -572,13 +571,14 @@ static void vReceiveUartTask(void *pvParameters) {
     /* Receive user input and send it back to terminal. */
     do {
 
-        //LOGD("[vReceiveUartTask]:Recv New Msg ...\r\n");
+        LOGD("[vReceiveUartTask]:Recv New Msg ...\r\n");
         memset(recv_buffer, 0, sizeof(recv_buffer));
         uint8_t rx_status = UART5_RX_MSG_STATUS_WAITING_HEADER;
         msglen = 0;
         uint8_t req_len = 0;
 
         while (1) {
+            LOGD("[vReceiveUartTask]:rx_status -> %d \r\n", rx_status);
             switch (rx_status) {
                 case UART5_RX_MSG_STATUS_WAITING_HEADER:
                     req_len = 1;

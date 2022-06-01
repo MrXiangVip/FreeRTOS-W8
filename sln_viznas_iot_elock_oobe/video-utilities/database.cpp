@@ -25,6 +25,7 @@
 static FeatureDB *s_DB             = NULL;
 static SemaphoreHandle_t s_DB_Lock = NULL;
 
+static char *logtag ="[DataBase] ";
 /*******************************************************************************
  * Code
  *******************************************************************************/
@@ -56,6 +57,7 @@ static void DB_UnLock()
 static void DB_ID2Name(char *name, uint32_t length, uint16_t id)
 {
     snprintf(name, length, "user_%u", id);
+    LOGD("%s :DB_ID2Name %d, %s\r\n", logtag, id, name);
 }
 
 int DB_Init()
@@ -171,6 +173,8 @@ int DB_GetFree(int &index)
 
 int DB_GetNames(std::vector<std::string> *names)
 {
+    LOGD("%s DB_GetNames  \r\n", logtag );
+
     int ret = DB_MGMT_FAILED;
 
     ret = DB_Lock();
@@ -231,6 +235,7 @@ int DB_GetFeature(uint16_t id, float *feature)
 /*this interface is used to add user without name*/
 int DB_Add(uint16_t id, float *feature)
 {
+    LOGD("[%s] DB_Add id %d  \r\n", logtag, id );
     int ret = DB_MGMT_FAILED;
 
     ret = DB_Lock();
@@ -251,6 +256,8 @@ int DB_Add(uint16_t id, float *feature)
 /*this interface is used to add user with given name*/
 int DB_Add(uint16_t id, std::string name, float *feature)
 {
+    LOGD("[%s] DB_Add id %d , name %s \r\n", logtag, id, name);
+
     int ret = DB_MGMT_FAILED;
 
     ret = DB_Lock();
@@ -314,6 +321,8 @@ int DB_GetID_FeaturePointers(uint16_t* ids,void**pFeatures,int num)
 
 int DB_GetName(uint16_t id, std::string &name)
 {
+    LOGD("%s DB_GetName id %d  \r\n", logtag, id);
+
     int ret = DB_MGMT_FAILED;
 
     ret = DB_Lock();

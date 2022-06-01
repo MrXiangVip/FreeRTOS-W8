@@ -529,7 +529,7 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
             unsigned id              = para->faceID;
             OASISLTRegisterRes_t res = para->regResult;
             //UsbShell_Printf("[OASIS]:registration complete:%d\r\n", res);
-            LOGD("[OASIS]:registration complete:%d\r\n", res);
+            LOGD("[OASIS]:registration complete:%d \r\n", res);
             face_info.enrolment_result = res;
             memset(gui_info.name, 0x0, sizeof(gui_info.name));
             if ((res == OASIS_REG_RESULT_OK) || (res == OASIS_REG_RESULT_DUP))
@@ -537,6 +537,8 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
                 std::string name;
                 int count;
                 DB_GetName(id, name);
+                LOGD("[OASIS]:DB_GetName :%d ,%s\r\n", id, name.c_str() );
+
                 memcpy(gui_info.name, name.c_str(), name.size());
                 DB_Count(&count);
                 // gFaceInfoMsg.msg.info.registeredFaces = featurenames.size();
@@ -851,6 +853,7 @@ static void Oasis_Task(void *param)
             {
                 case QMSG_FACEREC_FRAME_RES:
                 {
+//                    LOGD("[OASIS]:QMSG_FACEREC_FRAME_RES!\r\n");
                     if (s_lockstatus != 0)
                     {
                         g_OASISLT_heap_debug = OASISHeapGetMinimumEverFreeHeapSize();
@@ -873,6 +876,7 @@ static void Oasis_Task(void *param)
 
                 case QMSG_FACEREC_RECFACE:
                 {
+                    LOGD("[OASIS]:QMSG_FACEREC_RECFACE!\r\n");
                     if (rxQMsg->msg.cmd.data.rec_face)
                     {
                         Oasis_SetState(OASIS_STATE_FACE_REC_START);
@@ -886,6 +890,7 @@ static void Oasis_Task(void *param)
 
                 case QMSG_FACEREC_DELFACE:
                 {
+                    LOGD("[OASIS]:QMSG_FACEREC_DELFACE!\r\n");
                     if (rxQMsg->msg.cmd.data.del_face)
                     {
                         Oasis_SetState(OASIS_STATE_FACE_DEREG_START);
@@ -899,7 +904,8 @@ static void Oasis_Task(void *param)
 
                 case QMSG_FACEREC_ADDNEWFACEBY_FEA:
                 {
-                	memcpy(gTimeStat.new_name,rxQMsg->msg.cmd.data.add_face.new_face_name,
+                    LOGD("[OASIS]:QMSG_FACEREC_ADDNEWFACEBY_FEA!\r\n");
+                    memcpy(gTimeStat.new_name,rxQMsg->msg.cmd.data.add_face.new_face_name,
                 			strlen(rxQMsg->msg.cmd.data.add_face.new_face_name) + 1);
                 	uint16_t face_id;
                 	OASISLTRegisterRes_t ret = OASISLT_registration_by_feature(rxQMsg->msg.cmd.data.add_face.feature,NULL,0,&face_id,&gTimeStat);
@@ -913,7 +919,8 @@ static void Oasis_Task(void *param)
 
                 case QMSG_FACEREC_ADDNEWFACE:
                 {
-                	if (rxQMsg->msg.cmd.data.add_face.add_newface)
+                    LOGD("[OASIS]:QMSG_FACEREC_ADDNEWFACE!\r\n");
+                    if (rxQMsg->msg.cmd.data.add_face.add_newface)
                 	{
                 		run_flag = OASIS_DET_REC_REG;
                 		Oasis_SetState(OASIS_STATE_FACE_REG_START);
@@ -942,6 +949,7 @@ static void Oasis_Task(void *param)
 
                 case QMSG_FACEREC_STOP:
                 {
+                    LOGD("[OASIS]:QMSG_FACEREC_STOP!\r\n");
                     s_lockstatus = 0;
                     //Camera_QMsgSetPWM(LED_IR, 0);
                     Camera_QMsgSetPWM(LED_WHITE, 0);
@@ -951,6 +959,7 @@ static void Oasis_Task(void *param)
 
                 case QMSG_FACEREC_START:
                 {
+                    LOGD("[OASIS]:QMSG_FACEREC_START!\r\n");
                     uint8_t pwm  = 0;
                     s_lockstatus = 1;
                     //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[OASIS]:QMSG_FACEREC_START!\r\n");

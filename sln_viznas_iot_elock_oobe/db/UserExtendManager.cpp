@@ -9,7 +9,7 @@
 
 #include "fsl_log.h"
 #include "cJSON.h"
-
+#include "util.h"
 static  const char * logtag="[UserExtendManager] ";
 UserExtendManager* UserExtendManager::m_instance = NULL;
 uint32_t UserExtendManager::userExtend_FS_Head = NULL;
@@ -60,7 +60,7 @@ int UserExtendManager::get_index_by_uuid(char *uuid) {
         int status = SLN_Read_Flash_At_Address( userExtend_FS_Head+i*sizeof(UserExtend), (uint8_t *)&userExtend, sizeof(UserExtend)  );
         if( status == 0 ){
 //            LOGD("%s %i, %s, %s \r\n", logtag, i, userExtend.UUID, userExtend.jsonData);
-            LOGD("%s index %i, %s \r\n", logtag, i, userExtend.UUID );
+            LOGD("%s index %i \r\n", logtag, i );
             if( strcmp( userExtend.UUID, uuid) == 0 ){
                 return  i;
             }
@@ -90,7 +90,7 @@ int UserExtendManager::addUserExtend(UserExtend * userExtend){
         }
         return  index;
     }else{
-        LOGD("%s uuid 已存在,则更新 \r\n");
+        LOGD("%s uuid 已存在,则更新 \r\n", logtag);
         int status = SLN_Write_Sector(userExtend_FS_Head+index* sizeof(UserExtend), (uint8_t *)userExtend );
         if (status != 0) {
             LOGD("write flash failed %d \r\n", status);
@@ -179,6 +179,7 @@ void vConverUserExtendJson2Type(UserExtend  *userExtend,  UserExtendType *userEx
     LOGD("%s 转换json 为用户扩展类 \r\n",logtag );
     cJSON *jsonObj = cJSON_Parse(userExtend->jsonData);
     strcpy(userExtendType->UUID, cJSON_GetObjectItem(jsonObj, UERID)->valuestring);
+    StrToHex( userExtendType->HexUID, userExtendType->UUID, sizeof(userExtendType->HexUID));//将uuid 转成16进制 hexuid
     userExtendType->uStartTime = cJSON_GetObjectItem(jsonObj, TIMES)->valuedouble;
     userExtendType->uEndTime = cJSON_GetObjectItem(jsonObj, TIMEE)->valuedouble;
     strcpy(userExtendType->cDeviceId , cJSON_GetObjectItem(jsonObj, ADEV)->valuestring);

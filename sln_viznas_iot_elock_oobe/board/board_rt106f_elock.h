@@ -498,8 +498,8 @@ extern "C" {
 #define	FFD_SUPPORT		0
 
 #define  SYS_VERSION		"1.0.0"
-#define  PROJECT_VERSION    "R60_106F_V1.0.0"
-#define  FIRMWARE_VERSION   "FW_R60_27214b_20220407_V1.0.0"
+#define  PROJECT_VERSION    "L25_106F_V1.0.0"
+#define  FIRMWARE_VERSION   "FW_L25_093d07_20220531_V1.0.0"
 
 /*******************************************************************************
  * API
