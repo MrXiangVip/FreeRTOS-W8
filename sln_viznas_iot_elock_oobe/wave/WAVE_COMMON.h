@@ -6,7 +6,7 @@
 #define W8_WAVE_COMMON_H
 
 #include "commondef.h"
-#include "../db/UserExtendManager.h"
+#include "UserExtendManager.h"
 
 
 typedef  struct

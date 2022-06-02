@@ -914,6 +914,7 @@ vizn_api_status_t VIZN_EnrolmentAddNewFace(VIZN_api_client_t *clientHandle,
 										   void *face,
 										   char* name)
 {
+    LOGD("%s, name %s\r\n", __FUNCTION__, name);
     vizn_api_status_t status = kStatus_API_Layer_Success;
     float *feature_data      = (float *)face;
     int ret;

@@ -32,12 +32,14 @@ char Init_CMD[]="23010B15091B00281044014000013B76";
 char Regist_CMD[]="230500111522115947018588628EE335755E4A00020437";
 char Delete_CMD[]="230900091A2B3C4D5F6677880402AA";
 char Clear_CMD[] ="230B0000030E";
+char OpenDoor_CMD[] ="23030003640200016D";
 
 char* CMD_LIST[] = {
         Init_CMD,
         Regist_CMD,
         Delete_CMD,
-        Clear_CMD
+        Clear_CMD,
+        OpenDoor_CMD
 };
 
 int     gCommandIndex=-1;

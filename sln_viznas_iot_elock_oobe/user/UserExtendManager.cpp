@@ -11,6 +11,11 @@
 #include "cJSON.h"
 #include "util.h"
 static  const char * logtag="[UserExtendManager] ";
+
+//全局的用户 包含的数据集合
+UserExtendType  objUserExtend={0};
+
+
 UserExtendManager* UserExtendManager::m_instance = NULL;
 uint32_t UserExtendManager::userExtend_FS_Head = NULL;
 
@@ -175,7 +180,7 @@ void vConvertUserExtendType2Json(UserExtendType *userExtendType, UserExtend  *us
     LOGD("UserExtend jsonData:%s \r\n", userExtend->jsonData);
 };
 
-void vConverUserExtendJson2Type(UserExtend  *userExtend,  UserExtendType *userExtendType){
+void vConverUserExtendJson2Type(UserExtend  *userExtend, unsigned int lCreateTime,  UserExtendType *userExtendType){
     LOGD("%s 转换json 为用户扩展类 \r\n",logtag );
     cJSON *jsonObj = cJSON_Parse(userExtend->jsonData);
     strcpy(userExtendType->UUID, cJSON_GetObjectItem(jsonObj, UERID)->valuestring);
@@ -183,6 +188,7 @@ void vConverUserExtendJson2Type(UserExtend  *userExtend,  UserExtendType *userEx
     userExtendType->uStartTime = cJSON_GetObjectItem(jsonObj, TIMES)->valuedouble;
     userExtendType->uEndTime = cJSON_GetObjectItem(jsonObj, TIMEE)->valuedouble;
     strcpy(userExtendType->cDeviceId , cJSON_GetObjectItem(jsonObj, ADEV)->valuestring);
+    userExtendType->lCreateTime = lCreateTime;//增加用户创建的时间
     LOGD( "%s UUID %s ,StartTime %d ,EndTime %d ,Device %s \r\n", logtag, userExtendType->UUID, userExtendType->uStartTime, userExtendType->uEndTime, userExtendType->cDeviceId);
 }
 

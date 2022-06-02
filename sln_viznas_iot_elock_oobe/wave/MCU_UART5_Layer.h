@@ -291,7 +291,6 @@ extern  char username[17];
 extern  uUID g_uu_id;  //记录当前应用的uuid
 extern  int boot_mode;
 extern  lpuart_rtos_handle_t handle5;
-//用户注册信息
-extern  UserExtendType  instUserExtend;
+
 
 #endif //W8_MCU_UART5_LAYER_H

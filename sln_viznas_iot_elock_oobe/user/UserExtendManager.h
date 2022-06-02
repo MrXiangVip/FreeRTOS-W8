@@ -49,16 +49,21 @@ typedef union {
 
 //注册时的结构体    uuid , 起始时间, 结束时间, 设备ID
 typedef struct{
-    uint8_t HexUID[8];//十六进制uuid
-    char    UUID[17];//uuid 的字符串
-    long    uStartTime;//
-    long    uEndTime;
-    char    cDeviceId[48];//
+    uint8_t HexUID[8];      //十六进制uuid
+    char    UUID[17];       //uuid 的字符串
+    long    uStartTime;     // 用户订单的开始时间
+    long    uEndTime;       // 用户订单的结束时间
+    char    cDeviceId[48];  // 设备列表
+    long    lCreateTime;    //用户在内存里创建的时间 用于过滤频繁注册和识别
 }UserExtendType;
+
+//全局的用户信息
+extern  UserExtendType  objUserExtend;
+
 //xshx add 将 UserExtendType 转成UserExtend json
 extern void vConvertUserExtendType2Json(UserExtendType *regist, UserExtend  *userExtend);
 //xshx 将UserExtend json 转成UserExtendType
-extern void vConverUserExtendJson2Type(UserExtend  *userExtend,  UserExtendType *userExtendType);
+extern void vConverUserExtendJson2Type(UserExtend  *userExtend, unsigned int lCreateTime,  UserExtendType *userExtendType);
 
 #ifdef __cplusplus
 class UserExtendManager {

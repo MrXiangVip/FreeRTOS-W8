@@ -298,7 +298,7 @@ static void vReceiveOasisTask(void *pvParameters) {
             switch (pQMsg->id) {
                 case QMSG_FACEREC_ADDNEWFACE: {//处理人脸注册结果
                     //LOGD("处理人脸注册结果 %d\r\n", pQMsg->msg.val);
-                    if (pQMsg->msg.val) {//success
+                    if (pQMsg->msg.val ) {// 连续注册时间要大于10秒
                         if (gFaceInfo.enrolment && (OASIS_REG_RESULT_DUP == gFaceInfo.rt)) {//判断是否是重复注册
                             LOGD("User face duplicate register!\r\n");
                             g_reging_flg = REG_STATUS_DUP;
@@ -339,10 +339,10 @@ static void vReceiveOasisTask(void *pvParameters) {
 //                        log_info("保存 UID<%s> 注册图片到 path<%s>!\n", record.UID, image_path);
 
 //   保存用户拓展信息, 开始结束时间,柜门号
-                        LOGD( "%s 增加用户附加信息 %s\r\n",logtag, instUserExtend.UUID);
+                        LOGD( "%s 增加用户附加信息 %s  ,当前的时间 %d, 用户创建的时间 %d  \r\n",logtag, objUserExtend.UUID, ws_systime, objUserExtend.lCreateTime );
                         UserExtend userExtend;
                         memset( &userExtend, 0, sizeof(UserExtend) );
-                        vConvertUserExtendType2Json( &instUserExtend,  &userExtend );
+                        vConvertUserExtendType2Json( &objUserExtend,  &userExtend );
                         int result = UserExtendManager::getInstance()->addUserExtend(   &userExtend );
                         LOGD( "%s 增加用户附加信息 %d\r\n",logtag, result);
                     } else {//failed
@@ -352,7 +352,7 @@ static void vReceiveOasisTask(void *pvParameters) {
                     //StrToHex(g_uu_id.UID,(char*)gFaceInfo.name.c_str(),sizeof(g_uu_id.UID));
 //                    StrToHex(g_uu_id.UID, (char *) username, sizeof(g_uu_id.UID));
 
-                    cmdRegResultNotifyReq( &instUserExtend, g_reging_flg);
+                    cmdRegResultNotifyReq( &objUserExtend, g_reging_flg);
                     if (g_reging_flg == REG_STATUS_FAILED) {
                         CloseLcdBackground();
                         vTaskDelay(pdMS_TO_TICKS(1000));
@@ -394,115 +394,38 @@ static void vReceiveOasisTask(void *pvParameters) {
 //
 //                        continue;
 //                    }
-#ifdef TEST_ANY_FACE_REC
-//                    if (recognize_times == 2) {
-                        pQMsg->msg.val = true;
-                        strcpy(pQMsg->msg.info.name, "00000000");
-//                    }
-#endif
 //                  如果是在识别状态
                     if( boot_mode ==  BOOT_MODE_RECOGNIZE ){
-                        if (pQMsg->msg.val ) {//success
+                        if ( pQMsg->msg.val ) {
                             LOGD("%s 人脸识别成功!\r\n", logtag);
-    #if RECOGNIZE_ONCE
-                            CloseLcdBackground();
-                            vTaskDelay(pdMS_TO_TICKS(1000));
-                            Uart5_SendDeinitCameraMsg();
-    #endif
-                            //LOGD("gFaceInfo.name is %s!\n", gFaceInfo.name);
-                            LOGD("识别到的用户名 is %s!\r\n", pQMsg->msg.info.name);
-                            char name[64];
-                            //memcpy(name, gFaceInfo.name.c_str(), gFaceInfo.name.size());
-                            memcpy(name, pQMsg->msg.info.name, 64);
-                            StrToHex(g_uu_id.UID, name, sizeof(g_uu_id.UID));
+                            if( (ws_systime - objUserExtend.lCreateTime)>10  ){//  连续识别时间间隔要大于10秒
 
-    //                      根据用户名查找柜子的信息
-                            UserExtend userExtend;
-                            memset( &userExtend, 0, sizeof(UserExtend) );
-                            int ret = UserExtendManager::getInstance()->queryUserExtendByUUID( name, &userExtend);
-                            LOGD("%s,%d, %s, %s \r\n", logtag, ret,  userExtend.UUID, userExtend.jsonData);
+                                //LOGD("gFaceInfo.name is %s!\n", gFaceInfo.name);
+                                LOGD("识别到的用户名 is %s!\r\n", pQMsg->msg.info.name);
+                                char name[64];
+                                //memcpy(name, gFaceInfo.name.c_str(), gFaceInfo.name.size());
+                                memcpy(name, pQMsg->msg.info.name, 64);
+    //                            StrToHex(g_uu_id.UID, name, sizeof(g_uu_id.UID));
+        //                      根据用户名查找柜子的信息
+                                UserExtend userExtend;
+                                memset( &userExtend, 0, sizeof(UserExtend) );
+                                int ret = UserExtendManager::getInstance()->queryUserExtendByUUID( name, &userExtend);
+                                LOGD("%s,%d, %s, %s \r\n", logtag, ret,  userExtend.UUID, userExtend.jsonData);
+                                LOGD("%s, 当前时间 %d, 用戶创建时间 %d \r\n", logtag, ws_systime, objUserExtend.lCreateTime);
 
-    #if    SUPPORT_PRESSURE_TEST != 0
-                            int record_count = DBManager::getInstance()->getRecordCount();
-                            LOGD("record_count is %d \r\n", record_count);
-                            if (record_count <= 180) {
-                                pressure_test = 0;
-                                for (int i = 0; i < 20; i++) {
-                                    vTaskDelay(pdMS_TO_TICKS(10));
-                                    Record *record = (Record *) pvPortMalloc(sizeof(Record));
-                                    HexToStr(username, g_uu_id.UID, sizeof(g_uu_id.UID));
-                                    strcpy(record->UUID, username);
-                                    //record->status = 0; // 0,操作成功 1,操作失败.
-                                    record->time_stamp = ws_systime; //时间戳 从1970年开始的秒数
-    //                                record->power = 100 * 256 + 0;
-                                    record->data[0]=0xFF;
-                                    record->data[1]=0xFF;
-                                    //sprintf(power_msg, "{\\\"batteryA\\\":%d\\,\\\"batteryB\\\":%d}", record->power, record->power2);
-                                    //LOGD("power_msg is %s \r\n", power_msg);
-
-                                    //record->upload = 0; //   0代表没上传 1代表记录上传图片未上传 2代表均已
-    //                                record->action_upload = 0x300;
-                                    record->action = FACE_UNLOCK;//  操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁
-                                    record->upload = BOTH_UNUPLOAD; //   0代表没上传 1代表记录上传图片未上传 2代表均已
-
-                                    memset(image_path, 0, sizeof(image_path)); // 对注册成功的用户保存一张压缩过的jpeg图片
-                                    //snprintf(image_path, sizeof(image_path), "REC_%d_%d_%s.jpg", 0, record->time_stamp, record->UUID);
-
-                                    snprintf(image_path, sizeof(image_path), "%x%02d.jpg", record->time_stamp & 0x00FFFFFF, i);
-                                    memcpy(record->image_path, image_path, sizeof(image_path));//image_path
-
-                                    LOGD("[%d] record->image_path is %s \r\n", i, record->image_path);
-
-                                    Oasis_SetOasisFileName(record->image_path);
-
-                                    DBManager *dbManager = DBManager::getInstance();
-                                    dbManager->addRecord(record);
-
-                                    //LOGD("feature.map 1size:%d\r\n", fatfs_getsize("feature.map"));
-                                    if (!SUPPORT_POWEROFF || g_is_shutdown == 0) {
-    #if SAVE_FACE_PICTURE
-                                        Oasis_WriteJpeg();
-    #endif
-                                    }
-
-                                    notifyKeepAlive();
-                                    vTaskDelay(pdMS_TO_TICKS(20));
-    #if	0
-                                    vTaskDelay(pdMS_TO_TICKS(100));
-
-    //                                char *buffer = (char *) pvPortMalloc(10 * 1024);
-    //                                for (int j = 0; j < 1; j++) {
-    //                                    int status = fatfs_read(record->image_path, buffer, 0, 10 * 1024);
-    //                                }
-    //                                vPortFree(buffer);
-
-                                    //LOGD("feature.map 2size:%d\r\n", fatfs_getsize("feature.map"));
-    //                                vTaskDelay(pdMS_TO_TICKS(100));
-                                    fatfs_delete(record->image_path);
-    #endif
-    //                                LOGD("feature.map size:%d\r\n", fatfs_getsize("feature.map"));
-    //                                LOGD("config size:%d\r\n", fatfs_getsize("config.jsn"));
-    //                                LOGD("record size:%d\r\n", fatfs_getsize("record.jsn"));
-
-                                }
-                                pressure_test = 1;
-                                vTaskDelay(pdMS_TO_TICKS(100));
+    //                          发送开门请求
+                                memset( &objUserExtend, 0 , sizeof(UserExtendType));
+                                vConverUserExtendJson2Type(&userExtend, ws_systime,  &objUserExtend);
+                                cmdOpenDoorReq( &objUserExtend );
+                                LOGD("Reset recognize timeout trigger\r\n");
+                                recognize_times = 0;
                             }
-    #endif
-//                          发送开门请求
-                            UserExtendType userExtendType;
-                            vConverUserExtendJson2Type(&userExtend, &userExtendType);
-                            cmdOpenDoorReq( &userExtendType);
-    #if !RECOGNIZE_ONCE
-                            LOGD("Reset recognize timeout trigger\r\n");
-                            recognize_times = 0;
-    #endif
+
                         } else {//failed
                             recognize_times++;
-    //                        LOGD("User face recognize failed %d times\r\n", recognize_times);
-    #if    SUPPORT_POWEROFF
-                            if (recognize_times > 30) {
-                                LOGD("User face recognize timeout closeLcdBackgroud\r\n");
+//                            LOGD("User face recognize failed %d times\r\n", recognize_times);
+                            if (recognize_times > 60) {
+                                LOGD("User face recognize timeout \r\n");
                                 recognize_times = 0;
                                 CloseLcdBackground();
                                 vTaskDelay(pdMS_TO_TICKS(1000));
@@ -510,11 +433,8 @@ static void vReceiveOasisTask(void *pvParameters) {
                                 cmdCloseFaceBoardReq();//关主控电源
                                 break;
                             }
-    #endif
                         }
                     }
-
-
                 }
                 break;
                 default:
