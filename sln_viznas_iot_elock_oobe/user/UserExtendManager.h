@@ -14,18 +14,18 @@ extern "C"  {
 #include "sln_flash.h"
 
 //#define MAX_COUNT 100
-#define MAX_EXTEND_COUNT 100
-#define UUID_MAGIC_UNUSE    "FF"
+#define MAX_EXTEND_COUNT    100
+#define UUID_MAGIC_UNUSE    0xFF
 
 
 #define USER_EXTEND_FS_ADDR         (0xE20000U)
-#define USER_EXTEND_PAGE_SIZE       1000
+#define USER_EXTEND_PAGE_SIZE       200
 
 #ifdef __cplusplus
 }
 #endif
 
-#define UERID  "UERID"
+//#define UERID  "UERID"
 #define TIMES   "TIMES"
 #define TIMEE   "TIMEE"
 #define ADEV    "ADEV"

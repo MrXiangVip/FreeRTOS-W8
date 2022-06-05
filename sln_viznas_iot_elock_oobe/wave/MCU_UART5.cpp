@@ -47,7 +47,7 @@
 #include "aw_wave_logo_v3.h"
 #include "MCU_UART5.h"
 
-static const char *logtag ="[UART5]-";
+static const char *logtag ="[UART5] ";
 
 /*!< Queue used by Uart5 Task to receive messages*/
 enum {
@@ -398,25 +398,27 @@ static void vReceiveOasisTask(void *pvParameters) {
                     if( boot_mode ==  BOOT_MODE_RECOGNIZE ){
                         if ( pQMsg->msg.val ) {
                             LOGD("%s 人脸识别成功!\r\n", logtag);
-                            if( (ws_systime - objUserExtend.lCreateTime)>10  ){//  连续识别时间间隔要大于10秒
 
-                                //LOGD("gFaceInfo.name is %s!\n", gFaceInfo.name);
-                                LOGD("识别到的用户名 is %s!\r\n", pQMsg->msg.info.name);
-                                char name[64];
-                                //memcpy(name, gFaceInfo.name.c_str(), gFaceInfo.name.size());
-                                memcpy(name, pQMsg->msg.info.name, 64);
-    //                            StrToHex(g_uu_id.UID, name, sizeof(g_uu_id.UID));
-        //                      根据用户名查找柜子的信息
-                                UserExtend userExtend;
-                                memset( &userExtend, 0, sizeof(UserExtend) );
-                                int ret = UserExtendManager::getInstance()->queryUserExtendByUUID( name, &userExtend);
-                                LOGD("%s,%d, %s, %s \r\n", logtag, ret,  userExtend.UUID, userExtend.jsonData);
-                                LOGD("%s, 当前时间 %d, 用戶创建时间 %d \r\n", logtag, ws_systime, objUserExtend.lCreateTime);
+                            LOGD("识别到的用户名 is %s!\r\n", pQMsg->msg.info.name);
+                            char name[64];
+                            //memcpy(name, gFaceInfo.name.c_str(), gFaceInfo.name.size());
+                            memcpy(name, pQMsg->msg.info.name, 64);
+                            //                            StrToHex(g_uu_id.UID, name, sizeof(g_uu_id.UID));
+                            //                      根据用户名查找柜子的信息
+                            UserExtend userExtend;
+                            memset(&userExtend, 0, sizeof(UserExtend));
+                            int ret = UserExtendManager::getInstance()->queryUserExtendByUUID(name, &userExtend);
+                            LOGD("%s,%d, UUID %s, JSON %s \r\n", logtag, ret, userExtend.UUID, userExtend.jsonData);
+                            LOGD("%s, 当前时间 %d, 用戶创建时间 %d \r\n", logtag, ws_systime, objUserExtend.lCreateTime);
 
-    //                          发送开门请求
-                                memset( &objUserExtend, 0 , sizeof(UserExtendType));
-                                vConverUserExtendJson2Type(&userExtend, ws_systime,  &objUserExtend);
-                                cmdOpenDoorReq( &objUserExtend );
+                            if ((ws_systime - objUserExtend.lCreateTime) < 10 &&
+                                strcmp(objUserExtend.UUID, userExtend.UUID) == 0) {// 同一个人， 连续识别时间间隔要大于10秒
+                                LOGD("%s 同一个人 10秒内不允许重复开门 \r\n", logtag );
+                            }else{
+                                //                          发送开门请求
+                                memset(&objUserExtend, 0, sizeof(UserExtendType));
+                                vConverUserExtendJson2Type(&userExtend, ws_systime, &objUserExtend);
+                                cmdOpenDoorReq(&objUserExtend);
                                 LOGD("Reset recognize timeout trigger\r\n");
                                 recognize_times = 0;
                             }
@@ -424,7 +426,7 @@ static void vReceiveOasisTask(void *pvParameters) {
                         } else {//failed
                             recognize_times++;
 //                            LOGD("User face recognize failed %d times\r\n", recognize_times);
-                            if (recognize_times > 60) {
+                            if (recognize_times > 40) {
                                 LOGD("User face recognize timeout \r\n");
                                 recognize_times = 0;
                                 CloseLcdBackground();
