@@ -14,6 +14,7 @@
 #include "task.h"
 #include "event_groups.h"
 #include "sln_shell.h"
+#include "sln_flash.h"
 #include "queue.h"
 #include "sln_dev_cfg.h"
 #include "sln_api.h"
@@ -238,7 +239,7 @@ static shell_status_t UsbShell_QueueSendFromISR(shell_handle_t shellContextHandl
 
     return kStatus_SHELL_Success;
 }
-
+static uint32_t baseAddr = 14811136;
 static shell_status_t FFI_CLI_ListCommand(shell_handle_t shellContextHandle, int32_t argc, char **argv)
 {
 #if 0
@@ -251,9 +252,78 @@ static shell_status_t FFI_CLI_ListCommand(shell_handle_t shellContextHandle, int
     return UsbShell_QueueSendFromISR(shellContextHandle, argc, argv, SHELL_EV_FFI_CLI_LIST);
 #else
     SHELL_Printf(shellContextHandle, "list [0:init , 1:registe, 2:delete 3:clear 4.open door]\r\n");
-    if( argc !=2 ){
-        SHELL_Printf(shellContextHandle, "input command : list index \r\n");
-    }else{
+    if( argc > 2 ){
+        SHELL_Printf(shellContextHandle, "input command : list [s BASE|e SECTOR_OFFSET|r SECTOR_OFFSET LENGTH|w SECTOR_OFFSET ADDR_OFFSET STRDATA]\r\n");
+        if (argv[1][0] == 's') {
+            baseAddr = atoi(argv[2]);
+            SHELL_Printf(shellContextHandle, "flash set base to 0x%x\r\n", baseAddr);
+            return kStatus_SHELL_Success;
+        } else if (argv[1][0] == 'e') {
+            int sector_offset = atoi(argv[2]);
+            if (sector_offset < 0) {
+                sector_offset = 0;
+            } else if (sector_offset > 255) {
+                sector_offset = 255;
+            }
+            uint32_t addr = baseAddr + FLASH_SECTOR_SIZE * sector_offset;
+            SHELL_Printf(shellContextHandle, "flash erase start from 0x%x\r\n", addr);
+            status_t status = SLN_Erase_Sector(addr);
+            if (status == kStatus_Success) {
+                SHELL_Printf(shellContextHandle, "flash erase ok as status is %d\r\n", status);
+            } else {
+                SHELL_Printf(shellContextHandle, "flash erase fail as status is %d\r\n", status);
+            }
+            return kStatus_SHELL_Success;
+        } else if (argv[1][0] == 'r') {
+            int sector_offset = atoi(argv[2]);
+            if (sector_offset < 0) {
+                sector_offset = 0;
+            } else if (sector_offset > 255) {
+                sector_offset = 255;
+            }
+            uint32_t addr = baseAddr + FLASH_SECTOR_SIZE * sector_offset;
+            SHELL_Printf(shellContextHandle, "flash read start from 0x%x\r\n", addr);
+            uint32_t length = atoi(argv[3]);
+            uint8_t *data = (uint8_t*)malloc(length);
+            status_t status = SLN_Read_Flash_At_Address(addr, data, length);
+            if (status == kStatus_Success) {
+                SHELL_Printf(shellContextHandle, "flash read ok as status is %d\r\n", status);
+                for (int i = 0; i < length; i++) {
+                    SHELL_Printf(shellContextHandle, "%02x ", data[i]);
+                    if ( i % 16 == 15) {
+                        SHELL_Printf(shellContextHandle, "\r\n");
+                    }
+                }
+                SHELL_Printf(shellContextHandle, "\r\n");
+            } else {
+                SHELL_Printf(shellContextHandle, "flash read fail as status is %d\r\n", status);
+            }
+            free(data);
+            return kStatus_SHELL_Success;
+        } else if (argv[1][0] == 'w') {
+            int sector_offset = atoi(argv[2]);
+            if (sector_offset < 0) {
+                sector_offset = 0;
+            } else if (sector_offset > 255) {
+                sector_offset = 255;
+            }
+            int addr_offset = atoi(argv[3]);
+            uint32_t addr = baseAddr + FLASH_SECTOR_SIZE * sector_offset + addr_offset;
+            SHELL_Printf(shellContextHandle, "flash write start from 0x%x\r\n", addr);
+            SHELL_Printf(shellContextHandle, "flash write data %s\r\n", argv[4]);
+            char *data = (char*)malloc(FLASH_PAGE_SIZE);
+            memset(data, '\0', FLASH_PAGE_SIZE);
+            strcpy(data, argv[4]);
+            status_t status = SLN_Write_Flash_At_Address(addr, (uint8_t*)data);
+            if (status == kStatus_Success) {
+                SHELL_Printf(shellContextHandle, "flash write ok as status is %d\r\n", status);
+            } else {
+                SHELL_Printf(shellContextHandle, "flash write fail as status is %d\r\n", status);
+            }
+            free(data);
+            return kStatus_SHELL_Success;
+        }
+    }else if (argc == 2){
         if (strlen(argv[1]) == 1) {
             int index = atoi( argv[1]);
             SHELL_Printf(shellContextHandle, "input command: list index[%d]\r\n", index);
