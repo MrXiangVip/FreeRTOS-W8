@@ -939,6 +939,9 @@ vizn_api_status_t VIZN_EnrolmentAddNewFace(VIZN_api_client_t *clientHandle,
     {
         if (name != NULL)
         {
+//          增加前用戶
+            DB_Del(name);
+            LOGD("删除 %s  对应的人脸信息 \r\n",name);
             ret = DB_Add(*face_id, name, feature_data);
         }
         else

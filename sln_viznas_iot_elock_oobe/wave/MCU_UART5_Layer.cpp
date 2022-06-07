@@ -1341,11 +1341,13 @@ int cmdDeleteUserReqProcByHead(unsigned char nHead, unsigned char nMessageLen, c
     vizn_api_status_t status = VIZN_DelUser(NULL, objUserExtend.UUID);
     LOGD("删除用户注册表中用户 %d \r\n", status);
 
-    if (kStatus_API_Layer_Success == status) {
-        ret = SUCCESS;
-    } else {
-        ret = FAILED;
-    }
+//    只有一种返回失败的情况 即用户不存在  ,这种情况也返回成功
+//    if (kStatus_API_Layer_Success == status) {
+//        ret = SUCCESS;
+//    }else {
+//        ret = FAILED;
+//    }
+    ret = SUCCESS;
 
     DBManager::getInstance()->flushRecordList();//写回 记录文件
     LOGD("delete uuid :  %s nHead 0x%2x.\r\n", objUserExtend.UUID, nHead);

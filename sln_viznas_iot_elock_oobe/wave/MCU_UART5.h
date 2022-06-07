@@ -13,11 +13,14 @@
 
 #ifndef W8_MCU_UART5_2_H
 #define W8_MCU_UART5_2_H
+
+#include "MCU_UART5_Layer.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include "MCU_UART5_Layer.h"
+
 #define UART5_DRV_RX_RING_BUF_SIZE 256
 extern lpuart_rtos_config_t lpuart_config5;
 extern QueueHandle_t Uart5MsgQ;

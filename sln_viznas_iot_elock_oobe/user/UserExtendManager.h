@@ -16,6 +16,7 @@ extern "C"  {
 //#define MAX_COUNT 100
 #define MAX_EXTEND_COUNT    100
 #define UUID_MAGIC_UNUSE    0xFF
+#define FLASH_SECTOR_SIZE   0x1000
 
 
 #define USER_EXTEND_FS_ADDR         (0xE20000U)

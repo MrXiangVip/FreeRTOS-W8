@@ -83,10 +83,10 @@ int UserExtendManager::get_free_index(){
     for (int i = 0; i < item_max; i++)
     {
         UserExtend userExtend;
-        int status = SLN_Read_Flash_At_Address( userExtend_FS_Head+i*sizeof(UserExtend), (uint8_t *)&userExtend, sizeof(UserExtend)  );
+        int status = SLN_Read_Flash_At_Address( userExtend_FS_Head+i*(FLASH_SECTOR_SIZE), (uint8_t *)&userExtend, sizeof(UserExtend)  );
         if( status == 0 ){
             if(  userExtend.UUID[0] == UUID_MAGIC_UNUSE ) {
-                LOGD("第 %d 块 没有被使用 \r\n", i);
+                LOGD("第 %d 块 没有被使用  flash address %x  userExtend.UUID[0] %x\r\n", i, userExtend_FS_Head+i*(FLASH_SECTOR_SIZE), userExtend.UUID[0]);
                 return i;
             }
         }else{
@@ -98,17 +98,17 @@ int UserExtendManager::get_free_index(){
     return -1;
 }
 
+// -1 表示没有找到
 int UserExtendManager::get_index_by_uuid(char *uuid) {
     LOGD("%s get_index_by_uuid %s \r\n",logtag, uuid);
     for( int i=0; i<MAX_EXTEND_COUNT; i++){
         UserExtend userExtend;
         memset( &userExtend, 0, sizeof(UserExtend));
-        int status = SLN_Read_Flash_At_Address( userExtend_FS_Head+i*sizeof(UserExtend), (uint8_t *)&userExtend, sizeof(UserExtend)  );
+        int status = SLN_Read_Flash_At_Address( userExtend_FS_Head+i*(FLASH_SECTOR_SIZE), (uint8_t *)&userExtend, sizeof(UserExtend)  );
         if( status == 0 ){
-//            LOGD("%s %i, 0x%2x ,%s  \r\n", logtag, i, userExtend.UUID[0] , userExtend.UUID);
-//            LOGD("%s index %i \r\n", logtag, i );
+
             if( strcmp( userExtend.UUID, uuid) == 0 ){
-                LOGD("%s %i, uuid %s, json %s  \r\n", logtag, i, userExtend.UUID, userExtend.jsonData);
+                LOGD("%s index %i, uuid %s, json %s  \r\n", logtag, i, userExtend.UUID, userExtend.jsonData);
                 return  i;
             }
         }else{
@@ -122,8 +122,8 @@ int UserExtendManager::addUserExtend(UserExtend * userExtend){
     LOGD("%s addUserExtend  %s\r\n", logtag, userExtend->UUID);
 //  1.查询uuid 是否已经存在
 //    Record_Lock();
-    int index = get_index_by_uuid(userExtend->UUID);
-//  2. 存在则更新， 不存在则新增
+    int index = delUserExtendByUUID( userExtend->UUID);
+//  2. index ==-1 不存在则找到新的index新增,   否则在原有的位置写入
     if( index ==-1 ){
         LOGD("%s uuid 不存在,则新增 \r\n");
         index = get_free_index();
@@ -131,22 +131,26 @@ int UserExtendManager::addUserExtend(UserExtend * userExtend){
             LOGD("Error: Database is full \n");
             return -1;
         }
-        int status = SLN_Write_Flash_At_Address(userExtend_FS_Head+index* sizeof(UserExtend), (uint8_t *)userExtend);
+        int status = SLN_Write_Flash_Page(userExtend_FS_Head+index* (FLASH_SECTOR_SIZE), (uint8_t *)userExtend, sizeof(UserExtend));
+//        int status = SLN_Write_Flash_At_Address(userExtend_FS_Head+index* (FLASH_SECTOR_SIZE), (uint8_t *)userExtend);
+//        int status = SLN_Write_Sector(userExtend_FS_Head+index* FLASH_SECTOR_SIZE, (uint8_t *)userExtend);
         if (status != 0) {
             LOGD("write flash failed %d \r\n", status);
             return  -1;
         }
         return  index;
     }else{
-        LOGD("%s uuid 已存在,则更新  free index %d ,%d ,%d \r\n", logtag, index, sizeof(UserExtend), sizeof(userExtend) );
-        int status = SLN_Write_Flash_At_Address(userExtend_FS_Head+index* sizeof(UserExtend), (uint8_t *)userExtend );
+        LOGD("%s uuid 已存在,则擦除后增加  free index %d ,%d  \r\n", logtag, index, sizeof(UserExtend) );
+        int status = SLN_Write_Flash_Page(userExtend_FS_Head+index* (FLASH_SECTOR_SIZE), (uint8_t *)userExtend, sizeof(UserExtend) );
+//        int status = SLN_Write_Flash_At_Address(userExtend_FS_Head+index* (FLASH_SECTOR_SIZE), (uint8_t *)userExtend );
+//        int status = SLN_Write_Sector(userExtend_FS_Head+index* FLASH_SECTOR_SIZE, (uint8_t *)userExtend );
         if (status != 0) {
             LOGD("write flash failed %d \r\n", status);
             return  -1;
         }
     }
 //    Record_UnLock();
-    return  0;
+    return  index;
 }
 //input : uuid
 //output: userExtend
@@ -158,7 +162,7 @@ int  UserExtendManager::queryUserExtendByUUID( char *uuid, UserExtend *userExten
     int index = get_index_by_uuid(uuid);
     if( index != -1 ){
 
-        status = SLN_Read_Flash_At_Address(userExtend_FS_Head+index* sizeof(UserExtend), (uint8_t *)userExtend, sizeof(UserExtend));
+        status = SLN_Read_Flash_At_Address(userExtend_FS_Head+index* (FLASH_SECTOR_SIZE), (uint8_t *)userExtend, sizeof(UserExtend));
         if (status != 0) {
             LOGD("read flash failed %d \r\n", status);
         }
@@ -175,7 +179,9 @@ int UserExtendManager::updateUserExtendByUUID( char *uuid, UserExtend *userExten
 //    Record_Lock();
     int index = get_index_by_uuid( uuid );
     if( index != -1 ){
-        status = SLN_Write_Flash_At_Address(userExtend_FS_Head+index* sizeof(UserExtend), (uint8_t *)userExtend );
+        status = SLN_Write_Flash_Page(userExtend_FS_Head+index* (FLASH_SECTOR_SIZE), (uint8_t *)userExtend, sizeof(UserExtend) );
+//        status = SLN_Write_Flash_At_Address(userExtend_FS_Head+index* (FLASH_SECTOR_SIZE), (uint8_t *)userExtend );
+//        status = SLN_Write_Sector(userExtend_FS_Head+index* (FLASH_SECTOR_SIZE), (uint8_t *)userExtend );
         if (status != 0) {
             LOGD("read flash failed %d \r\n", status);
             return  -1;
@@ -187,25 +193,25 @@ int UserExtendManager::updateUserExtendByUUID( char *uuid, UserExtend *userExten
 
 int UserExtendManager::delUserExtendByUUID( char *uuid ){
     LOGD("%s delUserExtendByUUID  %s\r\n",logtag, uuid);
-    int status=-1;
+    int status=-1, index =-1;
 //    Record_Lock();
-    int index = get_index_by_uuid(uuid );
 
+    index = get_index_by_uuid(uuid );
     if( index != -1 ){
-        status = SLN_Erase_Sector( userExtend_FS_Head+index*sizeof(UserExtend));
+        status = SLN_Erase_Sector( userExtend_FS_Head+index*(FLASH_SECTOR_SIZE));
         if( status !=0 ){
             LOGD("erase flash failed %d \r\n", status);
         }
     }
 //    Record_UnLock();
-    return  status;
+    return  index;
 }
 
 int UserExtendManager::clearAllUserExtend(  ){
     LOGD("%s clearAllUserExtend  %s\r\n",logtag);
     int status=-1;
     for( int i =0; i<MAX_EXTEND_COUNT; i++ ){
-        status = SLN_Erase_Sector( userExtend_FS_Head+i*sizeof(UserExtend));
+        status = SLN_Erase_Sector( userExtend_FS_Head+i*(FLASH_SECTOR_SIZE));
         if( status !=0 ){
             LOGD("erase flash failed %d \r\n", status);
         }
