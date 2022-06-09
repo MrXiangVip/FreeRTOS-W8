@@ -87,8 +87,6 @@ bool bInitSyncInfo = false;
 bool bSysTimeSynProc = false;
 
 
-
-
 Reg_Status g_reging_flg = REG_STATUS_WAIT;//正在注册流程标记,等待被激活，对识别task发过来的识别结果进行过滤
 //userInfo_data_t userInfoList[MAX_USER_NUM] = {0};
 char username[17] = {0}; //用于存放传入NXP提供的人脸注册于识别相关的API的username
@@ -691,7 +689,7 @@ int cmdUserRegReqProc(unsigned char nMessageLen, const unsigned char *pszMessage
         ret = FAILED;
     }else{
         //注册成功, 则往人员拓展表中增加拓展的记录
-        LOGD( "%s VIZEN_ADD_User %d\r\n",logtag, ret);
+        LOGD( "%s VIZEN_ADD_User Success\r\n",logtag);
     }
 
     //返回响应消息
@@ -1643,6 +1641,7 @@ int cmdRequestMqttUpload(int id) {
 void SwTimerCallback(TimerHandle_t xTimer) {
     ws_systime++;
 }
+
 
 
 

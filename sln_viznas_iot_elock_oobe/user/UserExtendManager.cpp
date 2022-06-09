@@ -125,7 +125,7 @@ int UserExtendManager::addUserExtend(UserExtend * userExtend){
     int index = delUserExtendByUUID( userExtend->UUID);
 //  2. index ==-1 不存在则找到新的index新增,   否则在原有的位置写入
     if( index ==-1 ){
-        LOGD("%s uuid 不存在,则新增 \r\n");
+        LOGD("%s index %d ,uuid 不存在,则新增 \r\n", logtag, index);
         index = get_free_index();
         if( index == -1 ){
             LOGD("Error: Database is full \n");
@@ -137,6 +137,8 @@ int UserExtendManager::addUserExtend(UserExtend * userExtend){
         if (status != 0) {
             LOGD("write flash failed %d \r\n", status);
             return  -1;
+        }else{
+            LOGD("第 %d 块写入成功 \r\n", index);
         }
         return  index;
     }else{
@@ -147,6 +149,8 @@ int UserExtendManager::addUserExtend(UserExtend * userExtend){
         if (status != 0) {
             LOGD("write flash failed %d \r\n", status);
             return  -1;
+        }else{
+            LOGD("第 %d 块写入成功 \r\n", index);
         }
     }
 //    Record_UnLock();
@@ -201,6 +205,8 @@ int UserExtendManager::delUserExtendByUUID( char *uuid ){
         status = SLN_Erase_Sector( userExtend_FS_Head+index*(FLASH_SECTOR_SIZE));
         if( status !=0 ){
             LOGD("erase flash failed %d \r\n", status);
+        }else{
+            LOGD("第 %d 块擦除成功 \r\n", index);
         }
     }
 //    Record_UnLock();
@@ -232,7 +238,7 @@ void vConvertUserExtendType2Json(UserExtendType *userExtendType, UserExtend  *us
     cJSON_AddStringToObject(cObj, ADEV, userExtendType->cDeviceId);
     cjson_str = cJSON_PrintUnformatted(cObj);
 
-    LOGD("%s cjson %s \r\n",logtag, cjson_str);
+    LOGD("%s uuid %d, cjson %s \r\n",logtag,userExtendType->UUID, cjson_str);
     memcpy( userExtend->UUID, userExtendType->UUID, sizeof(userExtendType->UUID));
     memcpy( userExtend->jsonData, cjson_str, strlen(cjson_str));
     LOGD("UserExtend UUID:%s \r\n", userExtend->UUID);

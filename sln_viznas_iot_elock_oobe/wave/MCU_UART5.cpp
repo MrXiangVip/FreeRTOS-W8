@@ -49,6 +49,8 @@
 
 static const char *logtag ="[UART5] ";
 
+QueueHandle_t Uart5MsgQ = NULL;
+
 /*!< Queue used by Uart5 Task to receive messages*/
 enum {
     UART5_RX_MSG_STATUS_WAITING_HEADER,
@@ -75,13 +77,12 @@ DTC_BSS static StaticTask_t s_Uart5LoopTaskTCB;
 uint8_t background_buffer5[UART5_DRV_RX_RING_BUF_SIZE] = {0};
 
 
-static face_info_t gFaceInfo; //记录从oasis_rt106f_elcok.cpp中获取当前人脸识别或者注册的相关人脸信息
+//static face_info_t gFaceInfo; //记录从oasis_rt106f_elcok.cpp中获取当前人脸识别或者注册的相关人脸信息
 //人脸注册等待激活
 static uint32_t g_reg_start = 0;    //记录注册响应发出的时间
 
 struct _lpuart_handle t_handle5;
 
-QueueHandle_t Uart5MsgQ = NULL;
 
 lpuart_rtos_config_t lpuart_config5 = {
         .baudrate    = 115200,
@@ -94,11 +95,6 @@ lpuart_rtos_config_t lpuart_config5 = {
 int Uart5_SendQMsg(void *msg) {
     BaseType_t ret;
 
-#if    SUPPORT_POWEROFF
-    if (g_is_shutdown) {
-        return -3;
-    }
-#endif
     if (Uart5MsgQ) {
         ret = xQueueSend(Uart5MsgQ, msg, (TickType_t) 0);
     } else {
@@ -283,34 +279,29 @@ int Uart5_SendDeinitCameraMsg(void) {
     return 0;
 }
 
+//
 static void vReceiveOasisTask(void *pvParameters) {
-    BaseType_t ret;
-    QMsg *pQMsg;
+    BaseType_t  ret;
+    face_info_t *faceInfo;
     int recognize_times = 0;
     char image_path[16] = {0};
 
     while (1) {
         //LOGD("vReceiveOasisTask()  -> xQueueReceive()!\n");
         // pick up message
-        ret = xQueueReceive(Uart5MsgQ, (void *) &pQMsg, portMAX_DELAY);
+        int REG_RESULT_FLG = -1;
+        ret = xQueueReceive(Uart5MsgQ, (void *) &faceInfo, portMAX_DELAY);
         if (ret == pdTRUE) {
-            //LOGD("%s pQMsg->id is %d!\r\n", __FUNCTION__, pQMsg->id);
-            switch (pQMsg->id) {
-                case QMSG_FACEREC_ADDNEWFACE: {//处理人脸注册结果
-                    //LOGD("处理人脸注册结果 %d\r\n", pQMsg->msg.val);
-                    if (pQMsg->msg.val ) {// 连续注册时间要大于10秒
-                        if (gFaceInfo.enrolment && (OASIS_REG_RESULT_DUP == gFaceInfo.rt)) {//判断是否是重复注册
-                            LOGD("User face duplicate register!\r\n");
-                            g_reging_flg = REG_STATUS_DUP;
-                        } else {
-                            LOGD("User face register success!\r\n");
-                            g_reging_flg = REG_STATUS_OK;
-                        }
-
-                        g_reg_start = Time_Now(); //记录注册成功响应发出的时间，并开始计时
-
-//						增加注册记录
-                        //增加本次操作记录
+            switch( faceInfo->evt ){
+                case OASISLT_EVT_REG_COMPLETE:
+                    if( faceInfo->enrolment_result == OASIS_REG_RESULT_OK){
+                        LOGD( "%s 注册成功 增加用户附加信息 %s  ,当前的时间 %d, 用户创建的时间 %d  \r\n",logtag, objUserExtend.UUID, ws_systime, objUserExtend.lCreateTime );
+                        UserExtend userExtend;
+                        memset( &userExtend, 0, sizeof(UserExtend) );
+                        vConvertUserExtendType2Json( &objUserExtend,  &userExtend );
+                        int result = UserExtendManager::getInstance()->addUserExtend(   &userExtend );
+                        LOGD( "%s 增加用户附加信息 %d\r\n",logtag, result);
+                        //增加本次操作记录  增加注册记录
                         LOGD("%s增加注册记录 \r\n", logtag);
                         Record *record = (Record *) pvPortMalloc(sizeof(Record));
                         memset(record, 0, sizeof(Record));
@@ -318,142 +309,81 @@ static void vReceiveOasisTask(void *pvParameters) {
                         record->action = REGISTE;// 0 代表注册
                         record->time_stamp = ws_systime;//当前时间
                         memset(image_path, 0, sizeof(image_path)); // 对注册成功的用户保存一张压缩过的jpeg图片
-                        //snprintf(image_path, sizeof(image_path), "REG_%d_%d_%s.jpg", g_reging_flg, record->time_stamp,
-                        //         record->UUID);
+
                         snprintf(image_path, sizeof(image_path), "%x.jpg", record->time_stamp);
                         memcpy(record->image_path, image_path, sizeof(image_path));//image_path
                         //record->status = SUCCESS;// 本次注册成功
 //                        record->power = 0xFFFF;
                         record->data[0]=0xFF;
                         record->data[1]=0xFF;
-                        //record->power1 = -1;//当前电池电量
-                        //record->power2 = -1;//当前电池电量
+
                         record->upload = BOTH_UNUPLOAD;// 0代表没上传 1代表记录上传图片未上传 2代表均已
 //                        record->action_upload = 0;	//代表注册且未上传
                         LOGD("%s往数据库中插入本次注册记录 \r\n", logtag);
                         DBManager::getInstance()->addRecord(record);
+//                        Oasis_SetOasisFileName(record->image_path);
+                        REG_RESULT_FLG = 0; //和后台同步, 0 表示成功
 
-                        Oasis_SetOasisFileName(record->image_path);
-                        //Oasis_WriteJpeg();
-//                        g_face.WriteJPG(image_path, faceBuf.color_buf, CAM_HEIGHT,CAM_WIDTH, 3, 50);
-//                        log_info("保存 UID<%s> 注册图片到 path<%s>!\n", record.UID, image_path);
-
-//   保存用户拓展信息, 开始结束时间,柜门号
-                        LOGD( "%s 增加用户附加信息 %s  ,当前的时间 %d, 用户创建的时间 %d  \r\n",logtag, objUserExtend.UUID, ws_systime, objUserExtend.lCreateTime );
+                    }else if( faceInfo->enrolment_result == OASIS_REG_RESULT_DUP){
+                        LOGD("重复注册 \r\n");
+                        REG_RESULT_FLG = 9;// 和后台同步, 9 表示重复注册
+                    }else{
+                        LOGD("注册失败 \r\n");
+                        REG_RESULT_FLG = 1; //和后台同步, 1 表示失败
+                    }
+                    cmdRegResultNotifyReq( &objUserExtend, REG_RESULT_FLG);
+                    vTaskDelay(pdMS_TO_TICKS(200));
+                    cmdCloseFaceBoardReq();//关主控电源
+                    boot_mode = BOOT_MODE_RECOGNIZE;
+                    break;
+                case OASISLT_EVT_REC_COMPLETE:
+                    if( faceInfo->recognize  && boot_mode==BOOT_MODE_RECOGNIZE ){//
+                        LOGD("识别成功 \r\n");
+                        char name[64]={0};
+                        //memcpy(name, gFaceInfo.name.c_str(), gFaceInfo.name.size());
+                        memcpy(name, (void*)faceInfo->name.c_str(), faceInfo->name.size());
+                        // StrToHex(g_uu_id.UID, name, sizeof(g_uu_id.UID));
+                        // 根据用户名查找柜子的信息
                         UserExtend userExtend;
-                        memset( &userExtend, 0, sizeof(UserExtend) );
-                        vConvertUserExtendType2Json( &objUserExtend,  &userExtend );
-                        int result = UserExtendManager::getInstance()->addUserExtend(   &userExtend );
-                        LOGD( "%s 增加用户附加信息 %d\r\n",logtag, result);
-                    } else {//failed
-                        LOGD("User face register failed!\r\n");
-                        g_reging_flg = REG_STATUS_FAILED;
-                    }
-                    //StrToHex(g_uu_id.UID,(char*)gFaceInfo.name.c_str(),sizeof(g_uu_id.UID));
-//                    StrToHex(g_uu_id.UID, (char *) username, sizeof(g_uu_id.UID));
+                        memset(&userExtend, 0, sizeof(UserExtend));
+                        int ret = UserExtendManager::getInstance()->queryUserExtendByUUID(name, &userExtend);
+                        LOGD("%s,查到 UUID %s, JSON %s \r\n", logtag, ret, userExtend.UUID, userExtend.jsonData);
+                        LOGD("%s, 当前时间 %d, 用戶创建时间 %d \r\n", logtag, ws_systime, objUserExtend.lCreateTime);
 
-                    cmdRegResultNotifyReq( &objUserExtend, g_reging_flg);
-                    if (g_reging_flg == REG_STATUS_FAILED) {
-                        CloseLcdBackground();
-                        vTaskDelay(pdMS_TO_TICKS(1000));
-                        Uart5_SendDeinitCameraMsg();
-                        vTaskDelay(pdMS_TO_TICKS(200));
-                        cmdCloseFaceBoardReq();
-                    } else {
-                        //shut_down = true;
-                        CloseLcdBackground();
-                        vTaskDelay(pdMS_TO_TICKS(1000));
-                        Uart5_SendDeinitCameraMsg();
-                        vTaskDelay(pdMS_TO_TICKS(200));
-
-                        save_config_feature_file();
-                        vTaskDelay(pdMS_TO_TICKS(100));
-
-                        LOGD("注册成功,请求MQTT上传本次用户注册记录 \r\n");
-                        int ID = DBManager::getInstance()->getLastRecordID();
-#if MQTT_SUPPORT
-                        cmdRequestMqttUpload(ID);
-#else
-                        cmdCloseFaceBoardReq();//关主控电源
-#endif
-//                      注册成功后转识别
-                        boot_mode = BOOT_MODE_RECOGNIZE;
-                    }
-
-                }
-                break;
-
-                case QMSG_FACEREC_RECFACE: {//处理人脸识别结果
-                    //LOGD("%s g_reging_flg is %d lcd_back_ground is %d\r\n", __FUNCTION__, g_reging_flg, lcd_back_ground);
-                    //LOGD("处理人脸识别结果 %d flg %d\r\n", pQMsg->msg.val, g_reging_flg);
-//                    if ((boot_mode != BOOT_MODE_RECOGNIZE) || (REG_STATUS_WAIT != g_reging_flg)
-//                        || (lcd_back_ground == false))//如果正在注册流程，就过滤掉该识别结果
-//                    {
-//                        LOGD("Face rec continue!\r\n");
-//                        vPortFree(pQMsg);
-//
-//                        continue;
-//                    }
-//                  如果是在识别状态
-                    if( boot_mode ==  BOOT_MODE_RECOGNIZE ){
-                        if ( pQMsg->msg.val ) {
-                            LOGD("%s 人脸识别成功!\r\n", logtag);
-
-                            LOGD("识别到的用户名 is %s!\r\n", pQMsg->msg.info.name);
-                            char name[64];
-                            //memcpy(name, gFaceInfo.name.c_str(), gFaceInfo.name.size());
-                            memcpy(name, pQMsg->msg.info.name, 64);
-                            //                            StrToHex(g_uu_id.UID, name, sizeof(g_uu_id.UID));
-                            //                      根据用户名查找柜子的信息
-                            UserExtend userExtend;
-                            memset(&userExtend, 0, sizeof(UserExtend));
-                            int ret = UserExtendManager::getInstance()->queryUserExtendByUUID(name, &userExtend);
-                            LOGD("%s,%d, UUID %s, JSON %s \r\n", logtag, ret, userExtend.UUID, userExtend.jsonData);
-                            LOGD("%s, 当前时间 %d, 用戶创建时间 %d \r\n", logtag, ws_systime, objUserExtend.lCreateTime);
-
-                            if ((ws_systime - objUserExtend.lCreateTime) < 10 &&
-                                strcmp(objUserExtend.UUID, userExtend.UUID) == 0) {// 同一个人， 连续识别时间间隔要大于10秒
-                                LOGD("%s 同一个人 10秒内不允许重复开门 \r\n", logtag );
-                            }else{
-                                //                          发送开门请求
-                                memset(&objUserExtend, 0, sizeof(UserExtendType));
-                                vConverUserExtendJson2Type(&userExtend, ws_systime, &objUserExtend);
-                                cmdOpenDoorReq(&objUserExtend);
-                                LOGD("Reset recognize timeout trigger\r\n");
-                                recognize_times = 0;
-                            }
-
-                        } else {//failed
-                            recognize_times++;
+                        if ((ws_systime - objUserExtend.lCreateTime) < 10 &&
+                            strcmp(objUserExtend.UUID, userExtend.UUID) == 0) {// 同一个人， 连续识别时间间隔要大于10秒
+                            LOGD("%s 同一个人 10秒内不允许重复开门 \r\n", logtag );
+                        }else{
+                            //                          发送开门请求
+                            memset(&objUserExtend, 0, sizeof(UserExtendType));
+                            vConverUserExtendJson2Type(&userExtend, ws_systime, &objUserExtend);
+                            cmdOpenDoorReq(&objUserExtend);
+                            LOGD("Reset recognize timeout trigger\r\n");
+                            recognize_times = 0;
+                        }
+                    }else{
+                        recognize_times++;
 //                            LOGD("User face recognize failed %d times\r\n", recognize_times);
-                            if (recognize_times > 40) {
-                                LOGD("User face recognize timeout \r\n");
-                                recognize_times = 0;
-                                CloseLcdBackground();
-                                vTaskDelay(pdMS_TO_TICKS(1000));
-                                Uart5_SendDeinitCameraMsg();
-                                cmdCloseFaceBoardReq();//关主控电源
-                                break;
-                            }
+                        if (recognize_times > 40) {
+                            LOGD("User face recognize timeout \r\n");
+                            recognize_times = 0;
+                            CloseLcdBackground();
+                            vTaskDelay(pdMS_TO_TICKS(1000));
+                            Uart5_SendDeinitCameraMsg();
+                            cmdCloseFaceBoardReq();//关主控电源
                         }
                     }
-                }
-                break;
+                    break;
                 default:
-                    assert(0);
                     break;
             }
+            vPortFree(faceInfo);
 
-            vPortFree(pQMsg);
-        } else {
-            //message receive error
-            assert(0);
+        } else{
+            LOGD("Receive Message Error \r\n ");
         }
-
     }
-
 }
-
 //static void uart5_sync_task(void *pvParameters) {
 static void vUartInitTask(void *pvParameters) {
     //vTaskDelay(pdMS_TO_TICKS(200));
@@ -665,7 +595,8 @@ int MCU_UART5_Start() {
         while (1);
     }
     //创建UART5 Task的消息接收队列QMSG
-    Uart5MsgQ = xQueueCreate(UART5_MSG_Q_COUNT, sizeof(QMsg *));
+//    Uart5MsgQ = xQueueCreate(UART5_MSG_Q_COUNT, sizeof(QMsg *));
+    Uart5MsgQ = xQueueCreate(UART5_MSG_Q_COUNT, sizeof(face_info_t *));
     if (Uart5MsgQ == NULL) {
         LOGE("[ERROR]:xQueueCreate uart5 queue\r\n");
         return -1;
@@ -706,43 +637,24 @@ int MCU_UART5_Start() {
     return 0;
 }
 
-//send qMsg to uart5 task when face register over
-int Uart5_GetFaceRegResult(uint8_t result, char *pszMessage) {
-    LOGE("注册完成 \r\n");
-    int status;
-    QMsg *pQMsg = (QMsg *) pvPortMalloc(sizeof(QMsg));
-    if (NULL == pQMsg) {
-        LOGE("[ERROR]: pQMsg pvPortMalloc failed\r\n");
+
+// build FaceInfoExtend  and send  to uart5 task when regist or recognize over
+int Uart5_GetFaceInfo(  void  *pFaceInfo ){
+    face_info_t *faceInfo= (face_info_t*)pvPortMalloc(sizeof(face_info_t));
+    memset( faceInfo, 0, sizeof(face_info_t) );
+    if( faceInfo ==NULL ){
+        LOGD(" ERROR: pvPortMalloc failed \r\n");
+    }
+    memcpy(  faceInfo, pFaceInfo, sizeof(face_info_t) );
+    if (Uart5MsgQ) {
+        int ret = xQueueSend(Uart5MsgQ, &faceInfo, (TickType_t) 0);
+        if (ret != pdPASS) {
+            LOGE("[ERROR]:Uart5_SendQMsg failed %d\r\n", ret);
+            return -1;
+        }
+    } else {
+        LOGE("[ERROR]:Uart5MsgQ is NULL\r\n");
         return -1;
     }
-    pQMsg->id = QMSG_FACEREC_ADDNEWFACE;
-    pQMsg->msg.val = result;
-    memcpy(pQMsg->msg.info.name, pszMessage, sizeof(pQMsg->msg.info.name));
-    status = Uart5_SendQMsg((void *) &pQMsg);
-
-    if (status) {
-        vPortFree(pQMsg);
-    }
-
-    return status;
-}
-//send qMsg to uart5 task when face recognize over
-int Uart5_GetFaceRecResult(uint8_t result, char *pszMessage) {
-//    LOGE("识别完成  %d\r\n", result);
-    int status;
-    QMsg *pQMsg = (QMsg *) pvPortMalloc(sizeof(QMsg));
-    if (NULL == pQMsg) {
-        LOGE("[ERROR]: pQMsg pvPortMalloc failed\r\n");
-        return -1;
-    }
-    pQMsg->id = QMSG_FACEREC_RECFACE;
-    pQMsg->msg.val = result;
-    memcpy(pQMsg->msg.info.name, pszMessage, sizeof(pQMsg->msg.info.name));
-    status = Uart5_SendQMsg((void *) &pQMsg);
-
-    if (status) {
-        vPortFree(pQMsg);
-    }
-
-    return status;
+    return  0;
 }

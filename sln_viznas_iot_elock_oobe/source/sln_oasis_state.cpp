@@ -318,8 +318,8 @@ void Oasis_API_Enrolment(face_info_t face_info)
         }
         else if (face_info.enrolment_result == OASIS_REG_RESULT_DUP)
         {
-            //StopRegistrationProcess(kEvents_API_Layer_FaceExist);
-            StopRegistrationProcess(kEvents_API_Layer_RegSuccess);
+            StopRegistrationProcess(kEvents_API_Layer_FaceExist);
+//            StopRegistrationProcess(kEvents_API_Layer_RegSuccess);
         }
     }
 }

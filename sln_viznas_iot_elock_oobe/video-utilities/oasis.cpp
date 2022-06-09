@@ -219,6 +219,7 @@ static void clearFaceInfo(face_info_t *face_info)
     face_info->enrolment_mode   = 0;
     face_info->enrolment_result = 0;
     face_info->face_id          = 0;
+    face_info->evt              =-1;// -1 不存在的动作类型,用来区分正在识别还是注册
 }
 
 static int Oasis_SendFaceInfoMsg(QUIInfoMsg info)
@@ -259,7 +260,7 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
     // memset(&face_info, 0, sizeof(face_info_t));
     clearFaceInfo(&face_info);
     //UsbShell_Printf("[OASIS]:evt:%d\r\n",evt);
-
+    face_info.evt = evt;//动作类型
     timeState = (struct TimeStat *)user_data;
     switch (evt)
     {
@@ -635,9 +636,11 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
 		        return;
 		    }
 #endif
-		    Uart5_GetFaceRecResult((uint8_t)face_info.recognize, gui_info.name);
+//		    Uart5_GetFaceRecResult((uint8_t)face_info.recognize, gui_info.name);
+            Uart5_GetFaceInfo( &face_info );
 		}else if(evt == OASISLT_EVT_REG_COMPLETE) {
-		    Uart5_GetFaceRegResult((uint8_t)face_info.enrolment, gui_info.name);
+//		    Uart5_GetFaceRegResult((uint8_t)face_info.enrolment, gui_info.name);
+            Uart5_GetFaceInfo( &face_info );
 		}
     }
 }

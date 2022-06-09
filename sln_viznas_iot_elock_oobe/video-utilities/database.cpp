@@ -256,7 +256,7 @@ int DB_Add(uint16_t id, float *feature)
 /*this interface is used to add user with given name*/
 int DB_Add(uint16_t id, std::string name, float *feature)
 {
-    LOGD("[%s] DB_Add id %d , name %s \r\n", logtag, id, name);
+    LOGD("[%s] DB_Add id %d , name %s \r\n", logtag, id, name.c_str());
 
     int ret = DB_MGMT_FAILED;
 

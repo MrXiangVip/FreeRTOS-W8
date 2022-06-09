@@ -150,6 +150,7 @@ typedef struct _face_info
     unsigned face_id;
     uint8_t enrolment_mode;
     uint8_t enrolment_result;
+    int evt;//xshx add 20220608   用来表示当前的动作类型
 } face_info_t;
 
 typedef struct _VIZN_api_client
