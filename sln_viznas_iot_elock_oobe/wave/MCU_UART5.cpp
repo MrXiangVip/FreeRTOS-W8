@@ -333,6 +333,11 @@ static void vReceiveOasisTask(void *pvParameters) {
                     }
                     cmdRegResultNotifyReq( &objUserExtend, REG_RESULT_FLG);
                     vTaskDelay(pdMS_TO_TICKS(200));
+                    if( xSemaphoreTake( workCountSemaphore,0 ) ==pdTRUE ){
+                        LOGD("xSemaphoreTake ok! \r\n");
+                    }else{
+                        LOGD("xSemaphoreTake failed! \r\n");
+                    }
                     cmdCloseFaceBoardReq();//关主控电源
                     boot_mode = BOOT_MODE_RECOGNIZE;
                     break;

@@ -73,12 +73,13 @@ static bool timer_started = false;
 
 #define SUPPORT_PRESSURE_TEST   0
 #define SUPPORT_POWEROFF        1
-
+//xshx add
+#define WORK_MAX_COUNT          6
 
 static const char *logtag ="[MCU_UART5_Layer] ";
 int pressure_test = 1;
-
-
+//计数性信号量
+SemaphoreHandle_t  workCountSemaphore = xSemaphoreCreateCounting(WORK_MAX_COUNT,0);
 
 lpuart_rtos_handle_t handle5;
 
@@ -617,6 +618,13 @@ int cmdUserRegRsp(uint8_t ret) {
 //主控接收指令:  用户注册请求
 int cmdUserRegReqProc(unsigned char nMessageLen, const unsigned char *pszMessage) {
     LOGD("用户注册请求 \r\n");
+//    信号量加一
+    if(xSemaphoreGive(workCountSemaphore) ==pdTRUE ){
+        LOGD("xSemaphoreGive ok! \r\n");
+    }else{
+        LOGD("xSemaphoreGive failed! \r\n");
+    }
+
     uint8_t ret = SUCCESS, len = 0;
     const unsigned char *pos = pszMessage;
 
@@ -1121,7 +1129,13 @@ int cmdCloseFaceBoardReqExt(bool save_file) {
         LOGD("No need to save file before shutdown the device\r\n");
     }
 
-    SendMsgToMCU((uint8_t *) szBuffer, iTotalLen);
+//    xshx add
+    if( uxSemaphoreGetCount(workCountSemaphore) == 0  ){
+        LOGD("没有未完成的任务 \r\n");
+        SendMsgToMCU((uint8_t *) szBuffer, iTotalLen);
+    }else{
+        LOGD("等待未完成的任务 \r\n");
+    }
 
     return 0;
 }
