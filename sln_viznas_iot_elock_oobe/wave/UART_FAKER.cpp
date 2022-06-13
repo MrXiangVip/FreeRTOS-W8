@@ -34,6 +34,7 @@ char Delete_CMD[]="230900091A2B3C4D5F6677880402AA";
 char Clear_CMD[] ="230B0000030E";
 char OpenDoor_CMD[] ="23030003640200016D";
 
+
 char* CMD_LIST[] = {
         Init_CMD,
         Regist_CMD,

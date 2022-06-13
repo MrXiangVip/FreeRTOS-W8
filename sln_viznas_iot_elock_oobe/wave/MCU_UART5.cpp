@@ -347,8 +347,8 @@ static void vReceiveOasisTask(void *pvParameters) {
                         UserExtend userExtend;
                         memset(&userExtend, 0, sizeof(UserExtend));
                         int ret = UserExtendManager::getInstance()->queryUserExtendByUUID(name, &userExtend);
-                        LOGD("%s,查到 UUID %s, JSON %s \r\n", logtag, ret, userExtend.UUID, userExtend.jsonData);
-                        LOGD("%s, 当前时间 %d, 用戶创建时间 %d \r\n", logtag, ws_systime, objUserExtend.lCreateTime);
+                        LOGD("%s,查到 UUID %s, JSON %s \r\n", logtag, userExtend.UUID, userExtend.jsonData);
+                        LOGD("%s,当前时间 %d, 用戶创建时间 %d \r\n", logtag, ws_systime, objUserExtend.lCreateTime);
 
                         if ((ws_systime - objUserExtend.lCreateTime) < 10 &&
                             strcmp(objUserExtend.UUID, userExtend.UUID) == 0) {// 同一个人， 连续识别时间间隔要大于10秒
