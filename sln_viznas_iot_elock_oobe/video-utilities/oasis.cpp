@@ -1029,6 +1029,7 @@ static int Oasis_SetModelClass(OASISLTModelClass_t *model_class)
 
 int Oasis_Start()
 {
+    LOGD("[OASIS]:starting\r\n");
     //uint8_t mode = Cfg_AppDataGetEmotionRecTypes();
     s_appType    = Cfg_AppDataGetApplicationType();
     int ret      = 0;
@@ -1130,7 +1131,6 @@ int Oasis_Start()
     }
 
     //UsbShell_Printf("[OASIS]:starting\r\n");
-    LOGD("[OASIS]:starting\r\n");
 
 #if (configSUPPORT_STATIC_ALLOCATION == 1)
     if (NULL == xTaskCreateStatic(Oasis_Task, "Oasis Task", OASISDETTASK_STACKSIZE, &s_InitPara, OASISDETTASK_PRIORITY,
@@ -1153,7 +1153,8 @@ error_cases:
     if (ret != 0)
     {
     	//some errors happened
-    	Oasis_Exit();
+        LOGD("[OASIS]:error %d\r\n", ret);
+        Oasis_Exit();
     }
 
     return ret;
