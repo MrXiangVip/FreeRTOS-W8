@@ -1122,7 +1122,6 @@ int cmdCloseFaceBoardReqExt(bool save_file) {
     }
 
     g_is_shutdown = true;
-    vTaskDelay(pdMS_TO_TICKS(100));
     if (save_file) {
         save_files_before_pwd();
     } else {
@@ -1130,6 +1129,7 @@ int cmdCloseFaceBoardReqExt(bool save_file) {
     }
 
 //    xshx add
+    vTaskDelay(pdMS_TO_TICKS(100));
     if( uxSemaphoreGetCount(workCountSemaphore) == 0  ){
         LOGD("没有未完成的任务 \r\n");
         SendMsgToMCU((uint8_t *) szBuffer, iTotalLen);

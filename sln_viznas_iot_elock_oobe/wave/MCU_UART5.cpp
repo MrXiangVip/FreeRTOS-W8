@@ -333,7 +333,6 @@ static void vReceiveOasisTask(void *pvParameters) {
                             REG_RESULT_FLG = 1; //和后台同步, 1 表示失败
                         }
                         cmdRegResultNotifyReq( &objUserExtend, REG_RESULT_FLG);
-                        vTaskDelay(pdMS_TO_TICKS(200));
                         if( xSemaphoreTake( workCountSemaphore,0 ) ==pdTRUE ){
                             LOGD("xSemaphoreTake ok! \r\n");
                         }else{
@@ -378,7 +377,6 @@ static void vReceiveOasisTask(void *pvParameters) {
                                 LOGD("User face recognize timeout \r\n");
                                 recognize_times = 0;
                                 CloseLcdBackground();
-                                vTaskDelay(pdMS_TO_TICKS(1000));
                                 Uart5_SendDeinitCameraMsg();
                                 cmdCloseFaceBoardReq();//关主控电源
                             }
