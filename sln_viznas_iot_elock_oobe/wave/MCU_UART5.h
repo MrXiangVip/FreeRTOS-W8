@@ -40,7 +40,6 @@ int MCU_UART5_Start();
 
 extern int SendMsgToSelf(uint8_t *MsgBuf, uint8_t MsgLen);
 extern int Uart5_SendDeinitCameraMsg(void);
-extern int Uart5_SendQMsg(void *msg);
 
 #ifdef __cplusplus
 }

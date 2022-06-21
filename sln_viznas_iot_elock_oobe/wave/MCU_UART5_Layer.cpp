@@ -145,8 +145,8 @@ int MsgHead_Packet(
     pTemp += sizeof(uint8_t);
     StrSetUInt8((uint8_t *) pTemp, CmdId);
     pTemp += sizeof(uint8_t);
-    StrSetUInt8( (uint8_t*)pTemp, DIRECT_SEND);
-    pTemp += sizeof(uint8_t);
+//    StrSetUInt8( (uint8_t*)pTemp, DIRECT_SEND);
+//    pTemp += sizeof(uint8_t);
     StrSetUInt8((uint8_t *) pTemp, MsgLen);
     pTemp += sizeof(uint8_t);
 
@@ -176,8 +176,8 @@ int RspHead_Packet(
     pTemp += sizeof(uint8_t);
     StrSetUInt8((uint8_t *) pTemp, 0xFE);
     pTemp += sizeof(uint8_t);
-    StrSetUInt8( (uint8_t*)pTemp, DIRECT_SEND);
-    pTemp += sizeof(uint8_t);
+//    StrSetUInt8( (uint8_t*)pTemp, DIRECT_SEND);
+//    pTemp += sizeof(uint8_t);
     StrSetUInt8((uint8_t *) pTemp, MsgLen);
     pTemp += sizeof(uint8_t);
 //    StrSetUInt8((uint8_t *) pTemp, CmdId);
@@ -187,11 +187,15 @@ int RspHead_Packet(
 }
 /*******************************************************************************
  *
- * 消息尾拼接
+ *函数功能: 消息尾拼接
+ * 入口参数: Message   整包数据的起始地址
+ *          iTailIndex   到尾部的下标计数
+ * 出口参数: Message 整包数据的总长度
  *tailIndex = head+ data
  ******************************************************************************/
 int MsgTail_Pack(char *Message, int iTailIndex ){
     char *pop = Message+iTailIndex;
+#if 0
 //  序列号
     uint8_t orderIndex =0;
     memcpy( pop, &orderIndex, sizeof(orderIndex));
@@ -201,6 +205,13 @@ int MsgTail_Pack(char *Message, int iTailIndex ){
     LOGD( "%s 校验码 %x \r\n",logtag, checkSum);
     memcpy( pop, &checkSum, sizeof(checkSum));
     return  iTailIndex+2;
+#else
+    uint16_t Msg_CRC16 = 0, Cal_CRC16 = 0;
+    Cal_CRC16 = CRC16_X25((uint8_t *)Message, iTailIndex);
+    memcpy(Message+iTailIndex, &Cal_CRC16, CRC16_LEN);
+    LOGD("CRC 检验码 %x\r\n", Cal_CRC16);
+    return  iTailIndex+CRC16_LEN;
+#endif
 };
 /****************************************************************************************
 函数名称：MsgHead_Unpacket
@@ -230,7 +241,7 @@ const unsigned char *MsgHead_Unpacket(
     pTemp += sizeof(uint8_t);
     *CmdId = StrGetUInt8(pTemp);
 //   跳过方向
-    pTemp += sizeof(uint8_t);
+//    pTemp += sizeof(uint8_t);
 
     pTemp += sizeof(uint8_t);
     *MsgLen = StrGetUInt8(pTemp);
@@ -321,6 +332,7 @@ int SendMsgToMCU(unsigned char *MsgBuf, unsigned char MsgLen) {
 int cmdSysInitOKSyncReq(const char *strVersion) {
     LOGD(" 发送开机同步请求 \r\n");
     char szBuffer[32] = {0};
+    int iBufferSize;
     char *pop = NULL;
     unsigned char MsgLen = 0;
 
@@ -344,7 +356,7 @@ int cmdSysInitOKSyncReq(const char *strVersion) {
     if( iTotalLen > sizeof(szBuffer) ){
         LOGD("%s ERROR  %d must <  %d \r\n",iTotalLen, sizeof(szBuffer) );
     }
-    SendMsgToMCU((uint8_t *) szBuffer, iTailIndex + 2);
+    SendMsgToMCU((uint8_t *) szBuffer, iTotalLen);
 
     return 0;
 }

@@ -127,7 +127,7 @@ typedef struct _stRpMsgHead
 {
     unsigned char		HeadMark;		/* 前导标识符（长度为1bytes）用于校验消息是否合法 */
     unsigned char  	CmdID;			/* 消息命令（长度为1bytes） */
-    unsigned char  	DirectFilt;			/* 方向过滤*/
+//    unsigned char  	DirectFilt;			/* 方向过滤*/
     unsigned char 	MsgLen;			/* 数据长度（数据长度为1bytes） */
 }MESSAGE_HEAD, *PMESSAGE_HEAD;
 
@@ -135,7 +135,7 @@ typedef struct _stRpRspHead
 {
     unsigned char		HeadMark;		/* 前导标识符（长度为1bytes）用于校验消息是否合法 */
     unsigned char  	RspID;			/* 0xFE */
-    unsigned char  	DirectFilt;			/* 方向过滤*/
+//    unsigned char  	DirectFilt;			/* 方向过滤*/
     unsigned char 	MsgLen;			/* 数据长度（数据长度为1bytes） */
 }RESPONSE_HEAD, *PRESPONSE_HEAD;
 

@@ -92,23 +92,6 @@ lpuart_rtos_config_t lpuart_config5 = {
         .buffer_size = sizeof(background_buffer5),
 };
 
-int Uart5_SendQMsg(void *msg) {
-    BaseType_t ret;
-
-    if (Uart5MsgQ) {
-        ret = xQueueSend(Uart5MsgQ, msg, (TickType_t) 0);
-    } else {
-        LOGE("[ERROR]:Uart5MsgQ is NULL\r\n");
-        return -2;
-    }
-
-    if (ret != pdPASS) {
-        LOGE("[ERROR]:Uart5_SendQMsg failed %d\r\n", ret);
-        return -1;
-    }
-
-    return 0;
-}
 
 int SendMsgToSelf(unsigned char *MsgBuf, unsigned char MsgLen) {
 
@@ -448,12 +431,12 @@ static void vReceiveUartTask(void *pvParameters) {
                     error = LPUART_RTOS_Receive(&handle5, &recv_buffer[0], req_len, &rcvlen);
                     break;
                 case UART5_RX_MSG_STATUS_WAITING_LENGTH:
-                    req_len = 3;
+                    req_len = 2;
                     error = LPUART_RTOS_Receive(&handle5, &recv_buffer[1], req_len, &rcvlen);
                     break;
                 case UART5_RX_MSG_STATUS_WAITING_DATA:
-                    req_len = recv_buffer[3] + 2;
-                    error = LPUART_RTOS_Receive(&handle5, &recv_buffer[4], req_len, &rcvlen);
+                    req_len = recv_buffer[2] + 2;
+                    error = LPUART_RTOS_Receive(&handle5, &recv_buffer[3], req_len, &rcvlen);
                     break;
                 default:
                     assert(0);
@@ -475,15 +458,15 @@ static void vReceiveUartTask(void *pvParameters) {
                         rx_status = UART5_RX_MSG_STATUS_WAITING_LENGTH;
                     }
                 } else if (UART5_RX_MSG_STATUS_WAITING_LENGTH == rx_status) {
-                    if (recv_buffer[3] > UART5_RX_MAX_DATA_PACKAGE_SIZE) {
-                        LOGD("[vReceiveUartTask]:wrong msg length received, length:%d\r\n", recv_buffer[3]);
+                    if (recv_buffer[2] > UART5_RX_MAX_DATA_PACKAGE_SIZE) {
+                        LOGD("[vReceiveUartTask]:wrong msg length received, length:%d\r\n", recv_buffer[2]);
                         rx_status = UART5_RX_MSG_STATUS_WAITING_HEADER;
                     } else {
                         rx_status = UART5_RX_MSG_STATUS_WAITING_DATA;
                     }
                 } else {
                     //a whole package received
-                    msglen = rcvlen + 4;
+                    msglen = rcvlen + 3;
                     break;
                 }
 
@@ -507,16 +490,16 @@ static void vReceiveUartTask(void *pvParameters) {
             LOGD("\n");*/
         }
 //        收到完整的以HEAD_MARK开头的消息后校验处理
-//        memcpy(&Msg_CRC16, recv_buffer + msglen - CRC16_LEN, CRC16_LEN);
-//        Cal_CRC16 = CRC16_X25(recv_buffer, msglen - CRC16_LEN);
-//        if (Msg_CRC16 != Cal_CRC16) {
-//            LOGD("msg CRC error: Msg_CRC16<0x%02X>, Cal_CRC16<0x%02X>!\r\n", Msg_CRC16, Cal_CRC16);
-//            continue;
-//        }
-        if( bCheckSum( recv_buffer, msglen )==false ){
-            LOGD("%s check sum failed \r\n", logtag);
+        memcpy(&Msg_CRC16, recv_buffer + msglen - CRC16_LEN, CRC16_LEN);
+        Cal_CRC16 = CRC16_X25(recv_buffer, msglen - CRC16_LEN);
+        if (Msg_CRC16 != Cal_CRC16) {
+            LOGD("CRC 校验 error: Msg_CRC16<0x%02X>, Cal_CRC16<0x%02X>!\r\n", Msg_CRC16, Cal_CRC16);
             continue;
         }
+//        if( bCheckSum( recv_buffer, msglen )==false ){
+//            LOGD("%s check sum failed \r\n", logtag);
+//            continue;
+//        }
 
         pszMsgInfo = MsgHead_Unpacket(
                 recv_buffer,
@@ -660,7 +643,7 @@ int Uart5_GetFaceInfo(  void  *pFaceInfo ){
     if (Uart5MsgQ) {
         int ret = xQueueSend(Uart5MsgQ, &faceInfo, (TickType_t) 0);
         if (ret != pdPASS) {
-            LOGE("[ERROR]:Uart5_SendQMsg failed %d\r\n", ret);
+            LOGE("[ERROR]:Send Uart5MsgQ failed %d\r\n", ret);
             return -1;
         }
     } else {
