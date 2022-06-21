@@ -20,6 +20,8 @@
 #include "sln_api.h"
 #include "sln_connection.h"
 #include "../wave/UART_FAKER.h"
+#include "../mqtt/config.h"
+#include "../mqtt/mqtt-api.h"
 /*******************************************************************************
  * Prototypes
  *******************************************************************************/
@@ -251,7 +253,7 @@ static shell_status_t FFI_CLI_ListCommand(shell_handle_t shellContextHandle, int
 
     return UsbShell_QueueSendFromISR(shellContextHandle, argc, argv, SHELL_EV_FFI_CLI_LIST);
 #else
-    SHELL_Printf(shellContextHandle, "list [0:init , 1:registe, 2:delete 3:clear 4.open door]\r\n");
+    SHELL_Printf(shellContextHandle, "list [0:init , 1:registe, 2:delete 3:clear 4.open door config. print config]\r\n");
     if( argc > 2 ){
         SHELL_Printf(shellContextHandle, "input command : list [s BASE|e SECTOR_OFFSET|r SECTOR_OFFSET LENGTH|w SECTOR_OFFSET ADDR_OFFSET STRDATA]\r\n");
         if (argv[1][0] == 's') {
@@ -329,7 +331,11 @@ static shell_status_t FFI_CLI_ListCommand(shell_handle_t shellContextHandle, int
             SHELL_Printf(shellContextHandle, "input command: list index[%d]\r\n", index);
             vSetFakeCommandIndex( index);
         } else {
-            vSetFakeCommandBuffer( argv[1]);
+            if (strcmp("config", argv[1]) == 0) {
+                print_project_config();
+            } else {
+                vSetFakeCommandBuffer(argv[1]);
+            }
         }
     }
     return kStatus_SHELL_Success;

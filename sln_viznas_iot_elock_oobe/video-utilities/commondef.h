@@ -33,7 +33,7 @@
 #define R60 3
 #define L25 4
 
-#define PROJECT_NAME L25
+#define PROJECT_NAME R60
 
 #define MQTT_SUPPORT 1			// 1 支持MQTT 0 不支持MQTT
 #define RECOGNIZE_ONCE 1		// 1 识别一次， 0 连续识别直到超时
