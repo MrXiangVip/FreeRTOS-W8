@@ -24,6 +24,7 @@
 #include "../mqtt/mqtt-topic.h"
 #include "../mqtt/mqtt-ota.h"
 #include "../mqtt/mqtt-ff.h"
+#include "../mqtt/mqtt-remote-feature.h"
 
 #include "commondef.h"
 #include <ctype.h>
@@ -69,7 +70,7 @@ uint8_t recv_buffer8[1];
 #endif
 
 #define MAX_MSG_LINES           20
-#if	FFD_SUPPORT != 0
+#if	FFD_SUPPORT != 0 || REMOTE_FEATURE != 0
 #define MAX_MSG_LEN_OF_LINE     1536
 #else
 #define MAX_MSG_LEN_OF_LINE     256
@@ -571,6 +572,18 @@ static void mqttinit_task(void *pvParameters) {
 	}
 	//freePointer(&ffd_topic_cmd);
 	LOGD("--------- subscribe ffd topic done\r\n");
+#endif
+#if	REMOTE_FEATURE != 0
+    vTaskDelay(pdMS_TO_TICKS(20));
+    char *rfd_topic = get_sub_topic_feature_download();
+    result = quickSubscribeMQTT(rfd_topic);
+    if (result < 0) {
+        LOGD("--------- Failed to subscribe remote download request topic\r\n");
+        //freePointer(&ffd_topic_cmd);
+        return;
+    }
+    //freePointer(&ffd_topic_cmd);
+    LOGD("--------- subscribe remote feature download topic done\r\n");
 #endif
 #endif
 
@@ -1183,6 +1196,9 @@ static char g_ota_data[UART_RX_BUF_LEN];
 #if	FFD_SUPPORT != 0
 static char g_ffd_data[UART_RX_BUF_LEN];
 #endif
+#if	REMOTE_FEATURE != 0
+static char g_rfd_data[UART_RX_BUF_LEN];
+#endif
 
 #define MQTT_LINKID_LEN     16
 #define MQTT_TOPIC_LEN      64
@@ -1200,7 +1216,7 @@ int analyzeMQTTMsgInternal(char *msg) {
 
 		// TODO: 只要服务器下发指令下来，我们就认为服务器已经确认在线
 		g_is_online = 1;
-#if	FFD_SUPPORT != 0
+#if	FFD_SUPPORT != 0 || REMOTE_FEATURE != 0
 		char firstWithLinkId[MQTT_AT_LEN];
 		char topic[MQTT_AT_LEN];
 		char dataLen[MQTT_AT_LEN];
@@ -1271,6 +1287,32 @@ int analyzeMQTTMsgInternal(char *msg) {
 				}
 				//freePointer(&ffd_topic_cmd);
 #endif
+#if	REMOTE_FEATURE != 0
+                char *rfd_topic= get_sub_topic_feature_download();
+                LOGD("analyze rfd_topic %s topic %s", rfd_topic, topic);
+				if (strncmp(topic, rfd_topic, strlen(rfd_topic)) == 0) {
+					if (data[0] == '{') {
+						memset(g_rfd_data, '\0', sizeof(g_rfd_data));
+						strcpy(g_rfd_data, data);
+                        LOGD("analyzeRemoteFeature g_rfd_data %s", g_rfd_data);
+					} else {
+						int len = strlen(g_rfd_data);
+						strcpy(&g_rfd_data[len], data);
+                        LOGD("analyzeRemoteFeature g_rfd_data %s", g_rfd_data);
+					}
+					if (data[data_len - 1] == '}') {
+						// log_info("get rfd data %d: %s", strlen(g_rfd_data), g_rfd_data);
+						char msgId[MQTT_AT_LEN];
+						memset(msgId, '\0', MQTT_AT_LEN);
+                        LOGD("analyzeRemoteFeature g_rfd_data %s", g_rfd_data);
+						int ret = analyzeRemoteFeature(g_rfd_data, (char*)&msgId);
+						LOGD("analyzeRemoteFeature ret %d", ret);
+					}
+					//freePointer(&rfd_topic_cmd);
+					return true;
+				}
+				//freePointer(&ffd_topic_cmd);
+#endif
 				char payload[MQTT_AT_LEN];
 				strncpy(payload, data, data_len);
 				payload[data_len] = '\0';
@@ -1313,7 +1355,7 @@ static int handle_line()
     		break;
     	}
     	const char *curr_line = (const char*)recv_msg_lines[current_handle_line];
-		LOGD("---------------- line %d is : %s\r\n", current_handle_line, get_short_str((const char*)recv_msg_lines[current_handle_line]));
+		LOGD("---------------- line %d is : %d %s\r\n", current_handle_line, strlen(curr_line), get_short_str((const char*)recv_msg_lines[current_handle_line]));
 #if 0
 		// 如果是MQTT的TOPIC RECEIVE
 		if (strncmp((const char*)recv_msg_lines[current_handle_line], "+MQTTSUBRECV:", strlen("+MQTTSUBRECV:")) == 0) {
@@ -1378,43 +1420,8 @@ static int handle_line()
                     }
 				} else if (strncmp((const char*)recv_msg_lines[current_handle_line], "+CIPSTAMAC:", 11) == 0) {
 					LOGD("\r\n----------------- RUN COMMAND CIPSTAMAC %s---------- \r\n", curr_line);
-					if (0/*btWifiConfig.wifi_mac == NULL || strlen(btWifiConfig.wifi_mac) == 0*/) {
-                        char device_mac_from_module[MQTT_MAC_LEN];
-                        char cmd_atmac[MQTT_MAC_LEN];
-                        char mac_atmacstr[MQTT_MAC_LEN];
-                        char mac_atmac[MQTT_MAC_LEN];
-                        //char dumpstr[MQTT_MAC_LEN];
-						//memset(device_mac_from_module, '\0', MQTT_MAC_LEN);
-						//memset(cmd_atmac, '\0', MQTT_MAC_LEN);
-						//memset(mac_atmacstr, '\0', MQTT_MAC_LEN);
-						//memset(mac_atmac, '\0', MQTT_MAC_LEN);
-                        mysplit((char*)curr_line, cmd_atmac, mac_atmacstr, ":\"");
-                        LOGD("\r\n***** %s, %s\r\n", cmd_atmac, mac_atmacstr);
-						//mysplit(mac_atmacstr, mac_atmac, dumpstr, "\"");
-                        //LOGD("\r\n***** %s, %s\r\n", mac_atmac, dumpstr);
-						mysplit2(mac_atmacstr, mac_atmac, "\"");
-                        LOGD("\r\n***** %s\r\n", mac_atmac);
-
-						for (char* ptr = mac_atmac; *ptr; ptr++) {
-                            // *ptr = tolower(*ptr);  //转小写
-                            *ptr = toupper(*ptr);  //转大写
-                        }
-
-                        LOGD("\r\n***** %s\r\n", mac_atmac);
-
-                        if (mac_atmac != NULL && strlen(mac_atmac) > 0) {
-                            del_char(mac_atmac, ':');
-                            strcpy(device_mac_from_module, mac_atmac);
-							LOGD("\r\n***** device_mac_from_module is %s\r\n", device_mac_from_module);
-                            //if (strncmp(device_mac_from_module, btWifiConfig.wifi_mac, 12) != 0) {
-                                update_mac(device_mac_from_module);
-                            //}
-                        }
-					}
-					// TODO: 确认是否有OK
-					// GET MAC
 				}else if (strncmp((const char*)recv_msg_lines[current_handle_line], "+MQTTSUBRECV:", 13) == 0) {
-					//LOGD("####receive subscribe message from mqtt server %s \r\n", get_short_str((const char*)recv_msg_lines[current_handle_line]));
+					LOGD("####receive subscribe message from mqtt server %s \r\n", get_short_str((const char*)recv_msg_lines[current_handle_line]));
                     int ret = analyzeMQTTMsgInternal((char*)recv_msg_lines[current_handle_line]);
                 }else if (((strncmp((const char*)recv_msg_lines[current_handle_line], MQTT_DISCONNECT, MQTT_DISCONNECT_SIZE) == 0) ||
                         (strncmp((const char*)recv_msg_lines[current_handle_line], MQTT_RAW_DISCONNECT, MQTT_RAW_DISCONNECT_SIZE) == 0)) && (mqtt_init_done == 1)) {

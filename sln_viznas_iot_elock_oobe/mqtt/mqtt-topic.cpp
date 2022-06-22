@@ -19,6 +19,22 @@ char *generate_topic(char *cmd) {
 	return topic;
 }
 
+/*** 订阅Feature TOPIC ***/
+// Feature请求
+char *get_pub_topic_feature_request() {
+    return generate_topic("WAVE/S/%s/F/R");
+}
+
+// Feature数据download
+char *get_sub_topic_feature_download() {
+    return generate_topic("WAVE/S/%s/F/D");
+}
+// Feature数据upload
+char *get_pub_topic_feature_upload() {
+    return generate_topic("WAVE/S/%s/F/U");
+}
+
+
 /*** 订阅OTA TOPIC ***/
 // OTA请求
 char *get_pub_topic_ota_request() {
