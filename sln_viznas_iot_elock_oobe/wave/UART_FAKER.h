@@ -19,6 +19,8 @@ int uFakeUartTaskStart(  );
 extern void vSetFakeCommandIndex( int index );
 extern void vSetFakeCommandBuffer(char *buf);
 
+void vAddAIdNameFeature();
+
 #ifdef __cplusplus
 }
 #endif
