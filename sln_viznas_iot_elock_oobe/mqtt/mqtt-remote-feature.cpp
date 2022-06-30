@@ -4,8 +4,11 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include "mqtt-mcu.h"
+#include "mqtt-api.h"
 #include "base64.h"
+#include "config.h"
 //#include "log.h"
+#include "WIFI_UART8.h"
 #include "fsl_log.h"
 #include "mqtt-common.h"
 #include "mqtt-remote-feature.h"
@@ -68,8 +71,9 @@ int handleBase64RemoteFeature(char *uuid, unsigned char *payload, char *sign, in
 		return -1;
 	}
 
-	save_remote_feature(uuid, payload_bin, payload_bin_len);
-	return 0;
+	int result = save_remote_feature(uuid, payload_bin, payload_bin_len);
+
+    return result;
 }
 
 int analyzeRemoteFeature(char *jsonMsg, char *msgId) {
@@ -110,6 +114,15 @@ int analyzeRemoteFeature(char *jsonMsg, char *msgId) {
 		dataStr = cJSON_GetStringValue(j_data);
 		LOGD("---JSON j_data is %d %s\r\n", strlen(dataStr), dataStr);
 		result = handleBase64RemoteFeature(uuid, (unsigned char*)dataStr, sign, length);
+        char pub_msg[100];
+        memset(pub_msg, '\0', 100);
+//        sprintf(pub_msg, "%s{\"msgId\":\"%s\",\"mac\":\"%s\",\"result\":\"%d\"}", DEFAULT_HEADER,
+//                msgId, btWifiConfig.bt_mac, (result == 0 ? 0 : 1));
+        sprintf(pub_msg, "%s{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"result\\\":\\\"%d\\\"}", DEFAULT_HEADER,
+                msgId, btWifiConfig.bt_mac, (result == 0 ? 0 : 1));
+        // NOTE: 此处必须异步操作
+        //MessageSend(1883, pub_msg, strlen(pub_msg));
+        SendMsgToMQTT(pub_msg, strlen(pub_msg));
 	}
 
 	if (mqtt != NULL) {

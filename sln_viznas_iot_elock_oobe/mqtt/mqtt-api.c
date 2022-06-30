@@ -201,9 +201,9 @@ int publishMQTT2(int linkId, const char* topic, const char* data, int qos, int r
     // char *cmd = (char*)malloc(cmd_len);
     char long_cmd[MQTT_MAX_LONG_LEN];
     memset(long_cmd, 0, sizeof(long_cmd));
-    sprintf(long_cmd, "AT+MQTTPUB=%d,\"%s\",\"%s\",%d,%d", linkId, topic, data, qos, retain);
+    sprintf(long_cmd, "AT+MQTTPUB=%d,\"%s\",\"%s\",%d,%d\r\n", linkId, topic, data, qos, retain);
 
-    //LOGD("%s cmd is %s\n", __FUNCTION__, cmd);
+    LOGD("%s cmd is %s\n", __FUNCTION__, long_cmd);
     int res = 0;
     if (strlen(long_cmd) > 128) {
         res = sendATLongCmd(long_cmd);

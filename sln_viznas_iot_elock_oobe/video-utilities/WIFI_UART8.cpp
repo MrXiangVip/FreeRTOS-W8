@@ -839,12 +839,12 @@ int SendMsgToMQTT(char *mqtt_payload, int len) {
     char *pub_topic = NULL;
     char pub_msg[MQTT_AT_LEN];
     memset(pub_msg, '\0', MQTT_AT_LEN);
-    LOGD("--- mqttpayload len is %d\n", len);
+    LOGD("--- mqttpayload len is %d\r\n", len);
     // 主动上报功能
     if (mqtt_payload_str != NULL && strncmp(mqtt_payload_str, DEFAULT_HEADER, DEFAULT_HEADER_LEN) == 0) {
         // 内部异步发布消息
         mysplit(mqtt_payload_str, first, msg, (char *)":");
-        LOGD("========================================= msg 1 is %s\n", msg);
+        LOGD("=================== msg 1 is %s\r\n", msg);
         if (msg != NULL && strncmp(msg, "heartbeat", 9) == 0) {
             char *msgId = gen_msgId();
             if (versionConfig.sys_ver != NULL && strlen(versionConfig.sys_ver) > 0) {
@@ -917,7 +917,9 @@ int SendMsgToMQTT(char *mqtt_payload, int len) {
             LOGD("--------- resubscribe to mqtt done\n");
             return ret;
         } else {
+            LOGD("--------- start send message %s\r\n", msg);
             pub_topic = get_pub_topic_cmd_res();
+            LOGD("--------- pub to topic %s\r\n", pub_topic);
             int ret = quickPublishMQTTWithPriority(pub_topic, msg, 1);
             //freePointer(&pub_topic);
             return 0;
