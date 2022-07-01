@@ -156,7 +156,7 @@ int requestFeatureUpload(char *jsonMsg, char *msgId) {
 
     char pub_msg[100];
     memset(pub_msg, '\0', 100);
-    sprintf(pub_msg, "%sfeatureup:%s:%s", DEFAULT_HEADER, msg_idStr, uuid);
+    sprintf(pub_msg, "%s%s:%s:%s", DEFAULT_HEADER, CMD_FEATURE_UP, msg_idStr, uuid);
     // NOTE: 此处必须异步操作
     //MessageSend(1883, pub_msg, strlen(pub_msg));
     SendMsgToMQTT(pub_msg, strlen(pub_msg));

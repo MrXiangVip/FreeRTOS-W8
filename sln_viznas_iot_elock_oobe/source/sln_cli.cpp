@@ -254,6 +254,7 @@ static shell_status_t FFI_CLI_ListCommand(shell_handle_t shellContextHandle, int
 
     return UsbShell_QueueSendFromISR(shellContextHandle, argc, argv, SHELL_EV_FFI_CLI_LIST);
 #else
+    // TODO: 在sln_cli的命令执行中，如果是同步执行，绝对不允许出现pvPortMalloc，否则就会导致重启
     SHELL_Printf(shellContextHandle, "list [0:init , 1:registe, 2:delete 3:clear 4.open door config. print config]\r\n");
     if( argc > 2 ){
         SHELL_Printf(shellContextHandle, "input command : list [s BASE|e SECTOR_OFFSET|r SECTOR_OFFSET LENGTH|w SECTOR_OFFSET ADDR_OFFSET STRDATA]\r\n");
@@ -326,7 +327,9 @@ static shell_status_t FFI_CLI_ListCommand(shell_handle_t shellContextHandle, int
             free(data);
             return kStatus_SHELL_Success;
         } else if (strcmp(argv[1], "wifi") == 0) {
+            SHELL_Printf(shellContextHandle, "start fakeWifiCmd\r\n");
             fakeWifiCmd(argv[2]);
+            SHELL_Printf(shellContextHandle, "end fakeWifiCmd\r\n");
         }
     }else if (argc == 2){
         if (strlen(argv[1]) == 1) {

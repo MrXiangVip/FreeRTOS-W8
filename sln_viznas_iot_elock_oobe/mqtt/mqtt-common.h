@@ -9,6 +9,8 @@
 #define DEFAULT_SEPARATOR ":"
 #define TIME_OUT_RES 2
 
+#define CMD_FEATURE_UP "fu"
+
 #define MQTT_MSG_ID_LEN 50
 #define MQTT_AT_LEN 128
 #define MQTT_AT_TOPIC_LEN 64

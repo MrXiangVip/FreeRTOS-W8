@@ -180,6 +180,17 @@ void freePointer(char **p) {
 
 int fakeWifiCmd(char *wifi_cmd) {
     LOGD("start do wifi fake Cmd %s\r\n", wifi_cmd);
+    char cmd[8];
+    char data[64];
+    memset(cmd, '\0', sizeof(cmd));
+    memset(data, '\0', sizeof(data));
+    mysplit(wifi_cmd, cmd, data, ":");
+    if (strcmp(cmd, "fu") == 0) {
+        char pub_msg[100];
+        memset(pub_msg, '\0', 100);
+        sprintf(pub_msg, "%s%s:%s", DEFAULT_HEADER, CMD_FEATURE_UP, data);
+        SendMsgToMQTT(pub_msg, strlen(pub_msg));
+    }
     return 0;
 }
 
@@ -931,7 +942,7 @@ int SendMsgToMQTT(char *mqtt_payload, int len) {
             }
             LOGD("--------- resubscribe to mqtt done\r\n");
             return ret;
-        } else if (msg != NULL && strncmp(msg, "featureup:", 10) == 0) {
+        } else if (msg != NULL && strncmp(msg, CMD_FEATURE_UP, strlen(CMD_FEATURE_UP)) == 0) {
             mysplit(msg, first, pub_msg, ":");
             char msgId[64];
             char uuid[32];
