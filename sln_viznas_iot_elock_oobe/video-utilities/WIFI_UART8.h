@@ -51,6 +51,9 @@ extern int SendMsgToMQTT(char *mqtt_payload, int len);
 
 extern char *gen_msgId();
 extern void freePointer(char **p);
+
+extern int fakeWifiCmd(char *wifi_cmd);
+
 #ifdef __cplusplus
 }
 

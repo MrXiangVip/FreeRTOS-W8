@@ -178,6 +178,11 @@ void freePointer(char **p) {
     }
 }
 
+int fakeWifiCmd(char *wifi_cmd) {
+    LOGD("start do wifi fake Cmd %s\r\n", wifi_cmd);
+    return 0;
+}
+
 //10 MAC + 8 tv_sec + 1 random
 #define MSG_BT_MAC_LEN	10
 char *gen_msgId() {

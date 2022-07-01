@@ -22,6 +22,7 @@
 #include "../wave/UART_FAKER.h"
 #include "../mqtt/config.h"
 #include "../mqtt/mqtt-api.h"
+#include "WIFI_UART8.h"
 /*******************************************************************************
  * Prototypes
  *******************************************************************************/
@@ -256,11 +257,11 @@ static shell_status_t FFI_CLI_ListCommand(shell_handle_t shellContextHandle, int
     SHELL_Printf(shellContextHandle, "list [0:init , 1:registe, 2:delete 3:clear 4.open door config. print config]\r\n");
     if( argc > 2 ){
         SHELL_Printf(shellContextHandle, "input command : list [s BASE|e SECTOR_OFFSET|r SECTOR_OFFSET LENGTH|w SECTOR_OFFSET ADDR_OFFSET STRDATA]\r\n");
-        if (argv[1][0] == 's') {
+        if (strlen(argv[1]) == 1 && argv[1][0] == 's') {
             baseAddr = atoi(argv[2]);
             SHELL_Printf(shellContextHandle, "flash set base to 0x%x\r\n", baseAddr);
             return kStatus_SHELL_Success;
-        } else if (argv[1][0] == 'e') {
+        } else if (strlen(argv[1]) == 1 && argv[1][0] == 'e') {
             int sector_offset = atoi(argv[2]);
             if (sector_offset < 0) {
                 sector_offset = 0;
@@ -276,7 +277,7 @@ static shell_status_t FFI_CLI_ListCommand(shell_handle_t shellContextHandle, int
                 SHELL_Printf(shellContextHandle, "flash erase fail as status is %d\r\n", status);
             }
             return kStatus_SHELL_Success;
-        } else if (argv[1][0] == 'r') {
+        } else if (strlen(argv[1]) == 1 && argv[1][0] == 'r') {
             int sector_offset = atoi(argv[2]);
             if (sector_offset < 0) {
                 sector_offset = 0;
@@ -302,7 +303,7 @@ static shell_status_t FFI_CLI_ListCommand(shell_handle_t shellContextHandle, int
             }
             free(data);
             return kStatus_SHELL_Success;
-        } else if (argv[1][0] == 'w') {
+        } else if (strlen(argv[1]) == 1 && argv[1][0] == 'w') {
             int sector_offset = atoi(argv[2]);
             if (sector_offset < 0) {
                 sector_offset = 0;
@@ -324,6 +325,8 @@ static shell_status_t FFI_CLI_ListCommand(shell_handle_t shellContextHandle, int
             }
             free(data);
             return kStatus_SHELL_Success;
+        } else if (strcmp(argv[1], "wifi") == 0) {
+            fakeWifiCmd(argv[2]);
         }
     }else if (argc == 2){
         if (strlen(argv[1]) == 1) {
