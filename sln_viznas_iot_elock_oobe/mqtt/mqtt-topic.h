@@ -21,9 +21,10 @@ char *get_ffu_topic_cmd();
 char *get_ffd_topic_cmd();
 // 时间同步订阅
 char *get_sub_topic_time_sync();
-char *get_pub_topic_feature_request();
+
+char *get_sub_topic_feature_request();
 char *get_sub_topic_feature_download();
-char *get_pub_topic_feature_up();
+char *get_pub_topic_feature_upload();
 
 /*** 发布TOPIC ***/
 // 时间同步发布

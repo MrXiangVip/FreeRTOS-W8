@@ -5,6 +5,7 @@
 extern "C" {
 #endif
 int analyzeRemoteFeature(char *data, char *msgId);
+int requestFeatureUpload(char *data, char *msgId);
 #ifdef __cplusplus
 }
 #endif

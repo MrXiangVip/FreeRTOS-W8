@@ -583,12 +583,22 @@ static void mqttinit_task(void *pvParameters) {
     char *rfd_topic = get_sub_topic_feature_download();
     result = quickSubscribeMQTT(rfd_topic);
     if (result < 0) {
-        LOGD("--------- Failed to subscribe remote download request topic\r\n");
+        LOGD("--------- Failed to subscribe remote feature download topic\r\n");
         //freePointer(&ffd_topic_cmd);
         return;
     }
     //freePointer(&ffd_topic_cmd);
     LOGD("--------- subscribe remote feature download topic done\r\n");
+    vTaskDelay(pdMS_TO_TICKS(20));
+    char *rfr_topic = get_sub_topic_feature_request();
+    result = quickSubscribeMQTT(rfr_topic);
+    if (result < 0) {
+        LOGD("--------- Failed to subscribe remote feature request topic\r\n");
+        //freePointer(&ffd_topic_cmd);
+        return;
+    }
+    //freePointer(&ffd_topic_cmd);
+    LOGD("--------- subscribe remote feature request topic done\r\n");
 #endif
 #endif
 
@@ -919,7 +929,20 @@ int SendMsgToMQTT(char *mqtt_payload, int len) {
                 notifyHeartBeat(CODE_FAILURE);
                 return -1;
             }
-            LOGD("--------- resubscribe to mqtt done\n");
+            LOGD("--------- resubscribe to mqtt done\r\n");
+            return ret;
+        } else if (msg != NULL && strncmp(msg, "featureup:", 10) == 0) {
+            mysplit(msg, first, pub_msg, ":");
+            char msgId[64];
+            char uuid[32];
+            memset(msgId, '\0', sizeof(msgId));
+            memset(uuid, '\0', sizeof(uuid));
+            mysplit(pub_msg, msgId, uuid, ":");
+            LOGD("---- send face of %s with msgId %s\r\n", uuid, msgId);
+            char *pub_topic_feature_up = get_pub_topic_feature_upload();
+//            int ret = quickPublishMQTTWithPriority(pub_topic_feature_up, pub_msg, 1);
+            int ret = quickPublishRawMQTT(pub_topic_feature_up, "123456", 6);
+            //freePointer(&pub_topic_ota_request);
             return ret;
         } else {
             LOGD("--------- start send message %s\r\n", msg);
@@ -1295,6 +1318,32 @@ int analyzeMQTTMsgInternal(char *msg) {
 				//freePointer(&ffd_topic_cmd);
 #endif
 #if	REMOTE_FEATURE != 0
+                // 请求上传feature
+                char *rfr_topic= get_sub_topic_feature_request();
+                LOGD("analyze rfr_topic %s topic %s", rfr_topic, topic);
+                if (strncmp(topic, rfr_topic, strlen(rfr_topic)) == 0) {
+                    if (data[0] == '{') {
+                        memset(g_rfd_data, '\0', sizeof(g_rfd_data));
+                        strcpy(g_rfd_data, data);
+                        LOGD("analyzeRemoteFeature g_rfd_data %s", g_rfd_data);
+                    } else {
+                        int len = strlen(g_rfd_data);
+                        strcpy(&g_rfd_data[len], data);
+                        LOGD("analyzeRemoteFeature g_rfd_data %s", g_rfd_data);
+                    }
+                    if (data[data_len - 1] == '}') {
+                        // log_info("get rfd data %d: %s", strlen(g_rfd_data), g_rfd_data);
+                        char msgId[MQTT_AT_LEN];
+                        memset(msgId, '\0', MQTT_AT_LEN);
+                        LOGD("requestFeatureUpload g_rfd_data %s", g_rfd_data);
+                        int ret = requestFeatureUpload(g_rfd_data, (char*)&msgId);
+                        LOGD("requestFeatureUpload ret %d", ret);
+                    }
+                    //freePointer(&rfd_topic_cmd);
+                    return true;
+                }
+
+                // 下载feature到设备
                 char *rfd_topic= get_sub_topic_feature_download();
                 LOGD("analyze rfd_topic %s topic %s", rfd_topic, topic);
 				if (strncmp(topic, rfd_topic, strlen(rfd_topic)) == 0) {

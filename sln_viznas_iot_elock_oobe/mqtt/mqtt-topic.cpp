@@ -21,7 +21,7 @@ char *generate_topic(char *cmd) {
 
 /*** 订阅Feature TOPIC ***/
 // Feature请求
-char *get_pub_topic_feature_request() {
+char *get_sub_topic_feature_request() {
     return generate_topic("WAVE/S/%s/F/R");
 }
 

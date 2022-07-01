@@ -131,3 +131,39 @@ int analyzeRemoteFeature(char *jsonMsg, char *msgId) {
 	}
 	return result;
 }
+
+int getFeature(char *uuid, char *payload_data) {
+return 0;
+}
+
+int requestFeatureUpload(char *jsonMsg, char *msgId) {
+    cJSON *mqtt = NULL;
+    cJSON *msg_id = NULL;
+    cJSON *j_uuid = NULL;
+    char *msg_idStr = NULL;
+    char *uuid = 0;
+    int length = 0;
+
+    mqtt = cJSON_Parse(jsonMsg);
+    msg_id = cJSON_GetObjectItem(mqtt, "msgId");
+    msg_idStr = cJSON_GetStringValue(msg_id);
+    LOGD("rfd msgId is %s\r\n", msg_idStr);
+    strcpy(msgId, msg_idStr);
+
+    j_uuid = cJSON_GetObjectItem(mqtt, "u");
+    uuid = cJSON_GetStringValue(j_uuid);
+    LOGD("rfd uuid is %s\r\n", uuid);
+
+    char pub_msg[100];
+    memset(pub_msg, '\0', 100);
+    sprintf(pub_msg, "%sfeatureup:%s:%s", DEFAULT_HEADER, msg_idStr, uuid);
+    // NOTE: 此处必须异步操作
+    //MessageSend(1883, pub_msg, strlen(pub_msg));
+    SendMsgToMQTT(pub_msg, strlen(pub_msg));
+
+    if (mqtt != NULL) {
+        cJSON_Delete(mqtt);
+        mqtt = NULL;
+    }
+    return 0;
+}
