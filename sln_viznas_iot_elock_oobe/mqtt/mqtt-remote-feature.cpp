@@ -133,8 +133,13 @@ int analyzeRemoteFeature(char *jsonMsg, char *msgId) {
 	return result;
 }
 
-int getFeature(char *uuid, char *payload_data) {
-return 0;
+int doFeatureUpload(char *msgId, char *uuid) {
+    char pub_msg[100];
+    memset(pub_msg, '\0', 100);
+    sprintf(pub_msg, "%s%s:%s:%s",DEFAULT_HEADER, CMD_FEATURE_UP, msgId, uuid);
+    // NOTE: 此处必须异步操作
+    vSetFakeCommandBuffer(pub_msg);
+    return 0;
 }
 
 int requestFeatureUpload(char *jsonMsg, char *msgId) {
@@ -155,16 +160,7 @@ int requestFeatureUpload(char *jsonMsg, char *msgId) {
     uuid = cJSON_GetStringValue(j_uuid);
     LOGD("rfd uuid is %s\r\n", uuid);
 
-    char pub_msg[100];
-    memset(pub_msg, '\0', 100);
-    sprintf(pub_msg, "%s%s:%s:%s",DEFAULT_HEADER, CMD_FEATURE_UP, msg_idStr, uuid);
-    // NOTE: 此处必须异步操作
-//    MessageSend(1883, pub_msg, strlen(pub_msg));
-//    SendMsgToMQTT(pub_msg, strlen(pub_msg));
-
-//    fakeWifiCmd("fu:1:2");
-//    SendMessageToUart5FromFakeUart(pub_msg);
-    vSetFakeCommandBuffer(pub_msg);
+    doFeatureUpload(msg_idStr, uuid);
 
     if (mqtt != NULL) {
         cJSON_Delete(mqtt);

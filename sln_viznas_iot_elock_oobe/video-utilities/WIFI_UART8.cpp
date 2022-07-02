@@ -1069,6 +1069,10 @@ int SendMsgToMQTT(char *mqtt_payload, int len) {
 					ret = uploadOasisFeature(&record, true);
 					vTaskDelay(pdMS_TO_TICKS(100));
 #endif
+#if REMOTE_FEATURE != 0
+                    char *msgId = gen_msgId();
+					ret = doFeatureUpload(msgId, record.UUID);
+#endif
                     if( record.upload == BOTH_UNUPLOAD ){//有可能被当做历史记录先上传,先检测防止重复上传
                         ret = uploadRecordImage(&record, true);
                     }else{
