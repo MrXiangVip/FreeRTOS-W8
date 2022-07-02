@@ -18,6 +18,7 @@
 #define MD5_SIZE        16
 #define MD5_STR_LEN     (MD5_SIZE * 2)
 #include "database.h"
+#include "UART_FAKER.h"
 
 #include <ctype.h>
 
@@ -156,10 +157,14 @@ int requestFeatureUpload(char *jsonMsg, char *msgId) {
 
     char pub_msg[100];
     memset(pub_msg, '\0', 100);
-    sprintf(pub_msg, "%s%s:%s:%s", DEFAULT_HEADER, CMD_FEATURE_UP, msg_idStr, uuid);
+    sprintf(pub_msg, "%s%s:%s:%s",DEFAULT_HEADER, CMD_FEATURE_UP, msg_idStr, uuid);
     // NOTE: 此处必须异步操作
-    //MessageSend(1883, pub_msg, strlen(pub_msg));
-    SendMsgToMQTT(pub_msg, strlen(pub_msg));
+//    MessageSend(1883, pub_msg, strlen(pub_msg));
+//    SendMsgToMQTT(pub_msg, strlen(pub_msg));
+
+//    fakeWifiCmd("fu:1:2");
+//    SendMessageToUart5FromFakeUart(pub_msg);
+    vSetFakeCommandBuffer(pub_msg);
 
     if (mqtt != NULL) {
         cJSON_Delete(mqtt);

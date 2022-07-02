@@ -178,21 +178,6 @@ void freePointer(char **p) {
     }
 }
 
-int fakeWifiCmd(char *wifi_cmd) {
-    LOGD("start do wifi fake Cmd %s\r\n", wifi_cmd);
-    char cmd[8];
-    char data[64];
-    memset(cmd, '\0', sizeof(cmd));
-    memset(data, '\0', sizeof(data));
-    mysplit(wifi_cmd, cmd, data, ":");
-    if (strcmp(cmd, "fu") == 0) {
-        char pub_msg[100];
-        memset(pub_msg, '\0', 100);
-        sprintf(pub_msg, "%s%s:%s", DEFAULT_HEADER, CMD_FEATURE_UP, data);
-        SendMsgToMQTT(pub_msg, strlen(pub_msg));
-    }
-    return 0;
-}
 
 //10 MAC + 8 tv_sec + 1 random
 #define MSG_BT_MAC_LEN	10
@@ -952,7 +937,10 @@ int SendMsgToMQTT(char *mqtt_payload, int len) {
             LOGD("---- send face of %s with msgId %s\r\n", uuid, msgId);
             char *pub_topic_feature_up = get_pub_topic_feature_upload();
 //            int ret = quickPublishMQTTWithPriority(pub_topic_feature_up, pub_msg, 1);
-            int ret = quickPublishRawMQTT(pub_topic_feature_up, "123456", 6);
+            char *mymsg="123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890";
+
+            int ret = quickPublishRawMQTT(pub_topic_feature_up, mymsg, strlen(mymsg));
+//            int ret = quickPublishMQTT(pub_topic_feature_up, "123456");
             //freePointer(&pub_topic_ota_request);
             return ret;
         } else {

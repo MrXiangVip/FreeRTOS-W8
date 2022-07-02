@@ -15,7 +15,7 @@ char *generate_topic(char *cmd) {
 	memset(topic, '\0', MQTT_AT_TOPIC_LEN);
 	sprintf(topic, cmd, mqttConfig.username);
     //sprintf(topic, cmd, "CECADED19DB9");
-	LOGD("generate topic is %s\n", topic);
+	LOGD("generate topic is %s\r\n", topic);
 	return topic;
 }
 

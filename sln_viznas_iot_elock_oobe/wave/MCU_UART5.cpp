@@ -48,6 +48,7 @@
 #include "MCU_UART5.h"
 #include "WIFI_UART8.h"
 #include "mqtt_util.h"
+#include "mqtt-common.h"
 
 static const char *logtag ="[UART5] ";
 
@@ -537,13 +538,8 @@ static void vReceiveFakeMessageTask( void *pvParameters){
         int ret = xQueueReceive( Uart5FromFakeUartMsgQueue, (void *) &message, portMAX_DELAY);
         if (ret == pdTRUE) {
             LOGD("%s  fake data: %s \r\n", logtag,  message.Data);
-            if (strncmp(message.Data, "wifi:", 5) == 0) {
-                char tmp[8];
-                char cmd[128];
-                memset(tmp, '\0', sizeof(tmp));
-                memset(cmd, '\0', sizeof(cmd));
-                mysplit(message.Data, tmp, cmd, ":");
-                fakeWifiCmd(cmd);
+            if (strncmp(message.Data, DEFAULT_HEADER, strlen(DEFAULT_HEADER)) == 0) {
+                SendMsgToMQTT(message.Data, strlen(message.Data));
                 continue;
             }
 //            1. 将message.Data 转成 16进制
