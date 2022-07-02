@@ -40,6 +40,8 @@
 #include "../db/DBManager.h"
 
 #include "UART_FAKER.h"
+#include "md5.h"
+#include "base64.h"
 
 /*******************************************************************************
  * Definitions
@@ -841,6 +843,41 @@ int handlePayload(char *payload, char *msg_idStr) {
     return 0;
 }
 
+// xshx TODO: 获取特征值
+int getFeatureData(char *uuid, char featureData[]) {
+    strcpy(featureData, "123456");
+    return strlen(featureData);
+}
+
+int getFeatureJson(char *msgId, char *uuid, char featureJson[]) {
+    char featureData[400];
+    memset(featureData, '\0', sizeof(featureData));
+    int featureSize = getFeatureData(uuid, featureData);
+    LOGD("--- featureData %s len is %d\r\n", featureData, featureSize);
+    char featureBase64[1000];
+    base64_encode(featureData, featureBase64, featureSize);
+    LOGD("--- featureBase64 %s len is %d\r\n", featureBase64, strlen(featureBase64));
+
+    // verify sign
+    unsigned char md5_value[MD5_SIZE];
+    unsigned char md5_str[MD5_STR_LEN + 1];
+    MD5_CTX md5;
+    MD5Init(&md5);
+    MD5Update(&md5, (unsigned char*)featureData, featureSize);
+    MD5Final(&md5, md5_value);
+    for(int i = 0; i < MD5_SIZE; i++)
+    {
+        snprintf((char*)md5_str + i*2, 2+1, "%02x", md5_value[i]);
+    }
+    md5_str[MD5_STR_LEN] = '\0'; // add end
+
+    sprintf(featureJson,
+            "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"u\\\":\\\"%s\\\"\\,\\\"s\\\":%s\\,\\\"l\\\":%d\\,\\\"d\\\":%s\\\"}",
+            msgId, uuid, md5_str, featureSize, featureBase64);
+    LOGD("--- featureJson %s\r\n", featureJson);
+    return strlen(featureJson);
+}
+
 int SendMsgToMQTT(char *mqtt_payload, int len) {
     vSetFakeCommandBuffer(mqtt_payload);
     // it fianlly execute doSendMsgToMQTT
@@ -944,14 +981,16 @@ int doSendMsgToMQTT(char *mqtt_payload, int len) {
             char *pub_topic_feature_up = get_pub_topic_feature_upload();
 //            int ret = quickPublishMQTTWithPriority(pub_topic_feature_up, pub_msg, 1);
             char *mymsg="123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890";
-            char featureData[400];
+            char featureJson[1200];
+            memset(featureJson, '\0', sizeof(featureJson));
+            int len = getFeatureJson(msgId, uuid, featureJson);
             // xshx TODO: 获取特征值
 //            int featureLen = getFeatureByUUID(char *uuid, &featureData);
             // TODO: base64
             // TODO: do sign with md5
             // TODO: set data with format {"msgId": msgId, "u": uuid, "s": sign, "d": base64}
 
-            int ret = quickPublishRawMQTT(pub_topic_feature_up, mymsg, strlen(mymsg));
+            int ret = quickPublishRawMQTT(pub_topic_feature_up, featureJson, strlen(featureJson));
 //            int ret = quickPublishMQTT(pub_topic_feature_up, "123456");
             //freePointer(&pub_topic_ota_request);
             return ret;
