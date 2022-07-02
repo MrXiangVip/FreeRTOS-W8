@@ -539,7 +539,7 @@ static void vReceiveFakeMessageTask( void *pvParameters){
         if (ret == pdTRUE) {
             LOGD("%s  fake data: %s \r\n", logtag,  message.Data);
             if (strncmp(message.Data, DEFAULT_HEADER, strlen(DEFAULT_HEADER)) == 0) {
-                SendMsgToMQTT(message.Data, strlen(message.Data));
+                doSendMsgToMQTT(message.Data, strlen(message.Data));
                 continue;
             }
 //            1. 将message.Data 转成 16进制

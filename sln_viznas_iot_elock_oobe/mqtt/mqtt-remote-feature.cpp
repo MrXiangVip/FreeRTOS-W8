@@ -24,8 +24,10 @@
 
 int save_remote_feature(char *uuid, char *payload_bin, int payload_bin_len) {
 	LOGD("start save ffd\r\n");
-	DB_save_feature((float*)payload_bin);
-	return 0;
+//	DB_save_feature((float*)payload_bin);
+    // xshx TODO: save feature to uuid
+//            int featureLen = saveFeatureToUUID(char *uuid, &payload_bin);
+    return 0;
 }
 
 int handleBase64RemoteFeature(char *uuid, unsigned char *payload, char *sign, int length) {

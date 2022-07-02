@@ -39,6 +39,7 @@
 #include "../mqtt/mqtt-mcu.h"
 #include "../db/DBManager.h"
 
+#include "UART_FAKER.h"
 
 /*******************************************************************************
  * Definitions
@@ -841,6 +842,11 @@ int handlePayload(char *payload, char *msg_idStr) {
 }
 
 int SendMsgToMQTT(char *mqtt_payload, int len) {
+    vSetFakeCommandBuffer(mqtt_payload);
+    // it fianlly execute doSendMsgToMQTT
+}
+
+int doSendMsgToMQTT(char *mqtt_payload, int len) {
     char mqtt_payload_str[MQTT_AT_LEN];
     memset(mqtt_payload_str, '\0', MQTT_AT_LEN);
     strncpy(mqtt_payload_str, mqtt_payload, len);
@@ -938,6 +944,12 @@ int SendMsgToMQTT(char *mqtt_payload, int len) {
             char *pub_topic_feature_up = get_pub_topic_feature_upload();
 //            int ret = quickPublishMQTTWithPriority(pub_topic_feature_up, pub_msg, 1);
             char *mymsg="123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890";
+            char featureData[400];
+            // xshx TODO: 获取特征值
+//            int featureLen = getFeatureByUUID(char *uuid, &featureData);
+            // TODO: base64
+            // TODO: do sign with md5
+            // TODO: set data with format {"msgId": msgId, "u": uuid, "s": sign, "d": base64}
 
             int ret = quickPublishRawMQTT(pub_topic_feature_up, mymsg, strlen(mymsg));
 //            int ret = quickPublishMQTT(pub_topic_feature_up, "123456");
