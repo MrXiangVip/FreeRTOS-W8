@@ -57,4 +57,7 @@ int DB_SetAutoSave(bool auto_save);
 int DB_GetID_FeaturePointers(uint16_t* ids,void**pFeatures,int num);
 int DB_save_feature(float *feature);
 
+//xshx add 20220630
+int DB_GetFeature_ByName(std::string name, float* feature);
+int DB_AddFeature_WithName( std::string name, float* feature );
 #endif /*_DATA_BASE_H_*/

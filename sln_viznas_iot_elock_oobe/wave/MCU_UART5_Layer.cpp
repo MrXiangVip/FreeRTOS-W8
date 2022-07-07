@@ -827,7 +827,7 @@ int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
     if( nMessageLen%2 == 1 ){
 
 
-        for( int i ;i < nMessageLen-1; i+=2){
+        for( int i=0 ;i < nMessageLen-1; i+=2){
             uint8_t deviceId = StrGetUInt8(pop);
             pop +=1;
             uint8_t openResult = StrGetUInt8(pop);

@@ -19,7 +19,8 @@ int uFakeUartTaskStart(  );
 extern void vSetFakeCommandIndex( int index );
 extern void vSetFakeCommandBuffer(char *buf);
 
-void vAddAIdNameFeature();
+int vAddAIdNameFeatureStr(char *name, uint8_t* feature_hex_str);
+int vAddAIdNameFeature(char *name, float * feature);
 
 #ifdef __cplusplus
 }

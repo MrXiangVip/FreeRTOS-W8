@@ -24,11 +24,15 @@
 #include "UART_FAKER.h"
 
 
+string name;
+float *feature;
+uint8_t *feature_hex_str;
+
 static const char *logtag ="[FAKE-UART]-";
 
 MCU_STATUS   mcuStatus=MCU_READY;//默认休眠模式
 
-char Init_CMD[]="23010B15091B00281044014000013B76";
+char Init_CMD[]="2301000B15091B00281044014000013B76";
 char Regist_CMD[]="230500111522115947018588628EE335755E4A00020437";
 char Delete_CMD[]="230900091A2B3C4D5F6677880402AA";
 char Clear_CMD[] ="230B0000030E";
@@ -72,7 +76,7 @@ static void vFakeUartMainTask(void *pvParamters){
                     SendMessageToUart5FromFakeUart(CMD_LIST[gCommandIndex]);
                     gCommandIndex = -1;
                 }else{
-                    vAddAIdNameFeature();
+                    vAddAIdNameFeature((char *)name.c_str(), feature);
                     gCommandIndex = -1;
                 }
             }
@@ -138,36 +142,35 @@ static void Remote_convertAscii2int(unsigned char *ascii, int len, void *value)
     }
 }
 
-string name;
-uint8_t *hex_str;
 void vListAllIdNameFeature( ){
-    LOGD("%s list all id names features \r\n", logtag);
+    LOGD("%s ,%s \r\n", logtag, __func__);
 
     std::vector<uint16_t> allIDs;
     DB_GetIDs(allIDs);
 
-    float *face                            = (float *)pvPortMalloc(OASISLT_getFaceItemSize());
-    hex_str                       = (uint8_t *)pvPortMalloc(OASISLT_getFaceItemSize() * 2 + 1);
-    hex_str[OASISLT_getFaceItemSize() * 2] = '\0';
+    feature                            = (float *)pvPortMalloc(OASISLT_getFaceItemSize());
+    feature_hex_str                       = (uint8_t *)pvPortMalloc(OASISLT_getFaceItemSize() * 2 + 1);
+    feature_hex_str[OASISLT_getFaceItemSize() * 2] = '\0';
 
     for (uint32_t i = 0; i < allIDs.size(); i++) {
         // get idx+i ids form DB
 
         DB_GetName(allIDs[i], name);
-        LOGD("%s id %d ,name %s \r\n",logtag, i, name);
-        DB_GetFeature(allIDs[i], face);
-        Remote_convertInt2ascii(face, OASISLT_getFaceItemSize(), hex_str);
-
-        LOGD("%s id %d ,feature %f, feature str %s \r\n",logtag, i, *face, hex_str);
+        LOGD("%s id %d ,name %s \r\n",logtag, i, name.c_str());
+//        DB_GetFeature(allIDs[i], face);
+        DB_GetFeature_ByName( name, feature);
+        Remote_convertInt2ascii(feature, OASISLT_getFaceItemSize(), feature_hex_str);
+        LOGD("%s id %d ,feature %f, feature str %s \r\n",logtag, i, *feature, feature_hex_str);
     }
-    vPortFree(face);
+//    vPortFree(face);
     return;
 }
 
-void vAddAIdNameFeature(){
-    LOGD("%s add id names features \r\n", logtag);
-
-    unsigned char *pFeature = hex_str;
+int vAddAIdNameFeatureStr(char *name, uint8_t* feature_hex_str){
+    LOGD("%s, %s, names[%s] features[%s] \r\n", logtag, __func__, name, feature_hex_str);
+    int ret=-1;
+    string strName =name;
+    unsigned char *pFeature = feature_hex_str;
     float *feature          = (float *)pvPortMalloc(OASISLT_getFaceItemSize());
     if (feature == NULL)
     {
@@ -182,29 +185,30 @@ void vAddAIdNameFeature(){
         feature[i] = fValue;
     }
 
-    // get the id
-    uint16_t  id_local;
-    int ret       = DB_GenID(&id_local);
-    if (ret < 0)
-    {
-        vPortFree(feature);
-        LOGD("db gen id error \r\n");
-    }
-
-    ret         = DB_Add(id_local, name, feature);
-    if (ret != 0)
-    {
-        LOGD("remote add user into local fail, [%d]: [%s]\r\n", id_local, name.c_str());
-        vPortFree(feature);
-    }else{
-        LOGD("remote add user into local success, [%d]: [%s]: [%s]\r\n", id_local, name.c_str(),hex_str );
-
-    }
-
-    LOGD("remote register [%d][%s] success.\r\n", id_local, name.c_str());
+    ret = DB_AddFeature_WithName( strName, feature);
+    LOGD("remote register [%s] success.\r\n", strName.c_str() );
     vPortFree(feature);
-    return;
+    return ret;
 }
+
+int vAddAIdNameFeature(char *name, float * feature){
+    LOGD("%s add id names[%s] features[%s] \r\n", logtag, name, feature_hex_str);
+    int ret =-1;
+    string strName =name;
+    float *pFeature                 = feature;
+    unsigned  char *feature_hex_str = (uint8_t *)pvPortMalloc(OASISLT_getFaceItemSize() * 2 + 1);
+    if (feature_hex_str == NULL)
+    {
+        LOGD("pvmalloc error \r\n");
+    }
+
+    Remote_convertInt2ascii(pFeature, OASISLT_getFaceItemSize(), feature_hex_str);
+    ret = DB_AddFeature_WithName( strName, pFeature);
+    LOGD("remote register [%s] success.\r\n", strName.c_str() );
+    vPortFree(feature_hex_str);
+    return ret;
+}
+
 
 int uFakeUartTaskStart( ){
 

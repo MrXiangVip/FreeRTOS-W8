@@ -378,3 +378,43 @@ int DB_save_feature(float *feature) {
     }
     return ret;
 }
+
+int DB_GetFeature_ByName(std::string name, float* feature)
+{
+    LOGD("%s, %s , %s \r\n",logtag, __func__, name.c_str());
+    std::vector<uint16_t> allIDs;
+    DB_GetIDs(allIDs);
+    for (uint32_t i = 0; i < allIDs.size(); i++) {
+        string tmpName;
+        // get idx+i ids form DB
+        DB_GetName(allIDs[i], tmpName);
+        LOGD("%s id %d ,tmp name [%s] , name[%s]\r\n",logtag, i, tmpName.c_str(), name.c_str() );
+        if( tmpName.compare( name ) == 0 ){
+            DB_GetFeature(allIDs[i], feature);
+            LOGD("%s id %d  \r\n",logtag, i);
+            return DB_MGMT_OK;
+        }
+    }
+    return DB_MGMT_FAILED;
+}
+
+int DB_AddFeature_WithName( std::string name, float* feature )
+{
+    LOGD("%s, %s , %s \r\n",logtag, __func__, name.c_str());
+    uint16_t    id_local;
+    int ret     = DB_GenID(&id_local);
+    if (ret < 0)
+    {
+        LOGD("db gen id error \r\n");
+        return DB_MGMT_FAILED;
+    }
+
+    ret   = DB_Add(id_local, name, feature);
+    if (ret != 0)
+    {
+        LOGD("remote add user into local fail, [%d]: [%s]\r\n", id_local, name.c_str());
+        return DB_MGMT_FAILED;
+    }
+    LOGD("add user into db success, [%d]: [%s]\r\n", id_local, name.c_str() );
+    return  DB_MGMT_OK;
+}
