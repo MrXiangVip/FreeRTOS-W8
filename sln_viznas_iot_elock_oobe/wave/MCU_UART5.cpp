@@ -37,6 +37,7 @@
 
 #include "../mqtt/config.h"
 #include "../mqtt/mqtt-mcu.h"
+#include "../mqtt/mqtt-remote-feature.h"
 #include "../mqtt/base64.h"
 //#include "WIFI_UART8.h"
 #include "database.h"
@@ -292,7 +293,8 @@ static void vReceiveOasisTask(void *pvParameters) {
                             LOGD("%s增加注册记录 \r\n", logtag);
                             Record *record = (Record *) pvPortMalloc(sizeof(Record));
                             memset(record, 0, sizeof(Record));
-                            strcpy(record->UUID, username);
+//                            strcpy(record->UUID, username);
+                            strcpy(record->UUID, objUserExtend.UUID);
                             record->action = REGISTE;// 0 代表注册
                             record->time_stamp = ws_systime;//当前时间
                             memset(image_path, 0, sizeof(image_path)); // 对注册成功的用户保存一张压缩过的jpeg图片
@@ -310,6 +312,10 @@ static void vReceiveOasisTask(void *pvParameters) {
                             DBManager::getInstance()->addRecord(record);
     //                        Oasis_SetOasisFileName(record->image_path);
                             REG_RESULT_FLG = 0; //和后台同步, 0 表示成功
+                            // TODO: zgx upload feature to server
+                            char *msgId = gen_msgId();
+                            LOGD("%s往数据库中插入本次注册记录 %s\r\n", logtag, record->UUID);
+                            doFeatureUpload(msgId, record->UUID);
 
                         }else if( faceInfo->enrolment_result == OASIS_REG_RESULT_DUP){
                             LOGD("重复注册 \r\n");

@@ -577,7 +577,9 @@ int cmdReqResumeFactoryProc(unsigned char nMessageLen, const unsigned char *pszM
 
     uint8_t ret = SUCCESS;
 
+#if !LONG_LIVE
     CloseLcdBackground();
+#endif
     //返回响应
     // cmdReqResumeFactoryRsp(ret);
     cmdCommRsp2MCU(CMD_REQ_RESUME_FACTORY, ret);
@@ -1110,6 +1112,14 @@ int save_files_before_pwd() {
 
 //主控发送: 关机请求
 int cmdCloseFaceBoardReqExt(bool save_file) {
+#if LONG_LIVE
+    if (save_file) {
+        save_files_before_pwd();
+    } else {
+        LOGD("No need to save file before shutdown the device\r\n");
+    }
+    return 0;
+#else
     LOGD("发送关机请求 \r\n");
     char szBuffer[32] = {0};
     char *pop = NULL;
@@ -1150,6 +1160,7 @@ int cmdCloseFaceBoardReqExt(bool save_file) {
     }
 
     return 0;
+#endif
 }
 
 //主控发送: 关机请求

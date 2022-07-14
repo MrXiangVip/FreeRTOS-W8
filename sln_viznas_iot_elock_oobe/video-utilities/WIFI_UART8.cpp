@@ -42,6 +42,8 @@
 #include "UART_FAKER.h"
 #include "md5.h"
 #include "base64.h"
+#include "database.h"
+#include "oasis.h"
 
 /*******************************************************************************
  * Definitions
@@ -843,10 +845,50 @@ int handlePayload(char *payload, char *msg_idStr) {
     return 0;
 }
 
+static void Remote_convertInt2ascii(void *value, int bytes, unsigned char *ascii)
+{
+    unsigned char nibble;
+    unsigned char hex_table[] = "0123456789abcdef";
+    unsigned char *p_value    = (unsigned char *)value;
+    unsigned char *p_ascii    = ascii;
+
+    for (int j = 0; j < bytes; j++)
+    {
+        nibble     = *p_value++;
+        int low    = nibble & 0x0f;
+        int high   = (nibble >> 4) & 0x0f;
+        *p_ascii++ = hex_table[high];
+        *p_ascii++ = hex_table[low];
+    }
+}
+
 // xshx TODO: 获取特征值
 int getFeatureData(char *uuid, char featureData[]) {
-    strcpy(featureData, "123456");
-    return strlen(featureData);
+    int featureLen = getOasisFeatureSize();
+    LOGD("--- get Feature Data size %d\r\n", featureLen);
+
+    float feature[400];
+    memset(feature, '\0', sizeof(feature));
+    int res = DB_GetFeature_ByName(uuid, feature);
+    LOGD("--- DB_GetFeature_ByName res %d\r\n", res);
+    uint8_t *feature_hex_str = (uint8_t *)pvPortMalloc(featureLen * 2 + 1);
+    feature_hex_str[featureLen * 2] = '\0';
+    Remote_convertInt2ascii(feature, featureLen, feature_hex_str);
+    LOGD("feature str %s \r\n",feature_hex_str);
+    vPortFree(feature_hex_str);
+
+//    char *featureP = (char*)feature;
+    memcpy(featureData, (char*)feature, featureLen);
+    return featureLen;
+//    uint8_t* feature_hex_str                       = (uint8_t *)pvPortMalloc(OASISLT_getFaceItemSize() * 2 + 1);
+//    feature_hex_str[OASISLT_getFaceItemSize() * 2] = '\0';
+//
+//    char featureData1[800];
+//    HexToStr(featureData1, (const unsigned char*)feature, 100);
+//    LOGD("--- featureData is %s\r\n", featureData1);
+
+//    strcpy(featureData, "123456");
+//    return strlen(featureData);
 }
 
 int getFeatureJson(char *msgId, char *uuid, char featureJson[]) {
@@ -871,10 +913,13 @@ int getFeatureJson(char *msgId, char *uuid, char featureJson[]) {
     }
     md5_str[MD5_STR_LEN] = '\0'; // add end
 
+//    sprintf(featureJson,
+//            "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"u\\\":\\\"%s\\\"\\,\\\"s\\\":%s\\,\\\"l\\\":%d\\,\\\"d\\\":\\\"%s\\\"}",
+//            msgId, uuid, md5_str, featureSize, featureBase64);
     sprintf(featureJson,
-            "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"u\\\":\\\"%s\\\"\\,\\\"s\\\":%s\\,\\\"l\\\":%d\\,\\\"d\\\":%s\\\"}",
+            "{\"msgId\":\"%s\",\"u\":\"%s\",\"s\":%s,\"l\":%d,\"d\":\"%s\"}",
             msgId, uuid, md5_str, featureSize, featureBase64);
-    LOGD("--- featureJson %s\r\n", featureJson);
+    LOGD("--- featureJson %d %s\r\n", strlen(featureJson), featureJson);
     return strlen(featureJson);
 }
 
@@ -1297,6 +1342,7 @@ int analyzeMQTTMsgInternal(char *msg) {
 
 	pNext = (char *)strstr(msg,"+MQTTSUBRECV:"); //必须使用(char *)进行强制类型转换(虽然不写有的编译器中不会出现指针错误)
 	if (pNext != NULL) {
+        LOGD("---- it is sub recv\r\n");
 
 		// TODO: 只要服务器下发指令下来，我们就认为服务器已经确认在线
 		g_is_online = 1;
@@ -1444,6 +1490,8 @@ int analyzeMQTTMsgInternal(char *msg) {
 			}
 		}
 
+	} else {
+	    LOGD("---- it is not sub recv\r\n");
 	}
 	// 下面的初始化会导致strtok 段错误
 	// char *data = "+MQTTSUBRECV:0,\"testtopic\",26,{ \"msg\": \"Hello, World!\" }";
@@ -1957,13 +2005,16 @@ static void msghandle_task(void *pvParameters)
                     if (g_command_executed) {
                         // 如果远程开锁完成或者其他指令执行完成，并且上传也执行完成了
                         if(g_is_shutdown == 0) {
+#if LONG_LIVE
+                            save_files_before_pwd();
+#else
 							CloseLcdBackground();
 							LOGD("need to notify command executed 1\r\n");
 							vTaskDelay(pdMS_TO_TICKS(100));
                         	g_is_shutdown = 1;
 							save_files_before_pwd();
                             notifyCommandExecuted(0);
-
+#endif
                         }
                         // } else if (g_shutdown_notified == 0) {
                     } else { // if (g_shutdown_notified == 0) {
@@ -1990,13 +2041,16 @@ static void msghandle_task(void *pvParameters)
 				// TODO: 后续可以使用下电指令来代替
 				// notifyShutdown();
 				if(g_is_shutdown == 0) {
+#if LONG_LIVE
+                    save_files_before_pwd();
+#else
 					CloseLcdBackground();
 					LOGD("need to notify command executed 2\r\n");
 					vTaskDelay(pdMS_TO_TICKS(100));
 					g_is_shutdown = 1;
 					save_files_before_pwd();
                     notifyCommandExecuted(0);
-
+#endif
                 }
 			}
         }

@@ -157,7 +157,7 @@ int publishRawMQTT(int linkId, const char* topic, char* data, int data_len, int 
 	//char cmd[MQTT_MAX_LEN];
 	sprintf(cmd, "AT+MQTTPUBRAW=%d,\"%s\",%d,%d,%d", linkId, topic, data_len, qos, retain);
 
-	//LOGD("--- send AT Raw CMD %s\r\n", cmd);
+	LOGD("--- send AT Raw CMD %s\r\n", cmd);
 	int res = run_at_raw_cmd(cmd, data, data_len, 2, 15000);
 
 	while (res == AT_CMD_RESULT_BUSY) {
