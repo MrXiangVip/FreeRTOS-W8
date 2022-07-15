@@ -85,7 +85,7 @@ uint8_t recv_buffer8[1];
 #define MQTT_MAC_LEN            32
 #define MQTT_RSSI_LEN           32
 
-#define WIFI_SUPPORT_BAUD921600        1
+#define WIFI_SUPPORT_BAUD921600        0
 //unsigned char **recv_msg_lines;              // received messages
 //unsigned char *recv_crrent_line;     // line to receive
 //unsigned char *handle_current_line; // line to handle
