@@ -52,10 +52,10 @@ typedef union {
 typedef struct{
     uint8_t HexUID[8];      //十六进制uuid
     char    UUID[17];       //uuid 的字符串
-    long    uStartTime;     // 用户订单的开始时间
-    long    uEndTime;       // 用户订单的结束时间
-    char    cDeviceId[48];  // 设备列表
-    long    lCreateTime;    //用户在内存里创建的时间 用于过滤频繁注册和识别
+//    long    uStartTime;     // 用户订单的开始时间
+//    long    uEndTime;       // 用户订单的结束时间
+//    char    cDeviceId[48];  // 设备列表
+//    long    lCreateTime;    //用户在内存里创建的时间 用于过滤频繁注册和识别
 }UserExtendType;
 
 //全局的用户信息

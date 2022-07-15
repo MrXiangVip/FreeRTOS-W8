@@ -32,12 +32,21 @@ static const char *logtag ="[FAKE-UART]-";
 
 MCU_STATUS   mcuStatus=MCU_READY;//默认休眠模式
 
-char Init_CMD[]="2301000B15091B00281044014000013B76";
-char Regist_CMD[]="230500111522115947018588628EE335755E4A00020437";
-char Delete_CMD[]="230900091A2B3C4D5F6677880402AA";
-char Clear_CMD[] ="230B0000030E";
-char OpenDoor_CMD[] ="23030003640200016D";
+//#ifdef L25
+//char Init_CMD[]="2301000B15091B00281044014000013B76";                       //
+//char Regist_CMD[]="230500111522115947018588628EE335755E4A00020437";         // 8字节UID + 4 字节起始时间 +4 字节结束时间 + 扩展柜门号
+//char Delete_CMD[]="230900091A2B3C4D5F6677880402AA";                         //
+//char Clear_CMD[] ="230B0000030E";                                           //
+//char OpenDoor_CMD[] ="23030003640200016D";                                  //
+//#endif
 
+//#ifdef W8
+char Init_CMD[]="23010B150909020B334E01330001DE78";                         //
+char Regist_CMD[]="2305089E51973FCD6365A1EEAD";                             //  8字节UUID
+char Delete_CMD[]="2309089E51973FCD6365A15B74";                             //
+char Clear_CMD[] ="230B003BCE";                                             //
+char OpenDoor_CMD[] ="23030003430201004C";                                  //
+//#endif
 
 char* CMD_LIST[] = {
         Init_CMD,

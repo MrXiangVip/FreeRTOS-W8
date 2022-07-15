@@ -227,34 +227,34 @@ int UserExtendManager::clearAllUserExtend(  ){
 
 
 //
-void vConvertUserExtendType2Json(UserExtendType *userExtendType, UserExtend  *userExtend){
-    LOGD("%s 转换用户扩展类为 json \r\n",logtag );
-
-    char 	*cjson_str;
-    cJSON * cObj = cJSON_CreateObject();
-//    cJSON_AddStringToObject(cObj, UERID,  userExtendType->UUID);
-    cJSON_AddNumberToObject(cObj, TIMES, userExtendType->uStartTime);
-    cJSON_AddNumberToObject(cObj, TIMEE, userExtendType->uEndTime);
-    cJSON_AddStringToObject(cObj, ADEV, userExtendType->cDeviceId);
-    cjson_str = cJSON_PrintUnformatted(cObj);
-
-    LOGD("%s uuid %d, cjson %s \r\n",logtag,userExtendType->UUID, cjson_str);
-    memcpy( userExtend->UUID, userExtendType->UUID, sizeof(userExtendType->UUID));
-    memcpy( userExtend->jsonData, cjson_str, strlen(cjson_str));
-    LOGD("UserExtend UUID:%s \r\n", userExtend->UUID);
-    LOGD("UserExtend jsonData:%s \r\n", userExtend->jsonData);
-};
-
-void vConverUserExtendJson2Type(UserExtend  *userExtend, unsigned int lCreateTime,  UserExtendType *userExtendType){
-    LOGD("%s 转换json 为用户扩展类 \r\n",logtag );
-    strcpy( userExtendType->UUID , userExtend->UUID);
-    StrToHex( userExtendType->HexUID, userExtendType->UUID, sizeof(userExtendType->HexUID));//将uuid 转成16进制 hexuid
-    cJSON *jsonObj = cJSON_Parse(userExtend->jsonData);
-//    strcpy(userExtendType->UUID, cJSON_GetObjectItem(jsonObj, UERID)->valuestring);
-    userExtendType->uStartTime = cJSON_GetObjectItem(jsonObj, TIMES)->valuedouble;
-    userExtendType->uEndTime = cJSON_GetObjectItem(jsonObj, TIMEE)->valuedouble;
-    strcpy(userExtendType->cDeviceId , cJSON_GetObjectItem(jsonObj, ADEV)->valuestring);
-    userExtendType->lCreateTime = lCreateTime;//增加用户创建的时间
-    LOGD( "%s UUID %s ,StartTime %d ,EndTime %d ,Device %s \r\n", logtag, userExtendType->UUID, userExtendType->uStartTime, userExtendType->uEndTime, userExtendType->cDeviceId);
-}
+//void vConvertUserExtendType2Json(UserExtendType *userExtendType, UserExtend  *userExtend){
+//    LOGD("%s 转换用户扩展类为 json \r\n",logtag );
+//
+//    char 	*cjson_str;
+//    cJSON * cObj = cJSON_CreateObject();
+////    cJSON_AddStringToObject(cObj, UERID,  userExtendType->UUID);
+////    cJSON_AddNumberToObject(cObj, TIMES, userExtendType->uStartTime);
+////    cJSON_AddNumberToObject(cObj, TIMEE, userExtendType->uEndTime);
+//    cJSON_AddStringToObject(cObj, ADEV, userExtendType->cDeviceId);
+//    cjson_str = cJSON_PrintUnformatted(cObj);
+//
+//    LOGD("%s uuid %d, cjson %s \r\n",logtag,userExtendType->UUID, cjson_str);
+//    memcpy( userExtend->UUID, userExtendType->UUID, sizeof(userExtendType->UUID));
+//    memcpy( userExtend->jsonData, cjson_str, strlen(cjson_str));
+//    LOGD("UserExtend UUID:%s \r\n", userExtend->UUID);
+//    LOGD("UserExtend jsonData:%s \r\n", userExtend->jsonData);
+//};
+//
+//void vConverUserExtendJson2Type(UserExtend  *userExtend, unsigned int lCreateTime,  UserExtendType *userExtendType){
+//    LOGD("%s 转换json 为用户扩展类 \r\n",logtag );
+//    strcpy( userExtendType->UUID , userExtend->UUID);
+//    StrToHex( userExtendType->HexUID, userExtendType->UUID, sizeof(userExtendType->HexUID));//将uuid 转成16进制 hexuid
+//    cJSON *jsonObj = cJSON_Parse(userExtend->jsonData);
+////    strcpy(userExtendType->UUID, cJSON_GetObjectItem(jsonObj, UERID)->valuestring);
+//    userExtendType->uStartTime = cJSON_GetObjectItem(jsonObj, TIMES)->valuedouble;
+//    userExtendType->uEndTime = cJSON_GetObjectItem(jsonObj, TIMEE)->valuedouble;
+//    strcpy(userExtendType->cDeviceId , cJSON_GetObjectItem(jsonObj, ADEV)->valuestring);
+//    userExtendType->lCreateTime = lCreateTime;//增加用户创建的时间
+//    LOGD( "%s UUID %s ,StartTime %d ,EndTime %d ,Device %s \r\n", logtag, userExtendType->UUID, userExtendType->uStartTime, userExtendType->uEndTime, userExtendType->cDeviceId);
+//}
 

@@ -152,39 +152,39 @@ int MsgHead_Packet(
 
     return MsgLen + sizeof(MESSAGE_HEAD);
 }
-/****************************************************************************************
-函数名称：RspHead_Packet
-函数功能：组包
-入口参数：pszBuffer--数据
-		HeadMark--消息标记
-		CmdId--命令
-		MsgLen--消息长度
-出口参数：无
-返回值：成功返回消息的总长度(消息头+消息体+FCS长度)，失败返回-1
-****************************************************************************************/
-int RspHead_Packet(
-        char *pszBuffer,
-        unsigned char HeadMark,
-        unsigned char MsgLen) {
-    if (!pszBuffer) {
-        LOGD("pszBuffer is NULL\n");
-        return -1;
-    }
-    char *pTemp = pszBuffer;
-
-    StrSetUInt8((uint8_t *) pTemp, HeadMark);
-    pTemp += sizeof(uint8_t);
-    StrSetUInt8((uint8_t *) pTemp, 0xFE);
-    pTemp += sizeof(uint8_t);
-//    StrSetUInt8( (uint8_t*)pTemp, DIRECT_SEND);
+///****************************************************************************************
+//函数名称：RspHead_Packet
+//函数功能：组包
+//入口参数：pszBuffer--数据
+//		HeadMark--消息标记
+//		CmdId--命令
+//		MsgLen--消息长度
+//出口参数：无
+//返回值：成功返回消息的总长度(消息头+消息体+FCS长度)，失败返回-1
+//****************************************************************************************/
+//int RspHead_Packet(
+//        char *pszBuffer,
+//        unsigned char HeadMark,
+//        unsigned char MsgLen) {
+//    if (!pszBuffer) {
+//        LOGD("pszBuffer is NULL\n");
+//        return -1;
+//    }
+//    char *pTemp = pszBuffer;
+//
+//    StrSetUInt8((uint8_t *) pTemp, HeadMark);
 //    pTemp += sizeof(uint8_t);
-    StrSetUInt8((uint8_t *) pTemp, MsgLen);
-    pTemp += sizeof(uint8_t);
-//    StrSetUInt8((uint8_t *) pTemp, CmdId);
+//    StrSetUInt8((uint8_t *) pTemp, 0xFE);
 //    pTemp += sizeof(uint8_t);
-
-    return MsgLen + sizeof(RESPONSE_HEAD);
-}
+////    StrSetUInt8( (uint8_t*)pTemp, DIRECT_SEND);
+////    pTemp += sizeof(uint8_t);
+//    StrSetUInt8((uint8_t *) pTemp, MsgLen);
+//    pTemp += sizeof(uint8_t);
+////    StrSetUInt8((uint8_t *) pTemp, CmdId);
+////    pTemp += sizeof(uint8_t);
+//
+//    return MsgLen + sizeof(RESPONSE_HEAD);
+//}
 /*******************************************************************************
  *
  *函数功能: 消息尾拼接
@@ -268,20 +268,21 @@ int cmdCommRsp2MCU(unsigned char CmdId, uint8_t ret) {
     unsigned char MsgLen = 0;
 
     memset(szBuffer, 0, sizeof(szBuffer));
-    pop = szBuffer + sizeof(RESPONSE_HEAD);
+    pop = szBuffer + sizeof(MESSAGE_HEAD);
 
     /* 填充消息体 */
-    StrSetUInt8((uint8_t *) pop, CmdId);
-    MsgLen += sizeof(uint8_t);
-    pop += sizeof(uint8_t);
+//    StrSetUInt8((uint8_t *) pop, CmdId);
+//    MsgLen += sizeof(uint8_t);
+//    pop += sizeof(uint8_t);
     StrSetUInt8((uint8_t *) pop, ret);
     MsgLen += sizeof(uint8_t);
     pop += sizeof(uint8_t);
 
     /*填充消息头*/
-    int iTailIndex = RspHead_Packet(
+    int iTailIndex = MsgHead_Packet(
             szBuffer,
             HEAD_MARK,
+            CmdId,
             MsgLen);
 
     //  拼装消息尾
@@ -531,8 +532,8 @@ void SetSysToFactory() {
     LOGD("Clear Records status is %d\r\n", clear_status);
 
 //  清空用戶附加信息
-    int ret= UserExtendManager::getInstance()->clearAllUserExtend();
-    LOGD("%s result: %s \r\n", logtag, ret);
+//    int ret= UserExtendManager::getInstance()->clearAllUserExtend();
+//    LOGD("%s result: %s \r\n", logtag, ret);
 //    清空用户注册表
     clear_status = VIZN_DelUser(NULL);
     LOGD("Clear Users status is %d\r\n", clear_status);
@@ -577,12 +578,10 @@ int cmdReqResumeFactoryProc(unsigned char nMessageLen, const unsigned char *pszM
 
     uint8_t ret = SUCCESS;
 
-#if !LONG_LIVE
     CloseLcdBackground();
-#endif
     //返回响应
-    // cmdReqResumeFactoryRsp(ret);
-    cmdCommRsp2MCU(CMD_REQ_RESUME_FACTORY, ret);
+     cmdReqResumeFactoryRsp(ret);
+//    cmdCommRsp2MCU(CMD_REQ_RESUME_FACTORY, ret);
 
     vTaskDelay(pdMS_TO_TICKS(10));
 
@@ -662,24 +661,24 @@ int cmdUserRegReqProc(unsigned char nMessageLen, const unsigned char *pszMessage
     HexToStr(objUserExtend.UUID, objUserExtend.HexUID, sizeof(objUserExtend.HexUID)  );
     LOGD("%s UUID<len:%d>:%s.\r\n",logtag, sizeof(objUserExtend.UUID), objUserExtend.UUID);
 
-    unsigned  int uStartTime = StrGetUInt32(pos);
-    pos+=4;
-    len+=4;
-    LOGD("StartTime %d\r\n", uStartTime);
-    unsigned  int uEndTime =StrGetUInt32( pos );
-    pos+=4;
-    len+=4;
-    LOGD("EndTime %d\r\n", uEndTime);
+//    unsigned  int uStartTime = StrGetUInt32(pos);
+//    pos+=4;
+//    len+=4;
+//    LOGD("StartTime %d\r\n", uStartTime);
+//    unsigned  int uEndTime =StrGetUInt32( pos );
+//    pos+=4;
+//    len+=4;
+//    LOGD("EndTime %d\r\n", uEndTime);
 
 
-    char cDeviceIds[48]={0};//最大48个柜子
-    HexToStr(cDeviceIds, pos, nMessageLen-len);
-    printf("cDeviceIds %s\n", cDeviceIds);
+//    char cDeviceIds[48]={0};//最大48个柜子
+//    HexToStr(cDeviceIds, pos, nMessageLen-len);
+//    printf("cDeviceIds %s\n", cDeviceIds);
 
-    objUserExtend.uStartTime = uStartTime;
-    objUserExtend.uEndTime =uEndTime;
-    objUserExtend.lCreateTime =ws_systime;//记录下用户创建的时间
-    memcpy( objUserExtend.cDeviceId, cDeviceIds, sizeof(cDeviceIds));
+//    objUserExtend.uStartTime = uStartTime;
+//    objUserExtend.uEndTime =uEndTime;
+//    objUserExtend.lCreateTime =ws_systime;//记录下用户创建的时间
+//    memcpy( objUserExtend.cDeviceId, cDeviceIds, sizeof(cDeviceIds));
 
 //    memcpy( username, objUserExtend.UUID, sizeof(username));
 //2.发起注册
@@ -732,24 +731,25 @@ int cmdRegResultNotifyReq(UserExtendType *userExtendType, uint8_t regResult) {
     unsigned char MsgLen = 0;
 
     memset(szBuffer, 0, sizeof(szBuffer));
-    pop = szBuffer + sizeof(RESPONSE_HEAD);
+    pop = szBuffer + sizeof(MESSAGE_HEAD);
 
     /*填充消息体*/
-//    memcpy(pop, userExtendType->HexUID, sizeof(userExtendType->HexUID));
-//    MsgLen += sizeof( userExtendType->HexUID);
-//    pop += sizeof( userExtendType->HexUID);
-    StrSetUInt8((uint8_t *) pop, CMD_FACE_REG);
-    MsgLen += sizeof(uint8_t); 
-    pop += sizeof(uint8_t);
+    memcpy(pop, userExtendType->HexUID, sizeof(userExtendType->HexUID));
+    MsgLen += sizeof( userExtendType->HexUID);
+    pop += sizeof( userExtendType->HexUID);
+//    StrSetUInt8((uint8_t *) pop, CMD_FACE_REG);
+//    MsgLen += sizeof(uint8_t);
+//    pop += sizeof(uint8_t);
 
     StrSetUInt8((uint8_t *) pop, regResult);
     MsgLen += sizeof(uint8_t);
     pop += sizeof(uint8_t);
 
     /*填充消息头*/
-    int iTailIndex = RspHead_Packet(
+    int iTailIndex = MsgHead_Packet(
             szBuffer,
             HEAD_MARK,
+            CMD_FACE_REG_RLT,
             MsgLen);
 
 
@@ -776,10 +776,10 @@ int cmdOpenDoorReq(UserExtendType *userExtendType) {
     pop = szBuffer + sizeof(MESSAGE_HEAD);
 
     /*填充消息体*/
-    uint8_t L25MAC[6]={0};//十六进制uuid
-    memcpy( pop, L25MAC, sizeof(L25MAC));
-    MsgLen += sizeof(L25MAC);
-    pop += sizeof(L25MAC);
+//    uint8_t L25MAC[6]={0};//十六进制uuid
+//    memcpy( pop, L25MAC, sizeof(L25MAC));
+//    MsgLen += sizeof(L25MAC);
+//    pop += sizeof(L25MAC);
 //    填入uuid
     LOGD("%s UUID %s\r\n",logtag, userExtendType->UUID);
     memcpy(pop, userExtendType->HexUID, sizeof(userExtendType->HexUID));
@@ -787,13 +787,13 @@ int cmdOpenDoorReq(UserExtendType *userExtendType) {
     pop += sizeof(userExtendType->HexUID);
 
 //    填入device列表
-    LOGD( "%s DeviceList %s\r\n",logtag, userExtendType->cDeviceId);
-    unsigned char deviceList[48]={0};
-    int  iHexDeviceLen = strlen(userExtendType->cDeviceId)/2;
-    StrToHex( deviceList, userExtendType->cDeviceId, iHexDeviceLen);
-    memcpy(pop , deviceList, iHexDeviceLen);
-    MsgLen += iHexDeviceLen;
-    pop += iHexDeviceLen;
+//    LOGD( "%s DeviceList %s\r\n",logtag, userExtendType->cDeviceId);
+//    unsigned char deviceList[48]={0};
+//    int  iHexDeviceLen = strlen(userExtendType->cDeviceId)/2;
+//    StrToHex( deviceList, userExtendType->cDeviceId, iHexDeviceLen);
+//    memcpy(pop , deviceList, iHexDeviceLen);
+//    MsgLen += iHexDeviceLen;
+//    pop += iHexDeviceLen;
     /*填充消息头*/
     int iTailIndex = MsgHead_Packet(
             szBuffer,
@@ -824,71 +824,54 @@ int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
     pop = szBuffer;
 
     // MCU到face_loop，0代表开锁成功，1代表开锁失败
-    uint8_t power = StrGetUInt8(pop);
-    pop +=1;
-    if( nMessageLen%2 == 1 ){
-
-
-        for( int i=0 ;i < nMessageLen-1; i+=2){
-            uint8_t deviceId = StrGetUInt8(pop);
-            pop +=1;
-            uint8_t openResult = StrGetUInt8(pop);
-            pop+=1;
-            LOGD(" 设备号 %d , 开柜结果 %d \r\n", deviceId, openResult);
-        }
-    } else{
-        LOGD( "设备号和结果不成对 \r\n");
-    }
-    LOGD("暂时不保存开柜记录 \r\n");
+    ret = StrGetUInt8(pszMessage);
     // 如果开锁成功 更新数据库状态 ,请求mqtt上传本次操作记录。
-//    if (ret == 0) {
-//        //					xshx add
-//        //char power_msg[32] = {0};
-//        pop += 1;
-//        uint8_t power = StrGetUInt8(pop);
-//        pop += 1;
-//        uint8_t power2 = StrGetUInt8(pop);
-//
-//        Record *record = (Record *) pvPortMalloc(sizeof(Record));
-//        HexToStr(username, g_uu_id.UID, sizeof(g_uu_id.UID));
-//        strcpy(record->UUID, username);
-//        record->action = FACE_UNLOCK;//  操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁
-//        char image_path[16];
-//        //record->status = 0; // 0,操作成功 1,操作失败.
-//        record->time_stamp = ws_systime; //时间戳 从1970年开始的秒数
-////        record->power = power * 256 + power2;
-//        record->data[0]=power;
-//        record->data[1]=power2;
-//        //sprintf(power_msg, "{\\\"batteryA\\\":%d\\,\\\"batteryB\\\":%d}", record->power, record->power2);
-//        //LOGD("power_msg is %s \r\n", power_msg);
-//
-//        record->upload = BOTH_UNUPLOAD; //   0代表没上传 1代表记录上传图片未上传 2代表均已
-////        record->action_upload = 0x300;
-//        memset(image_path, 0, sizeof(image_path)); // 对注册成功的用户保存一张压缩过的jpeg图片
-//        //snprintf(image_path, sizeof(image_path), "REC_%d_%d_%s.jpg", 0, record->time_stamp, record->UUID);
-//#if    SUPPORT_PRESSURE_TEST != 0
-//        snprintf(image_path, sizeof(image_path), "%x21.jpg", record->time_stamp & 0x00FFFFFF);
-//#else
-//        snprintf(image_path, sizeof(image_path), "%x.jpg", record->time_stamp);
-//#endif
-//        memcpy(record->image_path, image_path, sizeof(image_path));//image_path
-//
-//        DBManager::getInstance()->addRecord(record);
-//
-//        Oasis_SetOasisFileName(record->image_path);
-//        //Oasis_WriteJpeg();
-//
-//        int ID = DBManager::getInstance()->getLastRecordID();
-//        LOGD("开锁成功, 更新数据库状态.请求MQTT上传本次开门的记录 \r\n");
-//#if MQTT_SUPPORT
-//        cmdRequestMqttUpload(ID);
-//#endif
-//    } else {
-////    	g_command_executed = 1;
-//        LOGD("开锁失败,不更新数据库状态. 不上传记录,请求下电\r\n");
-//        cmdCloseFaceBoardReq();
-//
-//    }
+    if (ret == 0) {
+        //					xshx add
+        //char power_msg[32] = {0};
+        pop += 1;
+        uint8_t power = StrGetUInt8(pop);
+        pop += 1;
+        uint8_t power2 = StrGetUInt8(pop);
+
+        Record *record = (Record *) pvPortMalloc(sizeof(Record));
+        HexToStr(username, g_uu_id.UID, sizeof(g_uu_id.UID));
+        strcpy(record->UUID, username);
+        record->action = FACE_UNLOCK;//  操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁
+        char image_path[16];
+        //record->status = 0; // 0,操作成功 1,操作失败.
+        record->time_stamp = ws_systime; //时间戳 从1970年开始的秒数
+//        record->power = power * 256 + power2;
+        record->data[0]=power;
+        record->data[1]=power2;
+        //sprintf(power_msg, "{\\\"batteryA\\\":%d\\,\\\"batteryB\\\":%d}", record->power, record->power2);
+        //LOGD("power_msg is %s \r\n", power_msg);
+
+        record->upload = BOTH_UNUPLOAD; //   0代表没上传 1代表记录上传图片未上传 2代表均已
+//        record->action_upload = 0x300;
+        memset(image_path, 0, sizeof(image_path)); // 对注册成功的用户保存一张压缩过的jpeg图片
+        //snprintf(image_path, sizeof(image_path), "REC_%d_%d_%s.jpg", 0, record->time_stamp, record->UUID);
+#if    SUPPORT_PRESSURE_TEST != 0
+        snprintf(image_path, sizeof(image_path), "%x21.jpg", record->time_stamp & 0x00FFFFFF);
+#else
+        snprintf(image_path, sizeof(image_path), "%x.jpg", record->time_stamp);
+#endif
+        memcpy(record->image_path, image_path, sizeof(image_path));//image_path
+
+        DBManager::getInstance()->addRecord(record);
+
+        Oasis_SetOasisFileName(record->image_path);
+        //Oasis_WriteJpeg();
+
+        int ID = DBManager::getInstance()->getLastRecordID();
+        LOGD("开锁成功, 更新数据库状态.请求MQTT上传本次开门的记录 \r\n");
+        cmdRequestMqttUpload(ID);
+    } else {
+//    	g_command_executed = 1;
+        LOGD("开锁失败,不更新数据库状态. 不上传记录,请求下电\r\n");
+        cmdCloseFaceBoardReq();
+
+    }
 
     return 0;
 }
@@ -1112,14 +1095,6 @@ int save_files_before_pwd() {
 
 //主控发送: 关机请求
 int cmdCloseFaceBoardReqExt(bool save_file) {
-#if LONG_LIVE
-    if (save_file) {
-        save_files_before_pwd();
-    } else {
-        LOGD("No need to save file before shutdown the device\r\n");
-    }
-    return 0;
-#else
     LOGD("发送关机请求 \r\n");
     char szBuffer[32] = {0};
     char *pop = NULL;
@@ -1160,7 +1135,6 @@ int cmdCloseFaceBoardReqExt(bool save_file) {
     }
 
     return 0;
-#endif
 }
 
 //主控发送: 关机请求
@@ -1227,20 +1201,21 @@ int cmdUserDeleteRsp(uint8_t result) {
     unsigned char MsgLen = 0;
 
     memset(szBuffer, 0, sizeof(szBuffer));
-    pop = szBuffer + sizeof(RESPONSE_HEAD);
+    pop = szBuffer + sizeof(MESSAGE_HEAD);
 
     /*填充消息体*/
-    StrSetUInt8((uint8_t *) pop, CMD_FACE_DELETE_USER);
-    MsgLen += sizeof(uint8_t);
-    pop += sizeof(uint8_t);
+//    StrSetUInt8((uint8_t *) pop, CMD_FACE_DELETE_USER);
+//    MsgLen += sizeof(uint8_t);
+//    pop += sizeof(uint8_t);
     StrSetUInt8((uint8_t *) pop, result);
     MsgLen += sizeof(uint8_t);
     pop += sizeof(uint8_t);
 
     /*填充消息头*/
-    int iTailIndex = RspHead_Packet(
+    int iTailIndex = MsgHead_Packet(
             szBuffer,
             HEAD_MARK,
+            CMD_FACE_DELETE_USER,
             MsgLen);
 
 //  拼装消息尾
@@ -1370,8 +1345,8 @@ int cmdDeleteUserReqProcByHead(unsigned char nHead, unsigned char nMessageLen, c
     int ret = DBManager::getInstance()->deleteRecordByUUID( objUserExtend.UUID );
     LOGD("删除用户操作记录 %d\r\n", ret);
 //    删除用户附加信息
-    ret = UserExtendManager::getInstance()->delUserExtendByUUID( objUserExtend.UUID );
-    LOGD("删除用户附加信息 %d \r\n", ret);
+//    ret = UserExtendManager::getInstance()->delUserExtendByUUID( objUserExtend.UUID );
+//    LOGD("删除用户附加信息 %d \r\n", ret);
 //    删除用户
     vizn_api_status_t status = VIZN_DelUser(NULL, objUserExtend.UUID);
     LOGD("删除用户注册表中用户 %d \r\n", status);
