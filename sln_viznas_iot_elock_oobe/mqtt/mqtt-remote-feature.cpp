@@ -23,11 +23,13 @@
 #include <ctype.h>
 
 int save_remote_feature(char *uuid, char *payload_bin, int payload_bin_len) {
-	LOGD("start save ffd\r\n");
+	LOGD("start save ffd len %d\r\n", payload_bin_len);
 //	DB_save_feature((float*)payload_bin);
     // xshx TODO: save feature to uuid
 //            int featureLen = saveFeatureToUUID(char *uuid, &payload_bin);
-    return 0;
+    int ret = 0;
+//    ret = DB_AddFeature_WithName(uuid, (float*)payload_bin);
+    return ret;
 }
 
 int handleBase64RemoteFeature(char *uuid, unsigned char *payload, char *sign, int length) {
@@ -41,12 +43,12 @@ int handleBase64RemoteFeature(char *uuid, unsigned char *payload, char *sign, in
 		log_info("0x%02x ", (unsigned char)payload_bin[i]);
 	}
 #endif
-	//LOGD("\n");
+	LOGD("\r\n");
 	int payload_bin_len = (payload_len / 4 - 1) * 3 + 1;
 	int ret = base64_decode((const char*)payload, payload_bin);
 	char payload_str[UART_RX_BUF_LEN + UART_RX_BUF_LEN];
 	HexToStr(payload_str, reinterpret_cast<unsigned char*>(&payload_bin), payload_bin_len);
-	LOGD("\nhandleBase64FFD payload_bin<len:%d > ret is %d %s\r\n", payload_bin_len, ret, payload_str);
+	LOGD("handleBase64FFD payload_bin<len:%d > ret is %d %s\r\n", payload_bin_len, ret, payload_str);
 
 
 	if (payload_bin_len != length) {
@@ -68,9 +70,9 @@ int handleBase64RemoteFeature(char *uuid, unsigned char *payload, char *sign, in
 		snprintf((char*)md5_str + i*2, 2+1, "%02x", md5_value[i]);
 	}
 	md5_str[MD5_STR_LEN] = '\0'; // add end
-	LOGD("md5 is %s", md5_str);
+	LOGD("md5 is %s\r\n", md5_str);
 	if (strncmp((const char*)md5_str, sign, MD5_STR_LEN) != 0) {
-		LOGD("verify failed");
+		LOGD("verify failed\r\n");
 		return -1;
 	}
 
@@ -125,6 +127,7 @@ int analyzeRemoteFeature(char *jsonMsg, char *msgId) {
                 msgId, btWifiConfig.bt_mac, (result == 0 ? 0 : 1));
         // NOTE: 此处必须异步操作
         //MessageSend(1883, pub_msg, strlen(pub_msg));
+        LOGD("---pub_msg is %d %s\r\n", strlen(pub_msg), pub_msg);
         SendMsgToMQTT(pub_msg, strlen(pub_msg));
 	}
 
