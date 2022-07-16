@@ -685,7 +685,7 @@ static void uartrecv_task(void *pvParameters)
         if ( error == kStatus_Success)
         {
             if (current_recv_line_len >= MAX_MSG_LEN_OF_LINE) {
-            	LOGD("\r\n--- receive line length is %d greater than 255, discard---\r\n", current_recv_line_len);
+            	LOGD("\r\n--- receive line length is %d greater than %d, discard---\r\n", current_recv_line_len, MAX_MSG_LEN_OF_LINE);
             } else {
             	char lastest_char = recv_buffer8[0];
             	recv_msg_lines[current_recv_line][current_recv_line_len++] = lastest_char;
@@ -756,7 +756,7 @@ int handlePayload(char *payload, char *msg_idStr) {
 
         char payload_str[MQTT_AT_LEN];
         HexToStr(payload_str, reinterpret_cast<unsigned char*>(&payload_bin), payload_bin_len);
-        LOGD("\ndecode payload_bin<len:%d %s> ret1 is %d", payload_bin_len, payload_str, ret1);
+        LOGD("decode payload_bin<len:%d %s> ret1 is %d\r\n", payload_bin_len, payload_str, ret1);
 
         // TODO:
         unsigned char x7_cmd = payload_bin[0];
@@ -925,6 +925,7 @@ int getFeatureJson(char *msgId, char *uuid, char featureJson[]) {
 
 int SendMsgToMQTT(char *mqtt_payload, int len) {
     vSetFakeCommandBuffer(mqtt_payload);
+    return 0;
     // it fianlly execute doSendMsgToMQTT
 }
 
@@ -1264,7 +1265,7 @@ int handleJsonMsg(char *jsonMsg) {
 	data = cJSON_GetObjectItem(mqtt, "data");
 	if (data != NULL) { 
 		dataStr = cJSON_GetStringValue(data);
-		LOGD("---JSON data is %s\n", dataStr);
+		LOGD("---JSON data is %s\r\n", dataStr);
 		if ((dataStr != NULL) && (strlen(dataStr) > 0)) {
 			// 来源于服务器
 			if (strncmp(dataStr, "sf:", 3) == 0) {
@@ -1473,7 +1474,7 @@ int analyzeMQTTMsgInternal(char *msg) {
 				strncpy(payload, data, data_len);
 				payload[data_len] = '\0';
 				ana_timeout_count = 0;
-				LOGD("payload is %s len is %d\n", payload, strlen(payload));
+				LOGD("payload is %s len is %d\r\n", payload, strlen(payload));
 				int ret = handleJsonMsg(payload);
 				if (ret < 0)  {
 					result = -3; // command fail
