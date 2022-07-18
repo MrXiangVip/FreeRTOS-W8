@@ -1421,7 +1421,7 @@ int analyzeMQTTMsgInternal(char *msg) {
 #if	REMOTE_FEATURE != 0
                 // 请求上传feature
                 char *rfr_topic= get_sub_topic_feature_request();
-                LOGD("analyze rfr_topic %s topic %s", rfr_topic, topic);
+                LOGD("analyze rfr_topic %s topic %s\r\n", rfr_topic, topic);
                 if (strncmp(topic, rfr_topic, strlen(rfr_topic)) == 0) {
                     if (data[0] == '{') {
                         memset(g_rfd_data, '\0', sizeof(g_rfd_data));
@@ -1446,7 +1446,7 @@ int analyzeMQTTMsgInternal(char *msg) {
 
                 // 下载feature到设备
                 char *rfd_topic= get_sub_topic_feature_download();
-                LOGD("analyze rfd_topic %s topic %s", rfd_topic, topic);
+                LOGD("analyze rfd_topic %s topic %s\r\n", rfd_topic, topic);
 				if (strncmp(topic, rfd_topic, strlen(rfd_topic)) == 0) {
 					if (data[0] == '{') {
 						memset(g_rfd_data, '\0', sizeof(g_rfd_data));
@@ -1498,6 +1498,16 @@ int analyzeMQTTMsgInternal(char *msg) {
 	// char *data = "+MQTTSUBRECV:0,\"testtopic\",26,{ \"msg\": \"Hello, World!\" }";
 
 	return result;
+}
+
+void testFeatureDownload(char *featureJson) {
+    char msgId[MQTT_AT_LEN];
+    memset(msgId, '\0', MQTT_AT_LEN);
+//    LOGD("testFeatureDownload %s\r\n", featureJson);
+    LOGD("testFeatureDownload %d\r\n", strlen(featureJson));
+    int ret = analyzeRemoteFeature(featureJson, (char*)&msgId);
+    LOGD("testFeatureDownload ret %d\r\n", ret);
+    return;
 }
 
 static int is_handling_line = 0;
