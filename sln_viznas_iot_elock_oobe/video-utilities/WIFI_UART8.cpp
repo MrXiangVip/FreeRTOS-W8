@@ -185,10 +185,11 @@ void freePointer(char **p) {
 
 
 //10 MAC + 8 tv_sec + 1 random
+#define MSG_ID_LEN 20
 #define MSG_BT_MAC_LEN	10
 char *gen_msgId() {
-    char *msgId = (char *) pvPortMalloc(64);
-    memset(msgId, '\0', 64);
+    char *msgId = (char *) pvPortMalloc(MSG_ID_LEN + 1);
+    memset(msgId, '\0', MSG_ID_LEN + 1);
     // mac
     struct timeval tv;
     tv.tv_sec = ws_systime;
@@ -198,7 +199,7 @@ char *gen_msgId() {
     // long id = tv.tv_sec*1000000 + tv.tv_usec;
     // sprintf(msgId, "%s%d%06d%03d", btWifiConfig.wifi_mac, tv.tv_sec, tv.tv_usec, random_gen);
     // sprintf(msgId, "%s%d%d", btWifiConfig.wifi_mac, tv.tv_sec, random_gen);
-    long a = tv.tv_sec % 100000000;
+    long a = tv.tv_sec % 1000000000;
     char bt_mac_string[MSG_BT_MAC_LEN + 1];
 	memset(bt_mac_string, '\0', MSG_BT_MAC_LEN + 1);
 	memcpy(bt_mac_string, btWifiConfig.bt_mac + 2, MSG_BT_MAC_LEN);
@@ -213,7 +214,7 @@ char *gen_msgId() {
         random_gen = 1;
     }
     //LOGD("gen_msgId random_gen is %d\r\n", random_gen);
-    sprintf(msgId, "%s%08d%d", bt_mac_string, a, random_gen);
+    sprintf(msgId, "%s%09d%d", bt_mac_string, a, random_gen);
     //LOGD("gen_msgId msgId is %s\r\n", msgId);
     return msgId;
 }
@@ -960,6 +961,9 @@ int doSendMsgToMQTT(char *mqtt_payload, int len) {
                         msgId, btWifiConfig.bt_mac, wifi_rssi, battery_level, g_heartbeat_index++,
                         getFirmwareVersion());
             }
+            sprintf(pub_msg,
+                    "{\\\"msgId\\\":\\\"%s\\\"}",
+                    msgId);
             freePointer(&msgId);
             pub_topic = get_pub_topic_heart_beat();
             int ret = quickPublishMQTTWithPriority(pub_topic, pub_msg, 1);
@@ -1787,6 +1791,21 @@ int uploadRecordImage(Record *record, bool online) {
 	}
 }
 
+void listRecords() {
+    LOGD("List Records start\r\n");
+    list<Record*> records = DBManager::getInstance()->getAllUnuploadRecord();
+    LOGD("idx %8s %20s %6s %16s %10s %6s %32s \r\n", "id", "UUID", "action", "image", "timestamp", "upload", "data");
+    // 第一步，只上传未上传的注册记录以及图片，涉及到可能存在的重复上传问题: 注册优先
+    list <Record*>::iterator it;
+    //for (int i = 0; i < recordNum; i++) {
+    int i = 1;
+    for ( it = records.begin( ); it != records.end( ); it++ ) {
+        Record *record = (Record *) *it;
+        LOGD("%3d %8d %20s %06d %d %s %6d %s\r\n", i++, record->ID, record->UUID, record->action, record->time_stamp,
+             record->image_path, record->upload, record->data);
+    }
+}
+
 int uploadRecords() {
     LOGD("上传历史记录 \r\n");
 	g_is_auto_uploading = 1;
@@ -1975,7 +1994,7 @@ int uploadOasisFeature(Record *record, bool online) {
 }
 #endif
 
-int MAX_COUNT = 5;
+int MAX_COUNT = 35;
 
 static void msghandle_task(void *pvParameters)
 {
@@ -2017,7 +2036,7 @@ static void msghandle_task(void *pvParameters)
                         // 如果远程开锁完成或者其他指令执行完成，并且上传也执行完成了
                         if(g_is_shutdown == 0) {
 #if LONG_LIVE
-                            save_files_before_pwd();
+//                            save_files_before_pwd();
 #else
 							CloseLcdBackground();
 							LOGD("need to notify command executed 1\r\n");
@@ -2053,7 +2072,7 @@ static void msghandle_task(void *pvParameters)
 				// notifyShutdown();
 				if(g_is_shutdown == 0) {
 #if LONG_LIVE
-                    save_files_before_pwd();
+//                    save_files_before_pwd();
 #else
 					CloseLcdBackground();
 					LOGD("need to notify command executed 2\r\n");

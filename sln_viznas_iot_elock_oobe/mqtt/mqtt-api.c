@@ -286,7 +286,8 @@ int quickPublishOasisMQTT(const char* topic, const char* data) {
 extern int g_priority;
 int quickPublishMQTTWithPriority(const char* topic, const char* data, int priority) {
 	g_priority = priority;
-	int ret = publishMQTT2(MQTT_LINK_ID_DEFAULT, topic, data, MQTT_QOS_AT_LEAST_ONCE, MQTT_RETAIN_OFF);
+//	int ret = publishMQTT2(MQTT_LINK_ID_DEFAULT, topic, data, MQTT_QOS_AT_LEAST_ONCE, MQTT_RETAIN_OFF);
+    int ret = publishRawMQTT(MQTT_LINK_ID_DEFAULT, topic, (char*)data, strlen(data), MQTT_QOS_AT_LEAST_ONCE, MQTT_RETAIN_OFF);
 	g_priority = 0;
 	return ret;
 }

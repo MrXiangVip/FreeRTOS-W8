@@ -50,6 +50,7 @@ extern int run_at_raw_cmd(char const *cmd, char *data, int data_len, int retry_t
 extern int SendMsgToMQTT(char *mqtt_payload, int len);
 extern int doSendMsgToMQTT(char *mqtt_payload, int len);
 extern void testFeatureDownload(char *);
+extern void listRecords();
 
 extern char *gen_msgId();
 extern void freePointer(char **p);

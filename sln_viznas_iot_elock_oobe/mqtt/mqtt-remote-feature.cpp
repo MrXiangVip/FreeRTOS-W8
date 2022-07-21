@@ -24,11 +24,11 @@
 
 int save_remote_feature(char *uuid, char *payload_bin, int payload_bin_len) {
 	LOGD("start save ffd len %d\r\n", payload_bin_len);
-//	DB_save_feature((float*)payload_bin);
+	DB_save_feature((float*)payload_bin);
     // xshx TODO: save feature to uuid
 //            int featureLen = saveFeatureToUUID(char *uuid, &payload_bin);
     int ret = 0;
-//    ret = DB_AddFeature_WithName(uuid, (float*)payload_bin);
+    // ret = DB_AddFeature_WithName(uuid, (float*)payload_bin);
     return ret;
 }
 
@@ -127,7 +127,7 @@ int analyzeRemoteFeature(char *jsonMsg, char *msgId) {
                 msgId, btWifiConfig.bt_mac, (result == 0 ? 0 : 1));
         // NOTE: 此处必须异步操作
         //MessageSend(1883, pub_msg, strlen(pub_msg));
-        LOGD("---pub_msg is %d %s\r\n", strlen(pub_msg), pub_msg);
+        LOGD("----pub_msg is %d %s\r\n", strlen(pub_msg), pub_msg);
         SendMsgToMQTT(pub_msg, strlen(pub_msg));
 	}
 
