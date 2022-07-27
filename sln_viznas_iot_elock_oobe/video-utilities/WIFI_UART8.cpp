@@ -512,8 +512,8 @@ static void mqttinit_task(void *pvParameters) {
     vTaskDelay(pdMS_TO_TICKS(300));
 
     char lwtMsg[50];
-    // sprintf(lwtMsg, "{\\\"username\\\":\\\"%s\\\"\\,\\\"state\\\":\\\"0\\\"}", btWifiConfig.wifi_mac);
-    //sprintf(lwtMsg, "{\\\"username\\\":\\\"%s\\\"\\,\\\"state\\\":\\\"0\\\"}", btWifiConfig.bt_mac);
+    // sprintf(lwtMsg, "{\"username\":\"%s\",\"state\":\"0\"}", btWifiConfig.wifi_mac);
+    //sprintf(lwtMsg, "{\"username\":\"%s\",\"state\":\"0\"}", btWifiConfig.bt_mac);
     sprintf(lwtMsg, "{\\\"username\\\":\\\"%s\\\"\\,\\\"state\\\":\\\"0\\\"}", "7CDFA102AB68");
 
     char *pub_topic_last_will = get_pub_topic_last_will();
@@ -785,7 +785,7 @@ int handlePayload(char *payload, char *msg_idStr) {
 
                     char pub_msg[80];
                     memset(pub_msg, '\0', 80);
-                    sprintf(pub_msg, "%s{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"result\\\":0}",
+                    sprintf(pub_msg, "%s{\"msgId\":\"%s\",\"mac\":\"%s\",\"result\":0}",
                             DEFAULT_HEADER, msg_idStr, btWifiConfig.bt_mac);
                     // NOTE: 此处必须异步操作
                     //MessageSend(1883, pub_msg, strlen(pub_msg));
@@ -804,7 +804,7 @@ int handlePayload(char *payload, char *msg_idStr) {
                 // 失败
                 char pub_msg[80];
                 memset(pub_msg, '\0', 80);
-                sprintf(pub_msg, "%s{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"result\\\":1}",
+                sprintf(pub_msg, "%s{\"msgId\":\"%s\",\"mac\":\"%s\",\"result\":1}",
                         DEFAULT_HEADER, msg_idStr, btWifiConfig.bt_mac);
                 // NOTE: 此处必须异步操作
                 //MessageSend(1883, pub_msg, strlen(pub_msg));
@@ -818,9 +818,9 @@ int handlePayload(char *payload, char *msg_idStr) {
             char pub_msg[80];
             memset(pub_msg, '\0', 80);
             // sprintf(pub_msg, "%s{\"data\":\"%s\"}", DEFAULT_HEADER, "Resource Busy");
-            // sprintf(pub_msg, "%s{\\\"msgId\\\":\\\"%s\\\", }", DEFAULT_HEADER, "Resource Busy");
+            // sprintf(pub_msg, "%s{\"msgId\":\"%s\", }", DEFAULT_HEADER, "Resource Busy");
             // 设备繁忙
-            sprintf(pub_msg, "%s{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"result\\\":3}", DEFAULT_HEADER,
+            sprintf(pub_msg, "%s{\"msgId\":\"%s\",\"mac\":\"%s\",\"result\":3}", DEFAULT_HEADER,
                     msg_idStr, btWifiConfig.bt_mac);
             // NOTE: 此处必须异步操作
             //MessageSend(1883, pub_msg, strlen(pub_msg));
@@ -915,7 +915,7 @@ int getFeatureJson(char *msgId, char *uuid, char featureJson[]) {
     md5_str[MD5_STR_LEN] = '\0'; // add end
 
 //    sprintf(featureJson,
-//            "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"u\\\":\\\"%s\\\"\\,\\\"s\\\":%s\\,\\\"l\\\":%d\\,\\\"d\\\":\\\"%s\\\"}",
+//            "{\"msgId\":\"%s\",\"u\":\"%s\",\"s\":%s,\"l\":%d,\"d\":\"%s\"}",
 //            msgId, uuid, md5_str, featureSize, featureBase64);
     sprintf(featureJson,
             "{\"msgId\":\"%s\",\"u\":\"%s\",\"s\":%s,\"l\":%d,\"d\":\"%s\"}",
@@ -949,20 +949,20 @@ int doSendMsgToMQTT(char *mqtt_payload, int len) {
         if (msg != NULL && strncmp(msg, "heartbeat", 9) == 0) {
             char *msgId = gen_msgId();
             if (versionConfig.sys_ver != NULL && strlen(versionConfig.sys_ver) > 0) {
-                // sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"btmac\\\":\\\"%s\\\"\\,\\\"wifi_rssi\\\":%s\\,\\\"battery\\\":%d\\,\\\"version\\\":\\\"%s\\\"}", msgId, btWifiConfig.wifi_mac, btWifiConfig.bt_mac, wifi_rssi, battery_level, versionConfig.sys_ver);
+                // sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"btmac\":\"%s\",\"wifi_rssi\":%s,\"battery\":%d,\"version\":\"%s\"}", msgId, btWifiConfig.wifi_mac, btWifiConfig.bt_mac, wifi_rssi, battery_level, versionConfig.sys_ver);
                 sprintf(pub_msg,
-                        "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"wifi_rssi\\\":%s\\,\\\"battery\\\":%d\\,\\\"index\\\":%d\\,\\\"version\\\":\\\"%s\\\"}",
+                        "{\"msgId\":\"%s\",\"mac\":\"%s\",\"wifi_rssi\":%s,\"battery\":%d,\"index\":%d,\"version\":\"%s\"}",
                         msgId, btWifiConfig.bt_mac, wifi_rssi, battery_level, g_heartbeat_index++,
                         versionConfig.sys_ver);
             } else {
-                // sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"btmac\\\":\\\"%s\\\"\\,\\\"wifi_rssi\\\":%s\\,\\\"battery\\\":%d\\,\\\"version\\\":\\\"%s\\\"}", msgId, btWifiConfig.wifi_mac, btWifiConfig.bt_mac, wifi_rssi, battery_level, getFirmwareVersion());
+                // sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"btmac\":\"%s\",\"wifi_rssi\":%s,\"battery\":%d,\"version\":\"%s\"}", msgId, btWifiConfig.wifi_mac, btWifiConfig.bt_mac, wifi_rssi, battery_level, getFirmwareVersion());
                 sprintf(pub_msg,
-                        "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"wifi_rssi\\\":%s\\,\\\"battery\\\":%d\\,\\\"index\\\":%d\\,\\\"version\\\":\\\"%s\\\"}",
+                        "{\"msgId\":\"%s\",\"mac\":\"%s\",\"wifi_rssi\":%s,\"battery\":%d,\"index\":%d,\"version\":\"%s\"}",
                         msgId, btWifiConfig.bt_mac, wifi_rssi, battery_level, g_heartbeat_index++,
                         getFirmwareVersion());
             }
             sprintf(pub_msg,
-                    "{\\\"msgId\\\":\\\"%s\\\"}",
+                    "{\"msgId\":\"%s\"}",
                     msgId);
             freePointer(&msgId);
             pub_topic = get_pub_topic_heart_beat();
@@ -983,7 +983,7 @@ int doSendMsgToMQTT(char *mqtt_payload, int len) {
 			return ret;
 		} else if (msg != NULL && strncmp(msg, "ota", 3) == 0) {
 			char *msgId = gen_msgId();
-			sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"curr_ver\\\":\\\"%s\\\"}", msgId, versionConfig.oasis_ver);
+			sprintf(pub_msg, "{\"msgId\":\"%s\",\"curr_ver\":\"%s\"}", msgId, versionConfig.oasis_ver);
 			freePointer(&msgId);
 			char *pub_topic_ota_request = get_pub_topic_ota_request();
 			int ret = quickPublishMQTTWithPriority(pub_topic_ota_request, pub_msg, 1);
@@ -995,8 +995,8 @@ int doSendMsgToMQTT(char *mqtt_payload, int len) {
             return ret;
         } else if (msg != NULL && strncmp(msg, "reconnect", 9) == 0) {
             char lwtMsg[50];
-            // sprintf(lwtMsg, "{\\\"username\\\":\\\"%s\\\"\\,\\\"state\\\":\\\"0\\\"}", btWifiConfig.wifi_mac);
-            sprintf(lwtMsg, "{\\\"username\\\":\\\"%s\\\"\\,\\\"state\\\":\\\"0\\\"}", btWifiConfig.bt_mac);
+            // sprintf(lwtMsg, "{\"username\":\"%s\",\"state\":\"0\"}", btWifiConfig.wifi_mac);
+            sprintf(lwtMsg, "{\"username\":\"%s\",\"state\":\"0\"}", btWifiConfig.bt_mac);
             char *pub_topic_last_will = get_pub_topic_last_will();
             int ret = quickConnectMQTT(mqttConfig.client_id, mqttConfig.username, mqttConfig.password,
                                        mqttConfig.server_ip, mqttConfig.server_port, pub_topic_last_will, lwtMsg);
@@ -1067,15 +1067,15 @@ int doSendMsgToMQTT(char *mqtt_payload, int len) {
                 // 远程删除用户成功
                 if ((int) (char) (mqtt_payload[3]) == 0x00) {
                     printf("---- delete/clear user successfully\n");
-                    // sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"result\\\":\\\"%d\\\"}", mqtt_msg_id, btWifiConfig.wifi_mac, 0);
-                    sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"result\\\":\\\"%d\\\"}",
+                    // sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"result\":\"%d\"}", mqtt_msg_id, btWifiConfig.wifi_mac, 0);
+                    sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"result\":\"%d\"}",
                             mqtt_msg_id, btWifiConfig.bt_mac, 0);
                 } else {
                     // 远程删除用户失败
                     printf("---- delete/clear user fail\n");
-                    // sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mqtt_payloadult\\\":\\\"%d\\\"\\}", mqtt_msg_id, 1);
-                    // sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"result\\\":\\\"%d\\\"}", mqtt_msg_id, btWifiConfig.wifi_mac, 500);
-                    sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"result\\\":\\\"%d\\\"}",
+                    // sprintf(pub_msg, "{\"msgId\":\"%s\",\"mqtt_payloadult\":\"%d\"}", mqtt_msg_id, 1);
+                    // sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"result\":\"%d\"}", mqtt_msg_id, btWifiConfig.wifi_mac, 500);
+                    sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"result\":\"%d\"}",
                             mqtt_msg_id, btWifiConfig.bt_mac, 1);
                 }
                 int ret = quickPublishMQTTWithPriority(pub_topic, pub_msg, 1);
@@ -1097,9 +1097,9 @@ int doSendMsgToMQTT(char *mqtt_payload, int len) {
 				LOGD("---- remote unlock door mode");
 				char *msgId = gen_msgId();
 				if (versionConfig.sys_ver!= NULL && strlen(versionConfig.sys_ver) > 0) {
-					sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"wifi_rssi\\\":%s\\,\\\"battery\\\":%d\\,\\\"index\\\":%d\\,\\\"version\\\":\\\"%s\\\"}", msgId, btWifiConfig.bt_mac, wifi_rssi, battery_level, -1, versionConfig.sys_ver);
+					sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"wifi_rssi\":%s,\"battery\":%d,\"index\":%d,\"version\":\"%s\"}", msgId, btWifiConfig.bt_mac, wifi_rssi, battery_level, -1, versionConfig.sys_ver);
 				} else {
-					sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"wifi_rssi\\\":%s\\,\\\"battery\\\":%d\\,\\\"index\\\":%d\\,\\\"version\\\":\\\"%s\\\"}", msgId, btWifiConfig.bt_mac, wifi_rssi, battery_level, -1, getFirmwareVersion());
+					sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"wifi_rssi\":%s,\"battery\":%d,\"index\":%d,\"version\":\"%s\"}", msgId, btWifiConfig.bt_mac, wifi_rssi, battery_level, -1, getFirmwareVersion());
 				}
 				freePointer(&msgId);
 				pub_topic = get_pub_topic_heart_beat();
@@ -1111,14 +1111,14 @@ int doSendMsgToMQTT(char *mqtt_payload, int len) {
                 // 远程开锁成功
                 if ((int) (char) (mqtt_payload[3]) == 0x00) {
                 	LOGD("---- unlock door successfully\n");
-                    // sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"result\\\":\\\"%d\\\"}", mqtt_msg_id, btWifiConfig.wifi_mac, 0);
-                    sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"result\\\":\\\"%d\\\"}",
+                    // sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"result\":\"%d\"}", mqtt_msg_id, btWifiConfig.wifi_mac, 0);
+                    sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"result\":\"%d\"}",
                             mqtt_msg_id, btWifiConfig.bt_mac, 0);
                 } else {
                     // 远程开锁失败
                 	LOGD("---- unlock door fail\n");
-                    // sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"result\\\":\\\"%d\\\"}", mqtt_msg_id, btWifiConfig.wifi_mac, 500);
-                    sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"result\\\":\\\"%d\\\"}",
+                    // sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"result\":\"%d\"}", mqtt_msg_id, btWifiConfig.wifi_mac, 500);
+                    sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"result\":\"%d\"}",
                             mqtt_msg_id, btWifiConfig.bt_mac, 1);
                 }
                 int ret = quickPublishMQTTWithPriority(pub_topic, pub_msg, 1);
@@ -1132,14 +1132,14 @@ int doSendMsgToMQTT(char *mqtt_payload, int len) {
                 // 远程设置合同时间成功
                 if ((int) (char) (mqtt_payload[3]) == 0x00) {
                 	LOGD("---- setup contract successfully\n");
-                    // sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"result\\\":\\\"%d\\\"}", mqtt_msg_id, btWifiConfig.wifi_mac, 0);
-                    sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"result\\\":\\\"%d\\\"}",
+                    // sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"result\":\"%d\"}", mqtt_msg_id, btWifiConfig.wifi_mac, 0);
+                    sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"result\":\"%d\"}",
                             mqtt_msg_id, btWifiConfig.bt_mac, 0);
                 } else {
                     // 远程设置合同时间失败
                 	LOGD("---- setup contract fail\n");
-                    // sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"result\\\":\\\"%d\\\"}", mqtt_msg_id, btWifiConfig.wifi_mac, 500);
-                    sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"result\\\":\\\"%d\\\"}",
+                    // sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"result\":\"%d\"}", mqtt_msg_id, btWifiConfig.wifi_mac, 500);
+                    sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"result\":\"%d\"}",
                             mqtt_msg_id, btWifiConfig.bt_mac, 1);
                 }
                 int ret = quickPublishMQTTWithPriority(pub_topic, pub_msg, 1);
@@ -1201,9 +1201,9 @@ int doSendMsgToMQTT(char *mqtt_payload, int len) {
                     int unlockStatus = (int) (char) mqtt_payload[17];
                     LOGD("unlock record uid %s, unlockType %d, unlockTime %u, batteryLevel %d, unlockStatus %d\r\n",
                              uid, unlockType, unlockTime, batteryLevel, unlockStatus);
-                    // sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"userId\\\":\\\"%s\\\"\\, \\\"unlockMethod\\\":%d\\,\\\"unlockTime\\\":%u\\,\\\"batteryPower\\\":%d\\,\\\"unlockState\\\":%d}", gen_msgId(), btWifiConfig.wifi_mac, uid, unlockType, unlockTime, batteryLevel, unlockStatus);
+                    // sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"userId\":\"%s\", \"unlockMethod\":%d,\"unlockTime\":%u,\"batteryPower\":%d,\"unlockState\":%d}", gen_msgId(), btWifiConfig.wifi_mac, uid, unlockType, unlockTime, batteryLevel, unlockStatus);
                     sprintf(pub_msg,
-                            "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"userId\\\":\\\"%s\\\"\\, \\\"unlockMethod\\\":%d\\,\\\"unlockTime\\\":%u\\,\\\"batteryPower\\\":%d\\,\\\"unlockState\\\":%d}",
+                            "{\"msgId\":\"%s\",\"mac\":\"%s\",\"userId\":\"%s\", \"unlockMethod\":%d,\"unlockTime\":%u,\"batteryPower\":%d,\"unlockState\":%d}",
                             gen_msgId(), btWifiConfig.bt_mac, uid, unlockType, unlockTime, batteryLevel, unlockStatus);
                     pub_topic = get_pub_topic_record_request();
                     int ret = quickPublishMQTTWithPriority(pub_topic, pub_msg, 1);
@@ -1279,7 +1279,7 @@ int handleJsonMsg(char *jsonMsg) {
 				} else {
 					char pub_msg[80];
 					memset(pub_msg, '\0', 80);
-					sprintf(pub_msg, "%s{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"result\\\":4}", DEFAULT_HEADER, msg_idStr, btWifiConfig.bt_mac);
+					sprintf(pub_msg, "%s{\"msgId\":\"%s\",\"mac\":\"%s\",\"result\":4}", DEFAULT_HEADER, msg_idStr, btWifiConfig.bt_mac);
 					// NOTE: 此处必须异步操作
 					//MessageSend(1883, pub_msg, strlen(pub_msg));
                     SendMsgToMQTT(pub_msg, strlen(pub_msg));
@@ -1637,7 +1637,7 @@ int uploadRecord(char *msgId, Record *record) {
 //	if( action_upload == 0x1000  ){// 注册
 	if( action == FACE_TEMPER  ){// 测温的记录
         LOGD("识别测温记录 %d \r\n",record->ID);
-        sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"userId\\\":\\\"%s\\\"\\, \\\"type\\\":%d\\,\\\"time\\\":%d\\,\\\"data\\\":\\\"%s\\\"}", msgId,  record->UUID, type, record->time_stamp,  data /*record->status*/);
+        sprintf(pub_msg, "{\"msgId\":\"%s\",\"userId\":\"%s\", \"type\":%d,\"time\":%d,\"data\":\"%s\"}", msgId,  record->UUID, type, record->time_stamp,  data /*record->status*/);
         pub_topic = get_pub_topic_data_report();
 
     }else{//识别
@@ -1645,7 +1645,7 @@ int uploadRecord(char *msgId, Record *record) {
         uint8_t power = record->data[0];
         uint8_t power2 = record->data[1];
         int status=0;
-        sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"userId\\\":\\\"%s\\\"\\, \\\"type\\\":%d\\,\\\"time\\\":%d\\,\\\"batteryA\\\":%d\\,\\\"batteryB\\\":%d\\,\\\"result\\\":%d}", msgId, btWifiConfig.bt_mac, record->UUID, action, record->time_stamp, power, power2, status);
+        sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"userId\":\"%s\", \"type\":%d,\"time\":%d,\"batteryA\":%d,\"batteryB\":%d,\"result\":%d}", msgId, btWifiConfig.bt_mac, record->UUID, action, record->time_stamp, power, power2, status);
         pub_topic = get_pub_topic_record_request();
 
     }
@@ -2116,9 +2116,9 @@ static void send_heartbeat_task(void *pvParameters)
             if ((mqtt_init_done == 1) && (bPubOasisImage == false) && (g_is_uploading_data == 0)) {
                 char *msgId = gen_msgId();
                 memset(pub_msg, '\0', MQTT_AT_LONG_LEN);
-                // sprintf(pub_msg, "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"btmac\\\":\\\"%s\\\"\\,\\\"wifi_rssi\\\":%s\\,\\\"battery\\\":%d\\,\\\"version\\\":\\\"%s\\\"}", msgId, btWifiConfig.wifi_mac, btWifiConfig.bt_mac, wifi_rssi, battery_level, getFirmwareVersion());
+                // sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"btmac\":\"%s\",\"wifi_rssi\":%s,\"battery\":%d,\"version\":\"%s\"}", msgId, btWifiConfig.wifi_mac, btWifiConfig.bt_mac, wifi_rssi, battery_level, getFirmwareVersion());
                 sprintf(pub_msg,
-                        "{\\\"msgId\\\":\\\"%s\\\"\\,\\\"mac\\\":\\\"%s\\\"\\,\\\"wifi_rssi\\\":%s\\,\\\"battery\\\":%d\\,\\\"index\\\":%d\\,\\\"version\\\":\\\"%s\\\"}",
+                        "{\"msgId\":\"%s\",\"mac\":\"%s\",\"wifi_rssi\":%s,\"battery\":%d,\"index\":%d,\"version\":\"%s\"}",
                         msgId, btWifiConfig.bt_mac, wifi_rssi, battery_level, g_heartbeat_index++,
                         getFirmwareVersion());
                 freePointer(&msgId);
