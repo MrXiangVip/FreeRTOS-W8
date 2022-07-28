@@ -23,7 +23,7 @@
 static FeatureMap s_FeatureMap;
 static FeatureMap s_FeatureMap_bak;
 
-#define SDRAM_DB 1
+#define SDRAM_DB 0
 #if SDRAM_DB
 static FeatureItem s_FeatureItem[FEATUREDATA_MAX_COUNT];
 #endif
@@ -702,11 +702,11 @@ bool FeatureDB::get_autosave()
 /*******************************************************************************
  * Definitions
  *******************************************************************************/
-#define SDRAM_DB 1
+#define SDRAM_DB 0
 
 #ifdef TEST_DB
 #undef SDRAM_DB
-#define SDRAM_DB 1
+#define SDRAM_DB 0
 #define FLASH_SECTOR_SIZE 0x1000
 #endif
 /*******************************************************************************
@@ -1063,16 +1063,19 @@ int FeatureDB::add_feature(uint16_t id, const std::string name, float *feature)
     }
     s_FeatureMap.magic[index] = FEATUREDATA_MAGIC_VALID;
 
-    FeatureItem item_t;
-    item_t.id = id;
-    item_t.index = index;
-    strcpy(item_t.name, name.c_str());
-    memcpy(item_t.feature, feature, OASISLT_getFaceItemSize());
+    FeatureItem *item_t = (FeatureItem*)pvPortMalloc(sizeof(FeatureItem));
+    LOGD("[FeatureDB]: add feature 1 featureItem %d faceSize %d\r\n", sizeof(FeatureItem), OASISLT_getFaceItemSize());
+    item_t->id = id;
+    item_t->index = index;
+    strcpy(item_t->name, name.c_str());
+    LOGD("[FeatureDB]: add feature name %s\r\n", item_t->name);
+    memcpy(item_t->feature, feature, OASISLT_getFaceItemSize());
 #if SDRAM_DB
-    memcpy(&s_FeatureItem[index], &item_t, sizeof(item_t));
+    memcpy(&s_FeatureItem[index], item_t, sizeof(FeatureItem));
 #endif
-    Flash_FacerecFsUpdateItem(index,&item_t, false);
+    Flash_FacerecFsUpdateItem(index,item_t, false);
     Flash_FacerecFsUpdateMapMagic(index, &s_FeatureMap, false);
+    vPortFree(item_t);
     return 0;
 }
 
