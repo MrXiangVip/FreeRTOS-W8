@@ -63,7 +63,7 @@
 const char *to_send               = "AT\r\n";//"FreeRTOS LPUART driver example!\r\n";
 const char *send_ring_overrun     = "\r\nAT\r\n";
 const char *send_hardware_overrun = "\r\nAT\r\n";
-uint8_t background_buffer8[256];
+static uint8_t background_buffer8[256];
 
 #define TIMEOUT_TEST
 #undef TIMEOUT_TEST
@@ -162,10 +162,10 @@ extern int receive_boot_mode;
 bool bOasisRecordUpload = false;
 extern bool g_is_save_file;
 extern int pressure_test;
-lpuart_rtos_handle_t handle8;
-struct _lpuart_handle t_handle8;
+static lpuart_rtos_handle_t handle8;
+static struct _lpuart_handle t_handle8;
 
-lpuart_rtos_config_t lpuart_config8 = {
+static lpuart_rtos_config_t lpuart_config8 = {
     .baudrate    = 115200,
     .parity      = kLPUART_ParityDisabled,
     .stopbits    = kLPUART_OneStopBit,
