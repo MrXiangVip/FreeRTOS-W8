@@ -426,14 +426,6 @@ static void mqttinit_task(void *pvParameters) {
     }
 #else
     int result = AT_CMD_RESULT_OK;
-//    result = run_at_cmd("AT+GMR\r\n", 1, 1000);
-//    LOGD("\r\nrun AT+GMR result %d\r\n", result);
-//    if (AT_CMD_RESULT_OK != result) {
-//    	LOGD("\r\n%sFailed to get WiFi module version\r\n", logTag);
-//    	// TODO: try to notify MCU
-//    	vTaskDelete(NULL);
-//    	return;
-//    }
     if (strncmp("true", btWifiConfig.need_reset, 4) == 0 ) {
         result = run_at_cmd("AT+RST", 2, 1200);
         LOGD("run AT+RST result %d\r\n", result);
@@ -444,9 +436,7 @@ static void mqttinit_task(void *pvParameters) {
             vTaskDelete(NULL);
             return;
         }
-        //cmdSysInitOKSyncReq(SYS_VERSION);
 
-    //    LOGD("\r\n%sSuccess to reset WiFi module\r\n", logTag);
         for (int i = 0; i < 10; i++) {
             if (wifi_ready == 1) {
                 LOGD("%sSuccess to reset WiFi module\r\n", logTag);
@@ -720,13 +710,7 @@ static void uartrecv_task(void *pvParameters)
             	}
             }
          }
-    //        LOGD("%s receive %d bytes and message is %s\r\n",logTag, n, recv_buffer8);
-    //        PRINTF("\r\n--- receive bytes ---\r\n");
-    //        for (int i = 0; i < sizeof(recv_buffer8); i ++) {
-    //        	PRINTF("0x%02x ", recv_buffer8[i]);
-    //        }
-    //        PRINTF("\r\n--- receive end ---\r\n");
-         
+
         if (error == kStatus_LPUART_RxHardwareOverrun)
         {
             /* Notify about hardware buffer overrun */
@@ -739,11 +723,8 @@ static void uartrecv_task(void *pvParameters)
         }
     } while (1); //(kStatus_Success == error);
     LPUART_RTOS_Deinit(&handle8);
-    vTaskSuspend(NULL);
+    vTaskDelete(NULL);
 
-//    do {
-//    	LOGD("\r\n%s run uartrecv_task\r\n", logTag);
-//    } while (1);
     LOGD("\r\n%s end...\r\n", logTag);
 }
 
@@ -2086,16 +2067,6 @@ static void msghandle_task(void *pvParameters)
         }
         count++;
 
-//    	LOGD("\r\n%s current_handle_line is %d current_recv_line is %d...\r\n", logTag, current_handle_line, current_recv_line);
-
-//    	handle_line();
-
-//    	if (current_handle_line != current_recv_line) {
-//    		PRINTF("line %d is : %s\r\n", current_handle_line, recv_msg_lines[current_handle_line]);
-//    		// TODO:handle line
-////    		memset(recv_msg_lines[current_handle_line], '\0', MAX_MSG_LEN_OF_LINE);
-//    		// TODO:end
-//    	}
     } while (1);
     vTaskDelete(NULL);
     LOGD("\r\n%s end...\r\n", logTag);
@@ -2188,18 +2159,12 @@ int WIFI_UART8_Start()
     LOGD("%s starting...\r\n", logTag);
     NVIC_SetPriority(LPUART8_IRQn, 4);
 
-//    if (xTaskCreate(uart8_task, "uart8_task", configMINIMAL_STACK_SIZE + 100, NULL, uart8_task_PRIORITY, NULL) != pdPASS)
-//    {
-//        PRINTF("Task creation failed!.\r\n");
-//        while (1);
-//    }
-
     lpuart_config8.srcclk = DEMO_LPUART_CLK_FREQ;
     lpuart_config8.base   = DEMO_LPUART;
     if (kStatus_Success != LPUART_RTOS_Init(&handle8, &t_handle8, &lpuart_config8))
     {
     	LOGD("%s failed to initialize uart8\r\n", logTag);
-        vTaskSuspend(NULL);
+        vTaskDelete(NULL);
     }
     LOGD("%s succeed to initialize uart8\r\n", logTag);
 
