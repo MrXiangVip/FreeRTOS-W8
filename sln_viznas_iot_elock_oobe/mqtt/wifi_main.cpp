@@ -2,15 +2,22 @@
 // Created by wszgx on 2022/7/29.
 //
 
+#include "FreeRTOS.h"
 #include "commondef.h"
-#include "wifi_main.h"
+#include "fsl_log.h"
+
 #include "mqtt_dev_esp32.h"
 
-MqttDevEsp32 mqttDevEsp32 = NULL;
+#include "wifi_main.h"
+
+#if (configSUPPORT_STATIC_ALLOCATION == 1)
+DTC_BSS static StackType_t Uart8RecvStack[UART8RECVTASK_STACKSIZE];
+DTC_BSS static StaticTask_t s_Uart8RecvTaskTCB;
+#endif
 
 static void uartrecv_task(void *pvParameters)
 {
-    mqttDevEsp32.receiveMqtt();
+    MqttDevEsp32::getInstance()->receiveMqtt();
     vTaskDelete(NULL);
 }
 
@@ -22,7 +29,6 @@ int WIFI_Start()
 //    return 0;
 //#endif
     LOGD("%s starting...\r\n", logTag);
-    mqttDevEsp32 = MqttDevEsp32::getInstance();
 
 //#if (configSUPPORT_STATIC_ALLOCATION == 1)
 //    if (NULL == xTaskCreateStatic(mqttinit_task, "mqttinit_task", MQTTTASK_STACKSIZE, NULL, MQTTTASK_PRIORITY,

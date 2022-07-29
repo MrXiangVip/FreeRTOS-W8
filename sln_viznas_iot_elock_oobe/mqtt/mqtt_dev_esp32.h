@@ -13,6 +13,13 @@
 #define ESP32_LPUART_CLK_FREQ BOARD_DebugConsoleSrcFreq()
 #define ESP32_LPUART_IRQn     LPUART8_IRQn
 
+#define MAX_MSG_LINES           20
+#if	FFD_SUPPORT != 0 || REMOTE_FEATURE != 0
+#define MAX_MSG_LEN_OF_LINE     1536
+#else
+#define MAX_MSG_LEN_OF_LINE     256
+#endif
+
 typedef enum {
     SEND_AT_CMD_OK      = 0x00,
     SEND_AT_CMD_FAILED  = -0x01,
@@ -24,21 +31,30 @@ typedef enum {
 
 class MqttDevEsp32 {
 private:
-    static MqttDevEsp32 *m_instance;
-    static SemaphoreHandle_t m_send_at_cmd_lock;
-    static lpuart_rtos_handle_t m_uart_handle_esp32;
-    static struct _lpuart_handle m_t_handle_esp32;
-    static uint8_t m_background_buffer_esp32[256];
+    SemaphoreHandle_t m_send_at_cmd_lock;
+
+    lpuart_rtos_handle_t m_uart_handle_esp32;
+    struct _lpuart_handle m_t_handle_esp32;
+    uint8_t m_background_buffer_esp32[256];
+
+    uint8_t recv_msg_lines[MAX_MSG_LINES][MAX_MSG_LEN_OF_LINE];
+    int current_recv_line = 0;
+    int current_recv_line_len = 0;
+    int current_handle_line = 0;
 
     MqttDevEsp32();
 
-    static int lockSendATCmd(TickType_t delayMs = portMAX_DELAY);
-    static void unlockSendATCmd();
+    int lockSendATCmd(TickType_t delayMs = portMAX_DELAY);
+    void unlockSendATCmd();
 
-    static int initUart();
+    int initUart();
 public:
-    static MqttDevEsp32 *getInstance();
-};
+    static MqttDevEsp32 *getInstance() {
+        static MqttDevEsp32 m_instance;
+        return &m_instance;
+    }
 
+    void receiveMqtt();
+};
 
 #endif //_MQTT_DEV_ESP32_H_

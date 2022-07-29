@@ -2,8 +2,8 @@
 // Created by wszgx on 2022/7/29.
 //
 
-#ifndef _MQTT_MAIN_H_
-#define _MQTT_MAIN_H_
+#ifndef _WIFI_MAIN_H_
+#define _WIFI_MAIN_H_
 
 
 #ifdef __cplusplus
@@ -17,4 +17,4 @@ int WIFI_Start();
 #endif
 
 
-#endif //_MQTT_MAIN_H_
+#endif //_WIFI_MAIN_H_

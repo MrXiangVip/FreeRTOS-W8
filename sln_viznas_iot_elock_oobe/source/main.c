@@ -39,6 +39,7 @@
 #include "WIFI_UART8.h"
 #include "sln_audio.h"
 #include "UART_FAKER.h"
+#include "wifi_main.h"
 #define RELOCATE_VECTOR_TABLE 1
 
 const unsigned int gFWVersionNumber = APP_VERSION_NUMBER;
@@ -100,10 +101,13 @@ int main(void)
     init_config();
     MCU_UART5_Start();
     uFakeUartTaskStart( );
+//
+//#if WIFI_SUPPORT != 0
+//    WIFI_UART8_Start();
+//#endif
 
-#if WIFI_SUPPORT != 0
-    WIFI_UART8_Start();
-#endif
+    WIFI_Start();
+
     Camera_Start();
     APP_PXP_Start();
     //Display_Start();

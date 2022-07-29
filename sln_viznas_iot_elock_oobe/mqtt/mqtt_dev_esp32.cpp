@@ -17,14 +17,21 @@ MqttDevEsp32::MqttDevEsp32() {
         }
         LOGD("[OK]:Succeed to create MqttDevEsp32 mutex\r\n");
     }
+
+    for (int i = 0; i < MAX_MSG_LINES; i++) {
+        memset(recv_msg_lines[i], '\0', MAX_MSG_LEN_OF_LINE);
+    }
+    initUart();
 }
 
+/*
 MqttDevEsp32* MqttDevEsp32::getInstance() {
     if (NULL == m_instance) {
         m_instance = new MqttDevEsp32();
     }
     return m_instance;
 }
+*/
 
 int MqttDevEsp32::lockSendATCmd(TickType_t delayMs) {
     if (NULL == m_send_at_cmd_lock) {
@@ -62,4 +69,68 @@ int MqttDevEsp32::initUart() {
     }
     LOGD("[OK]:succeed to initialize uart ESP32\r\n");
     return 0;
+}
+
+void MqttDevEsp32::receiveMqtt() {
+    char const *logTag = "[MQTT Receive]:";
+    LOGD("%s start...\r\n", logTag);
+    int error;
+    size_t n = 0;
+    uint8_t esp32RecvBuf[1] = {0};
+//    memset(esp32RecvBuf, 0, sizeof(esp32RecvBuf));
+    do
+    {
+        error = LPUART_RTOS_Receive(&m_uart_handle_esp32, esp32RecvBuf, 1, &n);
+        if ( error == kStatus_Success)
+        {
+            if (current_recv_line_len >= MAX_MSG_LEN_OF_LINE) {
+                LOGD("\r\n--- receive line length is %d greater than %d, discard---\r\n", current_recv_line_len, MAX_MSG_LEN_OF_LINE);
+            } else {
+                char lastest_char = esp32RecvBuf[0];
+                recv_msg_lines[current_recv_line][current_recv_line_len++] = lastest_char;
+                if (lastest_char == 0x0a) {
+                    if (current_recv_line_len > 1) {
+                        char lastest_char2 = recv_msg_lines[current_recv_line][current_recv_line_len-2];
+                        if (lastest_char2 == 0x0d) {
+                            recv_msg_lines[current_recv_line][current_recv_line_len - 2] = '\0';
+                            if (current_recv_line_len == 2) {
+                                // 当只有0x0d0x0a的时候，忽略此行，并且重置current_recv_len为0
+                                current_recv_line_len = 0;
+                                recv_msg_lines[current_recv_line][1] = '\0';
+                                continue;
+                            }
+                        }
+                        recv_msg_lines[current_recv_line][current_recv_line_len - 1] = '\0';
+                        //LOGD("--- recv_msg_line is %s\r\n", get_short_str((const char *)recv_msg_lines[current_recv_line]));
+                        current_recv_line++;
+                        current_recv_line_len = 0;
+                        if (current_recv_line >= MAX_MSG_LINES) {
+                            current_recv_line = 0;
+                        }
+                        // handle_line();
+                    } else {
+                        // 当只有一个0x0a的时候，忽略此行，并且重置current_recv_len为0
+                        current_recv_line_len = 0;
+                        recv_msg_lines[current_recv_line][current_recv_line_len] = '\0';
+                    }
+                }else {
+                    //LOGD("%s receive %d bytes and message is %s\r\n",logTag, n, esp32RecvBuf);
+                }
+            }
+        }
+
+        if (error == kStatus_LPUART_RxHardwareOverrun)
+        {
+            /* Notify about hardware buffer overrun */
+            LOGD("%s RX hardware overrun\r\n", logTag);
+        }
+        if (error == kStatus_LPUART_RxRingBufferOverrun)
+        {
+            /* Notify about ring buffer overrun */
+            LOGD("%s RX ring buffer overrun\r\n", logTag);
+        }
+    } while (1); //(kStatus_Success == error);
+    // TODO: LPUART_RTOS_Deinit(&m_uart_handle_esp32);
+
+    LOGD("\r\n%s end...\r\n", logTag);
 }
