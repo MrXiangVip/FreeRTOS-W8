@@ -101,7 +101,7 @@ int main(void)
     init_config();
     MCU_UART5_Start();
     uFakeUartTaskStart( );
-//
+
 //#if WIFI_SUPPORT != 0
 //    WIFI_UART8_Start();
 //#endif
