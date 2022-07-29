@@ -6,9 +6,15 @@
 #define _MQTT_MAIN_H_
 
 
-class mqtt_main {
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-};
+int WIFI_Start();
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif //_MQTT_MAIN_H_
