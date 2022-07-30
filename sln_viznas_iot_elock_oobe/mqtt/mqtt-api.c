@@ -7,6 +7,19 @@
 #include "fsl_log.h"
 #include "wifi_main.h"
 
+//#define AT_CMD_RESULT_OK 		0
+//#define AT_CMD_RESULT_ERROR 	1
+//#define AT_CMD_RESULT_TIMEOUT 	2
+//#define AT_CMD_RESULT_BUSY		3
+//#define AT_CMD_RESULT_UNDEF	    4
+typedef enum {
+    AT_CMD_RESULT_OK 	    =	0x00,
+    AT_CMD_RESULT_ERROR     =	-0x01,
+    AT_CMD_RESULT_TIMEOUT 	=	-0x02,
+    AT_CMD_RESULT_BUSY 	    =	-0x03,
+    AT_CMD_RESULT_UNDEF 	=	-0x04,
+} AT_CMD_RESULT;
+
 #define CMD_EXTRA_LEN 30
 //#define MQTT_MAX_LEN 256
 #define MQTT_MAX_LEN 128

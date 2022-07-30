@@ -9,6 +9,7 @@
 
 #include "mqtt_dev_esp32.h"
 #include "wifi_main.h"
+#include "mqtt_util.h"
 
 lpuart_rtos_handle_t m_uart_handle_esp32;
 struct _lpuart_handle m_t_handle_esp32;
@@ -84,7 +85,6 @@ void MqttDevEsp32::receiveMqtt() {
     int error;
     size_t n = 0;
     uint8_t esp32RecvBuf[1] = {0};
-//    memset(esp32RecvBuf, 0, sizeof(esp32RecvBuf));
     do
     {
         error = LPUART_RTOS_Receive(&m_uart_handle_esp32, esp32RecvBuf, 1, &n);
@@ -108,10 +108,9 @@ void MqttDevEsp32::receiveMqtt() {
                             }
                         }
                         recv_msg_lines[current_recv_line][current_recv_line_len - 1] = '\0';
-                        //LOGD("--- recv_msg_line is %s\r\n", get_short_str((const char *)recv_msg_lines[current_recv_line]));
-                        LOGD("--- recv_msg_line is %d %d %s\r\n", current_recv_line, current_handle_line, ((const char *)recv_msg_lines[current_recv_line]));
+                        LOGD("%s recv_msg_line is %d %d %s\r\n", logTag, current_recv_line, current_handle_line, ((const char *)recv_msg_lines[current_recv_line]));
 //                        handle_line();
-                        handleLine((const char *)recv_msg_lines[current_handle_line]);
+                        this->handleLine((const char *)recv_msg_lines[current_handle_line]);
                         current_recv_line++;
                         current_recv_line_len = 0;
                         if (current_recv_line >= MAX_MSG_LINES) {
@@ -145,9 +144,8 @@ void MqttDevEsp32::receiveMqtt() {
         }
     } while (1); //(kStatus_Success == error);
     // TODO: LPUART_RTOS_Deinit(&m_uart_handle_esp32);
-
-    LOGD("\r\n%s end...\r\n", logTag);
 }
+
 int MqttDevEsp32::sendATCmd(char const *cmd, int retry_times, int cmd_timeout_usec, int &m_at_cmd_result) {
     lockSendATCmd();
 
@@ -185,3 +183,66 @@ int MqttDevEsp32::sendATCmd(char const *cmd, int retry_times, int cmd_timeout_us
     unlockSendATCmd();
     return m_at_cmd_result;
 }
+
+int MqttDevEsp32::handleLine(const char *curr_line) {
+    LOGD("handleLine %d is : %d %s\r\n", current_handle_line, strlen(curr_line), curr_line);
+    if (strncmp(curr_line, "OK", 2) == 0) {
+        LOGD("AT CMD OK\r\n");
+        m_at_cmd_result = AT_CMD_RESULT_OK;
+    } else if (strncmp(curr_line, "ERROR", 5) == 0) {
+        LOGE("AT CMD ERROR\r\n");
+        m_at_cmd_result = AT_CMD_RESULT_ERROR;
+    } else if (strncmp(curr_line, ">+MQTTPUB:OK", 12) == 0 || strncmp((const char*)recv_msg_lines[current_handle_line], "+MQTTPUB:OK", 11) == 0) {
+        m_at_cmd_result = AT_CMD_RESULT_OK;
+        LOGD("RAW AT CMD OK\r\n");
+    } else if (strncmp(curr_line, ">+MQTTPUB:ERROR", 15) == 0 || strncmp((const char*)recv_msg_lines[current_handle_line], "+MQTTPUB:ERROR", 14) == 0) {
+        m_at_cmd_result = AT_CMD_RESULT_ERROR;
+        LOGE("RAW AT CMD ERROR\r\n");
+    }else if (strncmp(curr_line, MQTT_CWJAP, MQTT_CWJAP_SIZE) == 0) {
+        LOGD("CWJAP OK\r\n");
+        char *second = (char *) strstr((const char *) recv_msg_lines[current_handle_line], MQTT_CWJAP);
+
+        LOGD("----------------");
+        LOGD("uart rx get wifi RSSI:%s\r\n", second);
+        LOGD("----------------");
+        if (second != NULL) {
+            char field11[MQTT_RSSI_LEN];
+            char field21[MQTT_RSSI_LEN];
+            char field22[MQTT_RSSI_LEN];
+            char field31[MQTT_RSSI_LEN];
+            char field32[MQTT_RSSI_LEN];
+            char field41[MQTT_RSSI_LEN];
+            char field42[MQTT_RSSI_LEN];
+            char field5[MQTT_RSSI_LEN];
+            memset(field42, '\0', MQTT_RSSI_LEN);
+            mysplit(second, field11, field21, (char *)",");
+            //LOGD("field21 is %s\n", field21);
+            mysplit(field21, field22, field31, (char *)",");
+            //LOGD("field31 is %s\n", field31);
+            mysplit(field31, field32, field41, (char *)",");
+            //LOGD("field41 is %s\n", field41);
+            mysplit(field41, field42, field5, (char *)",");
+            //LOGD("field42 is %s\n", field42);
+            if (field42 != NULL && strlen(field42) > 0) {
+                LOGD("RSSI is %s\r\n", field42);
+                m_wifi_rssi = atoi(field42);
+                //at_state = AT_CMD_OK;
+                m_at_cmd_result = AT_CMD_RESULT_OK;
+//                g_is_wifi_connected = 1;
+            }
+        }
+    } else if (strncmp(curr_line, "+CIPSTAMAC:", 11) == 0) {
+        LOGD("\r\n----------------- RUN COMMAND CIPSTAMAC %s---------- \r\n", curr_line);
+    }else if (strncmp(curr_line, "+MQTTSUBRECV:", 13) == 0) {
+        LOGD("####receive subscribe message from mqtt server %s \r\n", curr_line);
+//        int ret = analyzeMQTTMsgInternal((char*)recv_msg_lines[current_handle_line]);
+//    }else if (((strncmp(curr_line, MQTT_DISCONNECT, MQTT_DISCONNECT_SIZE) == 0) ||
+//               (strncmp(curr_line, MQTT_RAW_DISCONNECT, MQTT_RAW_DISCONNECT_SIZE) == 0)) && (mqtt_init_done == 1)) {
+    }else if (strncmp(curr_line, MQTT_DISCONNECT, MQTT_DISCONNECT_SIZE) == 0 ||
+               strncmp(curr_line, MQTT_RAW_DISCONNECT, MQTT_RAW_DISCONNECT_SIZE) == 0) {
+        LOGD("###receive mqtt disconnect message from wifi_module \r\n");
+    }
+    LOGD("=============== handle_line finished =================\r\n");
+    return 0;
+}
+

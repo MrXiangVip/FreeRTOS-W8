@@ -268,7 +268,7 @@ int run_at_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
 			timeout_usec += delay_usec;
 			if (AT_CMD_RESULT_OK == at_cmd_result || AT_CMD_RESULT_ERROR == at_cmd_result) {
 				at_cmd_mode = AT_CMD_MODE_INACTIVE;
-				LOGD("run command %s %s\r\n", cmd, at_cmd_result ? AT_CMD_RESULT_OK : "OK", "ERROR");
+				LOGD("run command %s %s\r\n", cmd, at_cmd_result == AT_CMD_RESULT_OK ? "OK": "ERROR");
                 at_is_running = 0;
 				return at_cmd_result;
 			}
@@ -327,7 +327,7 @@ int run_at_long_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
             if (AT_CMD_RESULT_OK == at_cmd_result || AT_CMD_RESULT_ERROR == at_cmd_result) {
                 at_cmd_mode = AT_CMD_MODE_INACTIVE;
                 //LOGD("run long command %s %s\r\n", cmd, at_cmd_result ? AT_CMD_RESULT_OK : "OK", "ERROR");
-                LOGD("run long command %s\r\n", at_cmd_result ? AT_CMD_RESULT_OK : "OK", "ERROR");
+                LOGD("run long command %s\r\n", at_cmd_result == AT_CMD_RESULT_OK ? "OK": "ERROR");
                 at_is_running = 0;
                 return at_cmd_result;
             }
@@ -394,7 +394,7 @@ int run_at_raw_cmd(char const *cmd, char *data, int data_len, int retry_times, i
                 if (AT_CMD_RESULT_OK == at_cmd_result || AT_CMD_RESULT_ERROR == at_cmd_result) {
                     at_cmd_mode = AT_CMD_MODE_INACTIVE;
                     //LOGD("run long command %s %s\r\n", cmd, at_cmd_result ? AT_CMD_RESULT_OK : "OK", "ERROR");
-                    LOGD("run long raw %s\r\n", at_cmd_result ? AT_CMD_RESULT_OK : "OK", "ERROR");
+                    LOGD("run long raw %s\r\n", at_cmd_result == AT_CMD_RESULT_OK ? "OK": "ERROR");
                     at_is_running = 0;
                     return at_cmd_result;
                 }
