@@ -87,13 +87,6 @@ uint8_t recv_buffer8[1];
 #define MQTT_RSSI_LEN           32
 
 #define WIFI_SUPPORT_BAUD921600        0
-//unsigned char **recv_msg_lines;              // received messages
-//unsigned char *recv_crrent_line;     // line to receive
-//unsigned char *handle_current_line; // line to handle
-uint8_t recv_msg_lines[MAX_MSG_LINES][MAX_MSG_LEN_OF_LINE];
-static int current_recv_line = 0;
-static int current_recv_line_len = 0;
-static int current_handle_line = 0;
 int mqtt_init_done = 0;
 static int at_is_running = 0;
 // 本次开机心跳序列
@@ -163,16 +156,6 @@ extern int receive_boot_mode;
 bool bOasisRecordUpload = false;
 extern bool g_is_save_file;
 extern int pressure_test;
-static lpuart_rtos_handle_t handle8;
-static struct _lpuart_handle t_handle8;
-
-static lpuart_rtos_config_t lpuart_config8 = {
-    .baudrate    = 115200,
-    .parity      = kLPUART_ParityDisabled,
-    .stopbits    = kLPUART_OneStopBit,
-    .buffer      = background_buffer8,
-    .buffer_size = sizeof(background_buffer8),
-};
 
 static int random_gen = 1;
 
@@ -184,7 +167,7 @@ void freePointer(char **p) {
 }
 
 
-//10 MAC + 8 tv_sec + 1 random
+//10 MAC + 9 tv_sec + 1 random
 #define MSG_ID_LEN 20
 #define MSG_BT_MAC_LEN	10
 char *gen_msgId() {
@@ -203,19 +186,10 @@ char *gen_msgId() {
     char bt_mac_string[MSG_BT_MAC_LEN + 1];
 	memset(bt_mac_string, '\0', MSG_BT_MAC_LEN + 1);
 	memcpy(bt_mac_string, btWifiConfig.bt_mac + 2, MSG_BT_MAC_LEN);
-	//LOGD("gen_msgId bt_mac_string is %s\r\n", bt_mac_string);
-	//LOGD("gen_msgId tv.tv_sec is %d, a is %d\r\n", tv.tv_sec, a);
-    //sprintf(msgId, "%d%06d%03d", tv.tv_sec, tv.tv_usec, random_gen);
-    //LOGD("generate msgId is %s\n", msgId);
-    // 3位random
-    // if (++random_gen >= 1000) {
-    // 1位random
     if (++random_gen >= 10) {
         random_gen = 1;
     }
-    //LOGD("gen_msgId random_gen is %d\r\n", random_gen);
     sprintf(msgId, "%s%09d%d", bt_mac_string, a, random_gen);
-    //LOGD("gen_msgId msgId is %s\r\n", msgId);
     return msgId;
 }
 
@@ -230,133 +204,10 @@ int run_at_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
     return result;
 }
 
-char at_long_cmd[MQTT_AT_LONG_LEN];
-int run_at_long_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
-{
-    if(g_is_shutdown) {
-        at_cmd_mode = AT_CMD_MODE_INACTIVE;
-        return -1;
-    }
-    if (at_is_running >= 1) {
-        LOGD("AT long cmd is running %d so can't run %s\r\n", at_is_running, cmd);
-        at_is_running++;
-        if (at_is_running > 10) {
-            // 防止死锁，10s无论如何解锁
-            at_is_running = 0;
-        }
-        return AT_CMD_RESULT_BUSY;
-    }
-    at_is_running = 1;
-
-    //char at_long_cmd[MQTT_AT_LONG_LEN];
-    memset(at_long_cmd, '\0', MQTT_AT_LONG_LEN);
-    sprintf(at_long_cmd, "%s\r\n", cmd);
-    LOGD("start AT long command %s\r\n", cmd);
-    //LOGD("start AT long strlen(at_cmd) is %d\r\n", strlen(cmd));
-    for (int i = 0; i < retry_times; i++) {
-        if (kStatus_Success != LPUART_RTOS_Send(&handle8, (uint8_t *)at_long_cmd, strlen(at_long_cmd))) {
-            //LOGD("Failed to run long command %s\r\n", cmd);
-            LOGD("Failed to run long command\r\n");
-            at_is_running = 0;
-            return -1;
-        } else {
-            //LOGD("Succeed to run long command %s\r\n", cmd);
-            LOGD("Succeed to run long command\r\n");
-            at_cmd_mode = AT_CMD_MODE_ACTIVE;
-            at_cmd_result = AT_CMD_RESULT_UNDEF;
-        }
-        int timeout_usec = 0;
-        int delay_usec = 10;
-        do {
-            vTaskDelay(pdMS_TO_TICKS(delay_usec));
-            timeout_usec += delay_usec;
-            if (AT_CMD_RESULT_OK == at_cmd_result || AT_CMD_RESULT_ERROR == at_cmd_result) {
-                at_cmd_mode = AT_CMD_MODE_INACTIVE;
-                //LOGD("run long command %s %s\r\n", cmd, at_cmd_result ? AT_CMD_RESULT_OK : "OK", "ERROR");
-                LOGD("run long command %s\r\n", at_cmd_result == AT_CMD_RESULT_OK ? "OK": "ERROR");
-                at_is_running = 0;
-                return at_cmd_result;
-            }
-            if (timeout_usec >= cmd_timeout_usec) {
-                //LOGD("run long command %s timeout\r\n", cmd);
-                LOGD("run long command timeout\r\n");
-                break;
-            }
-        } while (1);
-//		xEventGroupSetBits(handle8.rxEvent, RTOS_LPUART_RX_TIMEOUT);
-    }
-    //LOGD("run long command %s timeout end\r\n", cmd);
-    LOGD("run long command timeout end\r\n");
-    at_is_running = 0;
-    return AT_CMD_RESULT_TIMEOUT;
-}
-
 int run_at_raw_cmd(char const *cmd, char *data, int data_len, int retry_times, int cmd_timeout_usec)
 {
-    if(g_is_shutdown) {
-        at_cmd_mode = AT_CMD_MODE_INACTIVE;
-        return -1;
-    }
-
-    int ret = 0;
-    //LOGD("start AT raw command %s\r\n", cmd);
-    //LOGD("start AT raw data_len is %d\r\n", data_len);
-    LOGD("start AT raw command %s data_len is %d\r\n", cmd, data_len);
-    //LOGD("start AT raw data %s\r\n", data);
-
-    ret = run_at_cmd(cmd, retry_times, cmd_timeout_usec);
-
-    if (at_is_running >= 1) {
-        LOGD("AT raw cmd is running %d so can't run %s\r\n", at_is_running, cmd);
-        at_is_running++;
-        if (at_is_running > 10) {
-            // 防止死锁，10s无论如何解锁
-            at_is_running = 0;
-        }
-        return AT_CMD_RESULT_BUSY;
-    }
-    at_is_running = 1;
-
-    vTaskDelay(pdMS_TO_TICKS(2));
-
-    if(ret == 0) {
-        for (int i = 0; i < 1; i++) {
-            if (kStatus_Success != LPUART_RTOS_Send(&handle8, (uint8_t *) data, data_len)) {
-                //LOGD("Failed to run long command %s\r\n", cmd);
-                LOGD("Failed to run raw command\r\n");
-                at_is_running = 0;
-                return -1;
-            } else {
-                //LOGD("Succeed to run long command %s\r\n", cmd);
-                LOGD("Succeed to run raw command\r\n");
-                at_cmd_mode = AT_CMD_MODE_ACTIVE;
-                at_cmd_result = AT_CMD_RESULT_UNDEF;
-            }
-            int timeout_usec = 0;
-            int delay_usec = 10;
-            do {
-                vTaskDelay(pdMS_TO_TICKS(delay_usec));
-                timeout_usec += delay_usec;
-                if (AT_CMD_RESULT_OK == at_cmd_result || AT_CMD_RESULT_ERROR == at_cmd_result) {
-                    at_cmd_mode = AT_CMD_MODE_INACTIVE;
-                    //LOGD("run long command %s %s\r\n", cmd, at_cmd_result ? AT_CMD_RESULT_OK : "OK", "ERROR");
-                    LOGD("run long raw %s\r\n", at_cmd_result == AT_CMD_RESULT_OK ? "OK": "ERROR");
-                    at_is_running = 0;
-                    return at_cmd_result;
-                }
-                if (timeout_usec >= cmd_timeout_usec) {
-                    //LOGD("run long command %s timeout\r\n", cmd);
-                    LOGD("run long raw timeout\r\n");
-                    break;
-                }
-            } while (1);
-        }
-    }
-    //LOGD("run long command %s timeout end\r\n", cmd);
-    LOGD("run long raw timeout end\r\n");
-    at_is_running = 0;
-
-    return AT_CMD_RESULT_TIMEOUT;
+    int result = MqttDevEsp32::getInstance()->sendRawATCmd(cmd, data, data_len, retry_times, cmd_timeout_usec, at_cmd_result);
+    return result;
 }
 
 void update_rssi() {
@@ -1920,9 +1771,6 @@ int WIFI_Start()
 
     MqttDevEsp32::getInstance()->initUart();
 
-    for (int i = 0; i < MAX_MSG_LINES; i++) {
-    	memset(recv_msg_lines[i], '\0', MAX_MSG_LEN_OF_LINE);
-    }
 #if (configSUPPORT_STATIC_ALLOCATION == 1)
     if (NULL == xTaskCreateStatic(mqttinit_task, "mqttinit_task", MQTTTASK_STACKSIZE, NULL, MQTTTASK_PRIORITY,
                                         MqttTaskStack, &s_MqttTaskTCB))

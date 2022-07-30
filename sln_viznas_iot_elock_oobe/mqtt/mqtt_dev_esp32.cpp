@@ -245,3 +245,50 @@ int MqttDevEsp32::handleLine(const char *curr_line) {
     return 0;
 }
 
+int MqttDevEsp32::sendRawATCmd(char const *cmd, char *data, int data_len, int retry_times, int cmd_timeout_usec, int &m_at_cmd_result) {
+    int ret = 0;
+    LOGD("start AT raw command %s data_len is %d\r\n", cmd, data_len);
+
+    ret = sendATCmd(cmd, retry_times, cmd_timeout_usec, m_at_cmd_result);
+
+    lockSendATCmd();
+
+    vTaskDelay(pdMS_TO_TICKS(2));
+
+    if(ret == AT_CMD_RESULT_OK) {
+        if (kStatus_Success != LPUART_RTOS_Send(&m_uart_handle_esp32, (uint8_t *) data, data_len)) {
+            LOGD("Failed to run raw command\r\n");
+            m_at_cmd_result = AT_CMD_RESULT_ERROR;
+            unlockSendATCmd();
+            return m_at_cmd_result;
+        } else {
+            LOGD("Succeed to run raw command\r\n");
+            m_at_cmd_result = AT_CMD_RESULT_UNDEF;
+            int timeout_usec = 0;
+            int delay_usec = 10;
+            do {
+                vTaskDelay(pdMS_TO_TICKS(delay_usec));
+                timeout_usec += delay_usec;
+                if (AT_CMD_RESULT_OK == m_at_cmd_result || AT_CMD_RESULT_ERROR == m_at_cmd_result) {
+                    LOGD("run raw %s\r\n", m_at_cmd_result == AT_CMD_RESULT_OK ? "OK" : "ERROR");
+                    unlockSendATCmd();
+                    return m_at_cmd_result;
+                }
+                if (timeout_usec >= cmd_timeout_usec) {
+                    LOGD("run raw timeout\r\n");
+                    break;
+                }
+            } while (1);
+            LOGD("run raw at cmd error\r\n");
+            m_at_cmd_result = AT_CMD_RESULT_TIMEOUT;
+            unlockSendATCmd();
+
+            return m_at_cmd_result;
+        }
+    }
+    LOGD("run raw at cmd error\r\n");
+    m_at_cmd_result = ret;
+    unlockSendATCmd();
+
+    return m_at_cmd_result;
+}

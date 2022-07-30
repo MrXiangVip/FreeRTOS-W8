@@ -94,6 +94,7 @@ public:
     void receiveMqtt();
 
     int sendATCmd(char const *cmd, int retry_times, int cmd_timeout_usec, int &m_at_cmd_result);
+    int sendRawATCmd(char const *cmd, char *data, int data_len, int retry_times, int cmd_timeout_usec, int &m_at_cmd_result);
 
     int initUart();
 //    int initUart(lpuart_rtos_handle_t *handle, lpuart_handle_t *t_handle, const lpuart_rtos_config_t *cfg);

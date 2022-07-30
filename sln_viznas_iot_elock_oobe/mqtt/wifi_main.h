@@ -23,7 +23,6 @@ extern void mqtt_task(void *pvParameters);
 extern void mqtt_init(void);
 
 extern int run_at_cmd(char const *cmd, int retry_times, int cmd_timeout_usec);
-extern int run_at_long_cmd(char const *cmd, int retry_times, int cmd_timeout_usec);
 extern int run_at_raw_cmd(char const *cmd, char *data, int data_len, int retry_times, int cmd_timeout_usec);
 extern int SendMsgToMQTT(char *mqtt_payload, int len);
 extern int doSendMsgToMQTT(char *mqtt_payload, int len);

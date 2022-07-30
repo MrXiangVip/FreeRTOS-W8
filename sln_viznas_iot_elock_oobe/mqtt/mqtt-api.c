@@ -41,16 +41,6 @@ static int sendATCmd(const char *cmd) {
 	return res;
 }
 
-static int sendATLongCmd(const char *cmd) {
-    //LOGD("--- send AT Long CMD %s\n", cmd);
-    int res = run_at_long_cmd(cmd, 2, 8000);
-    while (res == AT_CMD_RESULT_BUSY) {
-        //sleep(1);
-        vTaskDelay(pdMS_TO_TICKS(1000));
-        res = run_at_long_cmd(cmd, 2, 8000);
-    }
-    return res;
-}
 // --------------------------- 主要接口 start ------------------------
 // 连接WIFI
 int connectWifi(const char* ssid, const char* password) {
@@ -152,14 +142,9 @@ int publishMQTT(int linkId, const char* topic, const char* data, int qos, int re
 
 	//LOGD("%s cmd is %s\n", __FUNCTION__, long_cmd);
     //LOGD("%s length is %d\n", __FUNCTION__, strlen(long_cmd));
-	//int res = sendATLongCmd(cmd);
 
     int res = 0;
-    if ((strlen(long_cmd) > 128) && (strlen(long_cmd) <= MQTT_MAX_LONG_LEN)){
-        res = sendATLongCmd(long_cmd);
-    } else {
-        res = sendATCmd(long_cmd);
-    }
+    res = sendATCmd(long_cmd);
     vPortFree(topic);
 	// free(cmd);
 	return res;
@@ -194,14 +179,9 @@ int publishOasisMQTT(int linkId, const char* topic, const char* data, int qos, i
 
     //LOGD("%s long_oasis_cmd is %s\n", __FUNCTION__, long_oasis_cmd);
     //LOGD("%s length is %d\n", __FUNCTION__, strlen(long_oasis_cmd));
-    //int res = sendATLongCmd(cmd);
     int res = 0;
 
-    if ((strlen(long_oasis_cmd) > 128) && (strlen(long_oasis_cmd) <= MQTT_MAX_LONG_LEN)){
-        res = sendATLongCmd(long_oasis_cmd);
-    } else {
-        res = sendATCmd(long_oasis_cmd);
-    }
+    res = sendATCmd(long_oasis_cmd);
     //vPortFree(topic);
     // free(cmd);
     return res;
@@ -218,11 +198,7 @@ int publishMQTT2(int linkId, const char* topic, const char* data, int qos, int r
 
     LOGD("%s cmd is %s\n", __FUNCTION__, long_cmd);
     int res = 0;
-    if (strlen(long_cmd) > 128) {
-        res = sendATLongCmd(long_cmd);
-    } else {
-        res = sendATCmd(long_cmd);
-    }
+    res = sendATCmd(long_cmd);
     // free(cmd);
     vPortFree(topic);
     return res;
