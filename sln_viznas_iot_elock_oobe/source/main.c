@@ -36,7 +36,6 @@
 #include "sln_usb_composite.h"
 #include "sln_wdog.h"
 #include "MCU_UART5.h"
-#include "WIFI_UART8.h"
 #include "sln_audio.h"
 #include "UART_FAKER.h"
 #include "wifi_main.h"

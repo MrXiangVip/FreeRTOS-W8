@@ -8,7 +8,7 @@
 #include "base64.h"
 #include "config.h"
 //#include "log.h"
-#include "WIFI_UART8.h"
+#include "wifi_main.h"
 #include "fsl_log.h"
 #include "mqtt-common.h"
 #include "mqtt-remote-feature.h"

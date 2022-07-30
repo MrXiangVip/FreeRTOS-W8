@@ -9,7 +9,7 @@
 #include <string.h>
 //#include "log.h"
 #include "fsl_log.h"
-#include "WIFI_UART8.h"
+#include "wifi_main.h"
 
 int MqttInstructionPool::insertMqttInstruction(MqttInstruction mqtt_instruction) {
     int cmd_index = mqtt_instruction.getCmdIndex();

@@ -39,7 +39,6 @@
 #include "../mqtt/mqtt-mcu.h"
 #include "../mqtt/mqtt-remote-feature.h"
 #include "../mqtt/base64.h"
-//#include "WIFI_UART8.h"
 #include "database.h"
 #include "DBManager.h"
 #include "UserExtendManager.h"
@@ -47,7 +46,7 @@
 #include "display.h"
 #include "aw_wave_logo_v3.h"
 #include "MCU_UART5.h"
-#include "WIFI_UART8.h"
+#include "wifi_main.h"
 #include "mqtt_util.h"
 #include "mqtt-common.h"
 

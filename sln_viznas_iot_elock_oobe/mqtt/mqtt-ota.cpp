@@ -15,7 +15,7 @@
 #include "cJSON.h"
 #include "md5.h"
 #include "util.h"
-#include "WIFI_UART8.h"
+#include "wifi_main.h"
 
 #define MD5_SIZE        16
 #define MD5_STR_LEN     (MD5_SIZE * 2)

@@ -22,7 +22,7 @@
 #include "../wave/UART_FAKER.h"
 #include "../mqtt/config.h"
 #include "../mqtt/mqtt-api.h"
-#include "WIFI_UART8.h"
+#include "wifi_main.h"
 #include "mqtt-common.h"
 #include "cJSON.h"
 /*******************************************************************************

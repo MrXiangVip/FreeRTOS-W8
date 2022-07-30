@@ -5,7 +5,7 @@
 #include <unistd.h>
 //#include "log.h"
 #include "fsl_log.h"
-#include "WIFI_UART8.h"
+#include "wifi_main.h"
 
 #define CMD_EXTRA_LEN 30
 //#define MQTT_MAX_LEN 256
