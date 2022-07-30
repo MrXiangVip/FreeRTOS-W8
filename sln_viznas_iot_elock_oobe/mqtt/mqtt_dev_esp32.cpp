@@ -10,6 +10,9 @@
 #include "mqtt_dev_esp32.h"
 #include "wifi_main.h"
 
+lpuart_rtos_handle_t m_uart_handle_esp32;
+struct _lpuart_handle m_t_handle_esp32;
+
 MqttDevEsp32::MqttDevEsp32() {
     if (NULL == m_send_at_cmd_lock) {
         m_send_at_cmd_lock = xSemaphoreCreateMutex();
@@ -53,8 +56,8 @@ void MqttDevEsp32::unlockSendATCmd() {
     LOGD("Try unlock MqttDevEsp32 successfully\r\n");
 }
 
-//int MqttDevEsp32::initUart() {
-int MqttDevEsp32::initUart(lpuart_rtos_handle_t *handle, lpuart_handle_t *t_handle, const lpuart_rtos_config_t *cfg) {
+int MqttDevEsp32::initUart() {
+//int MqttDevEsp32::initUart(lpuart_rtos_handle_t *handle, lpuart_handle_t *t_handle, const lpuart_rtos_config_t *cfg) {
     lpuart_rtos_config_t lpuart_config_esp32 = {
             .baudrate    = 115200,
             .parity      = kLPUART_ParityDisabled,
@@ -64,9 +67,11 @@ int MqttDevEsp32::initUart(lpuart_rtos_handle_t *handle, lpuart_handle_t *t_hand
     };
     lpuart_config_esp32.srcclk = ESP32_LPUART_CLK_FREQ;
     lpuart_config_esp32.base   = ESP32_LPUART;
-    m_uart_handle_esp32 = handle;
-    m_t_handle_esp32 = t_handle;
-    if (kStatus_Success != LPUART_RTOS_Init(m_uart_handle_esp32, m_t_handle_esp32, &lpuart_config_esp32))
+//    m_uart_handle_esp32 = handle;
+//    m_t_handle_esp32 = t_handle;
+//    m_uart_handle_esp32 = (lpuart_rtos_handle_t *)pvPortMalloc(sizeof(lpuart_rtos_handle_t));
+//    m_t_handle_esp32 = (struct _lpuart_handle*)pvPortMalloc(sizeof(struct _lpuart_handle*));
+    if (kStatus_Success != LPUART_RTOS_Init(&m_uart_handle_esp32, &m_t_handle_esp32, &lpuart_config_esp32))
     {
         LOGD("[ERROR]:fail to initialize uart ESP32\r\n");
         return -1;
@@ -84,7 +89,7 @@ void MqttDevEsp32::receiveMqtt() {
 //    memset(esp32RecvBuf, 0, sizeof(esp32RecvBuf));
     do
     {
-        error = LPUART_RTOS_Receive(m_uart_handle_esp32, esp32RecvBuf, 1, &n);
+        error = LPUART_RTOS_Receive(&m_uart_handle_esp32, esp32RecvBuf, 1, &n);
         if ( error == kStatus_Success)
         {
             if (current_recv_line_len >= MAX_MSG_LEN_OF_LINE) {
@@ -152,11 +157,11 @@ int MqttDevEsp32::sendATCmd(char const *cmd, int retry_times, int cmd_timeout_us
     memset(at_cmd, '\0', MQTT_AT_LEN);
     sprintf(at_cmd, "%s\r\n", cmd);
     LOGD("start AT command %s\r\n", cmd);
-    int result = AT_CMD_RESULT_UNDEF;
+    m_at_cmd_result = AT_CMD_RESULT_UNDEF;
     for (int i = 0; i < retry_times; i++) {
-        if (kStatus_Success != LPUART_RTOS_Send(m_uart_handle_esp32, (uint8_t *)at_cmd, strlen(at_cmd))) {
+        if (kStatus_Success != LPUART_RTOS_Send(&m_uart_handle_esp32, (uint8_t *)at_cmd, strlen(at_cmd))) {
             LOGD("Failed to run command %s\r\n", cmd);
-            result = AT_CMD_RESULT_ERROR;
+            m_at_cmd_result = AT_CMD_RESULT_ERROR;
             break;
         }
         int timeout_usec = 0;
@@ -167,9 +172,8 @@ int MqttDevEsp32::sendATCmd(char const *cmd, int retry_times, int cmd_timeout_us
             if (AT_CMD_RESULT_OK == m_at_cmd_result || AT_CMD_RESULT_ERROR == m_at_cmd_result) {
                 // at_cmd_mode = AT_CMD_MODE_INACTIVE;
                 LOGD("run command %s %s\r\n", cmd, (m_at_cmd_result == AT_CMD_RESULT_OK) ? "OK": "ERROR");
-                result = m_at_cmd_result;
                 unlockSendATCmd();
-                return result;
+                return m_at_cmd_result;
             }
             if (timeout_usec >= cmd_timeout_usec) {
                 LOGD("run command %s timeout index %d\r\n", cmd, i);
@@ -179,7 +183,7 @@ int MqttDevEsp32::sendATCmd(char const *cmd, int retry_times, int cmd_timeout_us
     }
 
     LOGD("run command %s timeout end\r\n", cmd);
-    result = AT_CMD_RESULT_TIMEOUT;
+    m_at_cmd_result = AT_CMD_RESULT_TIMEOUT;
     unlockSendATCmd();
-    return result;
+    return m_at_cmd_result;
 }

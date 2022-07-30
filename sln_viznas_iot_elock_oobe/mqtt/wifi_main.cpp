@@ -2180,7 +2180,8 @@ int WIFI_Start()
 //    while (1);
 //    }
 //    LOGD("%s succeed to initialize uart8\r\n", logTag);
-    MqttDevEsp32::getInstance()->initUart(&handle8, &t_handle8, &lpuart_config8);
+//    MqttDevEsp32::getInstance()->initUart(&handle8, &t_handle8, &lpuart_config8);
+    MqttDevEsp32::getInstance()->initUart();
 
     for (int i = 0; i < MAX_MSG_LINES; i++) {
     	memset(recv_msg_lines[i], '\0', MAX_MSG_LEN_OF_LINE);

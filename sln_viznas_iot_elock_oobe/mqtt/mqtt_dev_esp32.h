@@ -43,8 +43,8 @@ class MqttDevEsp32 {
 private:
     SemaphoreHandle_t m_send_at_cmd_lock;
 
-    lpuart_rtos_handle_t *m_uart_handle_esp32;
-    struct _lpuart_handle *m_t_handle_esp32;
+//    lpuart_rtos_handle_t *m_uart_handle_esp32;
+//    struct _lpuart_handle *m_t_handle_esp32;
     uint8_t m_background_buffer_esp32[256];
 
     uint8_t recv_msg_lines[MAX_MSG_LINES][MAX_MSG_LEN_OF_LINE];
@@ -65,7 +65,8 @@ public:
 
     void receiveMqtt();
     int sendATCmd(char const *cmd, int retry_times, int cmd_timeout_usec, int &m_at_cmd_result);
-    int initUart(lpuart_rtos_handle_t *handle, lpuart_handle_t *t_handle, const lpuart_rtos_config_t *cfg);
+    int initUart();
+//    int initUart(lpuart_rtos_handle_t *handle, lpuart_handle_t *t_handle, const lpuart_rtos_config_t *cfg);
 };
 
 #endif //_MQTT_DEV_ESP32_H_
