@@ -61,30 +61,10 @@
 /*******************************************************************************
  * Code
  ******************************************************************************/
-const char *to_send               = "AT\r\n";//"FreeRTOS LPUART driver example!\r\n";
-const char *send_ring_overrun     = "\r\nAT\r\n";
-const char *send_hardware_overrun = "\r\nAT\r\n";
-static uint8_t background_buffer8[256];
 
-#define TIMEOUT_TEST
-#undef TIMEOUT_TEST
-
-#ifdef TIMEOUT_TEST
-uint8_t recv_buffer8[8];
-#else
-uint8_t recv_buffer8[1];
-#endif
-
-#define MAX_MSG_LINES           20
-#if	FFD_SUPPORT != 0 || REMOTE_FEATURE != 0
-#define MAX_MSG_LEN_OF_LINE     1536
-#else
-#define MAX_MSG_LEN_OF_LINE     256
-#endif
 #define MQTT_AT_LEN             128
 #define MQTT_AT_LONG_LEN        256
 #define MQTT_MAC_LEN            32
-#define MQTT_RSSI_LEN           32
 
 #define WIFI_SUPPORT_BAUD921600        0
 int mqtt_init_done = 0;
@@ -118,9 +98,6 @@ int g_is_shutdown = 0;
 
 MqttInstructionPool mqtt_instruction_pool;
 int battery_level = -1;
-
-char wifi_rssi[MQTT_RSSI_LEN];
-
 
 #if (configSUPPORT_STATIC_ALLOCATION == 1)
 DTC_BSS static StackType_t Uart8RecvStack[UART8RECVTASK_STACKSIZE];
@@ -360,45 +337,6 @@ static void mqttinit_task(void *pvParameters) {
     vTaskDelete(NULL);
 }
 
-#ifdef TIMEOUT_TEST
-static void uartrecv_timeout_task(void *pvParameters)
-{
-	char const *logTag = "[UART8_WIFI]:uartrecv_timeout_task-";
-    LOGD("\r\n%s start...\r\n", logTag);
-    int error;
-    size_t n = 0;
-    do
-    {
-    	memset(recv_buffer8, 0, sizeof(recv_buffer8));
-//        error = LPUART_RTOS_Receive(&handle8, recv_buffer8, sizeof(recv_buffer8), &n);
-        LOGD("%s ------------ before receive\r\n", logTag);
-        error = LPUART_RTOS_ReceiveTimeout(&handle8, recv_buffer8, sizeof(recv_buffer8), &n, 1000);
-//        error = LPUART_RTOS_ReceiveTimeout(&handle8, recv_buffer8, 8, &n, 1000);
-        LOGD("%s receive %d bytes and message is %s\r\n",logTag, n, recv_buffer8);
-        /*PRINTF("\r\n--- receive bytes ---\r\n");
-        for (int i = 0; i < sizeof(recv_buffer8); i ++) {
-        	PRINTF("0x%02x ", recv_buffer8[i]);
-        }
-        PRINTF("\r\n--- receive end ---\r\n");*/
-
-        if (error == kStatus_LPUART_RxHardwareOverrun)
-        {
-            /* Notify about hardware buffer overrun */
-        	LOGD("%s RX timeout hardware overrun\r\n", logTag);
-        }
-        if (error == kStatus_LPUART_RxRingBufferOverrun)
-        {
-            /* Notify about ring buffer overrun */
-        	LOGD("%s RX timeout ring buffer overrun\r\n", logTag);
-        }
-    } while (kStatus_Success == error || kStatus_Timeout == error);
-    LPUART_RTOS_Deinit(&handle8);
-    vTaskSuspend(NULL);
-
-    LOGD("\r\n%s end...\r\n", logTag);
-}
-#endif
-
 static void uartrecv_task(void *pvParameters)
 {
     MqttDevEsp32::getInstance()->receiveMqtt();
@@ -610,13 +548,15 @@ int doSendMsgToMQTT(char *mqtt_payload, int len) {
                 // sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"btmac\":\"%s\",\"wifi_rssi\":%s,\"battery\":%d,\"version\":\"%s\"}", msgId, btWifiConfig.wifi_mac, btWifiConfig.bt_mac, wifi_rssi, battery_level, versionConfig.sys_ver);
                 sprintf(pub_msg,
                         "{\"msgId\":\"%s\",\"mac\":\"%s\",\"wifi_rssi\":%s,\"battery\":%d,\"index\":%d,\"version\":\"%s\"}",
-                        msgId, btWifiConfig.bt_mac, wifi_rssi, battery_level, g_heartbeat_index++,
+//                        msgId, btWifiConfig.bt_mac, wifi_rssi, battery_level, g_heartbeat_index++,
+                        msgId, btWifiConfig.bt_mac, 0, battery_level, g_heartbeat_index++,
                         versionConfig.sys_ver);
             } else {
                 // sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"btmac\":\"%s\",\"wifi_rssi\":%s,\"battery\":%d,\"version\":\"%s\"}", msgId, btWifiConfig.wifi_mac, btWifiConfig.bt_mac, wifi_rssi, battery_level, getFirmwareVersion());
                 sprintf(pub_msg,
                         "{\"msgId\":\"%s\",\"mac\":\"%s\",\"wifi_rssi\":%s,\"battery\":%d,\"index\":%d,\"version\":\"%s\"}",
-                        msgId, btWifiConfig.bt_mac, wifi_rssi, battery_level, g_heartbeat_index++,
+//                        msgId, btWifiConfig.bt_mac, wifi_rssi, battery_level, g_heartbeat_index++,
+                        msgId, btWifiConfig.bt_mac, 0, battery_level, g_heartbeat_index++,
                         getFirmwareVersion());
             }
             sprintf(pub_msg,
@@ -755,9 +695,11 @@ int doSendMsgToMQTT(char *mqtt_payload, int len) {
 				LOGD("---- remote unlock door mode");
 				char *msgId = gen_msgId();
 				if (versionConfig.sys_ver!= NULL && strlen(versionConfig.sys_ver) > 0) {
-					sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"wifi_rssi\":%s,\"battery\":%d,\"index\":%d,\"version\":\"%s\"}", msgId, btWifiConfig.bt_mac, wifi_rssi, battery_level, -1, versionConfig.sys_ver);
+//					sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"wifi_rssi\":%s,\"battery\":%d,\"index\":%d,\"version\":\"%s\"}", msgId, btWifiConfig.bt_mac, wifi_rssi, battery_level, -1, versionConfig.sys_ver);
+                    sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"wifi_rssi\":%s,\"battery\":%d,\"index\":%d,\"version\":\"%s\"}", msgId, btWifiConfig.bt_mac, 0, battery_level, -1, versionConfig.sys_ver);
 				} else {
-					sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"wifi_rssi\":%s,\"battery\":%d,\"index\":%d,\"version\":\"%s\"}", msgId, btWifiConfig.bt_mac, wifi_rssi, battery_level, -1, getFirmwareVersion());
+//					sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"wifi_rssi\":%s,\"battery\":%d,\"index\":%d,\"version\":\"%s\"}", msgId, btWifiConfig.bt_mac, wifi_rssi, battery_level, -1, getFirmwareVersion());
+                    sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"wifi_rssi\":%s,\"battery\":%d,\"index\":%d,\"version\":\"%s\"}", msgId, btWifiConfig.bt_mac, 0, battery_level, -1, getFirmwareVersion());
 				}
 				freePointer(&msgId);
 				pub_topic = get_pub_topic_heart_beat();
@@ -1549,8 +1491,6 @@ static void msghandle_task(void *pvParameters)
 
     int is_online_handled = 0;	// g_is_online只处理一次
 
-    memset(wifi_rssi, '\0', sizeof(wifi_rssi));
-    wifi_rssi[0] = '0';
     int TIMEOUT_COUNT = 20;
 	//mqtt_init_done = 1;
     do {
@@ -1654,7 +1594,8 @@ static void send_heartbeat_task(void *pvParameters)
                 // sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"btmac\":\"%s\",\"wifi_rssi\":%s,\"battery\":%d,\"version\":\"%s\"}", msgId, btWifiConfig.wifi_mac, btWifiConfig.bt_mac, wifi_rssi, battery_level, getFirmwareVersion());
                 sprintf(pub_msg,
                         "{\"msgId\":\"%s\",\"mac\":\"%s\",\"wifi_rssi\":%s,\"battery\":%d,\"index\":%d,\"version\":\"%s\"}",
-                        msgId, btWifiConfig.bt_mac, wifi_rssi, battery_level, g_heartbeat_index++,
+//                        msgId, btWifiConfig.bt_mac, wifi_rssi, battery_level, g_heartbeat_index++,
+                        msgId, btWifiConfig.bt_mac, 0, battery_level, g_heartbeat_index++,
                         getFirmwareVersion());
                 freePointer(&msgId);
                 pub_topic = get_pub_topic_heart_beat();
