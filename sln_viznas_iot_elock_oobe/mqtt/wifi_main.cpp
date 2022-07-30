@@ -44,6 +44,7 @@
 #include "base64.h"
 #include "database.h"
 #include "oasis.h"
+#include "mqtt_dev_esp32.h"
 
 /*******************************************************************************
  * Definitions
@@ -2152,21 +2153,22 @@ static void uploaddata_task(void *pvParameters)
 int WIFI_Start()
 {
 	char const *logTag = "[UART8_WIFI]:main-";
-#if !MQTT_SUPPORT
-    LOGD("%s stopped...\r\n", logTag);
-	return 0;
-#endif
+//#if !MQTT_SUPPORT
+//    LOGD("%s stopped...\r\n", logTag);
+//	return 0;
+//#endif
     LOGD("%s starting...\r\n", logTag);
     NVIC_SetPriority(LPUART8_IRQn, 4);
 
     lpuart_config8.srcclk = DEMO_LPUART_CLK_FREQ;
     lpuart_config8.base   = DEMO_LPUART;
-    if (kStatus_Success != LPUART_RTOS_Init(&handle8, &t_handle8, &lpuart_config8))
-    {
-    	LOGD("%s failed to initialize uart8\r\n", logTag);
-        vTaskDelete(NULL);
-    }
-    LOGD("%s succeed to initialize uart8\r\n", logTag);
+//    if (kStatus_Success != LPUART_RTOS_Init(&handle8, &t_handle8, &lpuart_config8))
+//    {
+//    	LOGD("%s failed to initialize uart8\r\n", logTag);
+//    while (1);
+//    }
+//    LOGD("%s succeed to initialize uart8\r\n", logTag);
+    MqttDevEsp32::getInstance()->initUart(&handle8, &t_handle8, &lpuart_config8);
 
     for (int i = 0; i < MAX_MSG_LINES; i++) {
     	memset(recv_msg_lines[i], '\0', MAX_MSG_LEN_OF_LINE);

@@ -21,7 +21,7 @@ MqttDevEsp32::MqttDevEsp32() {
     for (int i = 0; i < MAX_MSG_LINES; i++) {
         memset(recv_msg_lines[i], '\0', MAX_MSG_LEN_OF_LINE);
     }
-    initUart();
+    // initUart();
 }
 
 /*
@@ -52,17 +52,18 @@ void MqttDevEsp32::unlockSendATCmd() {
     LOGD("Try unlock MqttDevEsp32 successfully\r\n");
 }
 
-int MqttDevEsp32::initUart() {
-    lpuart_rtos_config_t lpuart_config_esp32 = {
-            .baudrate    = 115200,
-            .parity      = kLPUART_ParityDisabled,
-            .stopbits    = kLPUART_OneStopBit,
-            .buffer      = m_background_buffer_esp32,
-            .buffer_size = sizeof(m_background_buffer_esp32),
-    };
-    lpuart_config_esp32.srcclk = ESP32_LPUART_CLK_FREQ;
-    lpuart_config_esp32.base   = ESP32_LPUART;
-    if (kStatus_Success != LPUART_RTOS_Init(&m_uart_handle_esp32, &m_t_handle_esp32, &lpuart_config_esp32))
+//int MqttDevEsp32::initUart() {
+int MqttDevEsp32::initUart(lpuart_rtos_handle_t *handle, lpuart_handle_t *t_handle, const lpuart_rtos_config_t *cfg) {
+//    lpuart_rtos_config_t lpuart_config_esp32 = {
+//            .baudrate    = 115200,
+//            .parity      = kLPUART_ParityDisabled,
+//            .stopbits    = kLPUART_OneStopBit,
+//            .buffer      = m_background_buffer_esp32,
+//            .buffer_size = sizeof(m_background_buffer_esp32),
+//    };
+//    lpuart_config_esp32.srcclk = ESP32_LPUART_CLK_FREQ;
+//    lpuart_config_esp32.base   = ESP32_LPUART;
+    if (kStatus_Success != LPUART_RTOS_Init(handle, t_handle, cfg))
     {
         LOGD("[ERROR]:fail to initialize uart ESP32\r\n");
         return -1;

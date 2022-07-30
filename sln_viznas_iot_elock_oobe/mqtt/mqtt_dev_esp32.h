@@ -47,7 +47,6 @@ private:
     int lockSendATCmd(TickType_t delayMs = portMAX_DELAY);
     void unlockSendATCmd();
 
-    int initUart();
 public:
     static MqttDevEsp32 *getInstance() {
         static MqttDevEsp32 m_instance;
@@ -55,6 +54,8 @@ public:
     }
 
     void receiveMqtt();
+//    int initUart();
+    int initUart(lpuart_rtos_handle_t *handle, lpuart_handle_t *t_handle, const lpuart_rtos_config_t *cfg);
 };
 
 #endif //_MQTT_DEV_ESP32_H_
