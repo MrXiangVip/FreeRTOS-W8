@@ -106,7 +106,7 @@ void MqttDevEsp32::receiveMqtt() {
                         }
                         recv_msg_lines[current_recv_line][current_recv_line_len - 1] = '\0';
                         //LOGD("--- recv_msg_line is %s\r\n", get_short_str((const char *)recv_msg_lines[current_recv_line]));
-                        LOGD("--- recv_msg_line is %s\r\n", ((const char *)recv_msg_lines[current_recv_line]));
+                        LOGD("--- recv_msg_line is %d %d %s\r\n", current_recv_line, current_handle_line, ((const char *)recv_msg_lines[current_recv_line]));
 //                        handle_line();
                         handleLine((const char *)recv_msg_lines[current_handle_line]);
                         current_recv_line++;
