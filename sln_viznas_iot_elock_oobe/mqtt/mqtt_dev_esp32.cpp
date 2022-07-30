@@ -57,7 +57,8 @@ void MqttDevEsp32::unlockSendATCmd() {
 }
 
 int MqttDevEsp32::initUart() {
-//int MqttDevEsp32::initUart(lpuart_rtos_handle_t *handle, lpuart_handle_t *t_handle, const lpuart_rtos_config_t *cfg) {
+    NVIC_SetPriority(ESP32_LPUART_IRQn, 4);
+
     lpuart_rtos_config_t lpuart_config_esp32 = {
             .baudrate    = 115200,
             .parity      = kLPUART_ParityDisabled,
@@ -67,16 +68,13 @@ int MqttDevEsp32::initUart() {
     };
     lpuart_config_esp32.srcclk = ESP32_LPUART_CLK_FREQ;
     lpuart_config_esp32.base   = ESP32_LPUART;
-//    m_uart_handle_esp32 = handle;
-//    m_t_handle_esp32 = t_handle;
-//    m_uart_handle_esp32 = (lpuart_rtos_handle_t *)pvPortMalloc(sizeof(lpuart_rtos_handle_t));
-//    m_t_handle_esp32 = (struct _lpuart_handle*)pvPortMalloc(sizeof(struct _lpuart_handle*));
     if (kStatus_Success != LPUART_RTOS_Init(&m_uart_handle_esp32, &m_t_handle_esp32, &lpuart_config_esp32))
     {
         LOGD("[ERROR]:fail to initialize uart ESP32\r\n");
         return -1;
     }
     LOGD("[OK]:succeed to initialize uart ESP32\r\n");
+
     return 0;
 }
 

@@ -457,7 +457,10 @@ static void mqttinit_task(void *pvParameters) {
         }
     }else {
 //        int result3 = run_at_cmd("ATE0", 2, 1200);
-        int result3 = MqttDevEsp32::getInstance()->sendATCmd("ATE0", 2, 1200, at_cmd_result);
+//        int result3 = MqttDevEsp32::getInstance()->sendATCmd("ATE0", 2, 1200, at_cmd_result);
+        int result1 = run_at_cmd("AT+SYSLOG=1", 2, 1200);
+        int result2 = run_at_cmd("AT+CWMODE=1", 1, 1200);
+        int result3 = run_at_cmd("ATE0", 1, 1200);
     }
 
 #if	WIFI_SUPPORT_BAUD921600
@@ -2170,17 +2173,7 @@ int WIFI_Start()
 //	return 0;
 //#endif
     LOGD("%s starting...\r\n", logTag);
-    NVIC_SetPriority(LPUART8_IRQn, 4);
 
-    lpuart_config8.srcclk = DEMO_LPUART_CLK_FREQ;
-    lpuart_config8.base   = DEMO_LPUART;
-//    if (kStatus_Success != LPUART_RTOS_Init(&handle8, &t_handle8, &lpuart_config8))
-//    {
-//    	LOGD("%s failed to initialize uart8\r\n", logTag);
-//    while (1);
-//    }
-//    LOGD("%s succeed to initialize uart8\r\n", logTag);
-//    MqttDevEsp32::getInstance()->initUart(&handle8, &t_handle8, &lpuart_config8);
     MqttDevEsp32::getInstance()->initUart();
 
     for (int i = 0; i < MAX_MSG_LINES; i++) {
