@@ -109,8 +109,7 @@ void MqttDevEsp32::receiveMqtt() {
                         }
                         recv_msg_lines[current_recv_line][current_recv_line_len - 1] = '\0';
                         LOGD("%s recv_msg_line is %d %d %s\r\n", logTag, current_recv_line, current_handle_line, ((const char *)recv_msg_lines[current_recv_line]));
-//                        handle_line();
-                        this->handleLine((const char *)recv_msg_lines[current_handle_line]);
+                        handleLine((const char *)recv_msg_lines[current_handle_line]);
                         current_recv_line++;
                         current_recv_line_len = 0;
                         if (current_recv_line >= MAX_MSG_LINES) {

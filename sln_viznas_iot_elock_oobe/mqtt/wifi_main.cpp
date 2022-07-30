@@ -174,7 +174,6 @@ static lpuart_rtos_config_t lpuart_config8 = {
     .buffer_size = sizeof(background_buffer8),
 };
 
-static int handle_line();
 static int random_gen = 1;
 
 void freePointer(char **p) {
@@ -229,59 +228,6 @@ int run_at_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
 {
     int result = MqttDevEsp32::getInstance()->sendATCmd(cmd, retry_times, cmd_timeout_usec, at_cmd_result);
     return result;
-//	if (AT_CMD_MODE_ACTIVE == at_cmd_mode) {
-//		return AT_CMD_RESULT_BUSY;
-//	}
-	if(g_is_shutdown) {
-        at_cmd_mode = AT_CMD_MODE_INACTIVE;
-        return -1;
-    }
-    if (at_is_running >= 1) {
-        LOGD("AT cmd is running %d so can't run %s\r\n", at_is_running, cmd);
-        at_is_running++;
-        if (at_is_running > 10) {
-            // 防止死锁，10s无论如何解锁
-            at_is_running = 0;
-        }
-        return AT_CMD_RESULT_BUSY;
-    }
-    at_is_running = 1;
-
-	char at_cmd[MQTT_AT_LEN];
-	memset(at_cmd, '\0', MQTT_AT_LEN);
-	sprintf(at_cmd, "%s\r\n", cmd);
-	LOGD("start AT command %s\r\n", cmd);
-	for (int i = 0; i < retry_times; i++) {
-		if (kStatus_Success != LPUART_RTOS_Send(&handle8, (uint8_t *)at_cmd, strlen(at_cmd))) {
-			LOGD("Failed to run command %s\r\n", cmd);
-            at_is_running = 0;
-			return -1;
-		} else {
-			LOGD("Succeed to run command %s\r\n", cmd);
-			at_cmd_mode = AT_CMD_MODE_ACTIVE;
-			at_cmd_result = AT_CMD_RESULT_UNDEF;
-		}
-		int timeout_usec = 0;
-		int delay_usec = 10;
-		do {
-			vTaskDelay(pdMS_TO_TICKS(delay_usec));
-			timeout_usec += delay_usec;
-			if (AT_CMD_RESULT_OK == at_cmd_result || AT_CMD_RESULT_ERROR == at_cmd_result) {
-				at_cmd_mode = AT_CMD_MODE_INACTIVE;
-				LOGD("run command %s %s\r\n", cmd, at_cmd_result == AT_CMD_RESULT_OK ? "OK": "ERROR");
-                at_is_running = 0;
-				return at_cmd_result;
-			}
-			if (timeout_usec >= cmd_timeout_usec) {
-				LOGD("run command %s timeout\r\n", cmd);
-				break;
-			}
-		} while (1);
-//		xEventGroupSetBits(handle8.rxEvent, RTOS_LPUART_RX_TIMEOUT);
-	}
-	LOGD("run command %s timeout end\r\n", cmd);
-    at_is_running = 0;
-	return AT_CMD_RESULT_TIMEOUT;
 }
 
 char at_long_cmd[MQTT_AT_LONG_LEN];
@@ -420,14 +366,6 @@ static void mqttinit_task(void *pvParameters) {
     char const *logTag = "[UART8_WIFI]:mqttinit_task-";
     LOGD("%s start...\r\n", logTag);
 
-#ifdef TIMEOUT_TEST
-    int result = run_at_cmd("AT", 1, 3000);
-    vTaskDelay(pdMS_TO_TICKS(1000));
-    for (int i = 0; i < 9; i++) {
-        result = run_at_cmd("AT", 1, 3000);
-        vTaskDelay(pdMS_TO_TICKS(1000));
-    }
-#else
     int result = AT_CMD_RESULT_OK;
     if (strncmp("true", btWifiConfig.need_reset, 4) == 0 ) {
         result = run_at_cmd("AT+RST", 2, 1200);
@@ -599,21 +537,9 @@ static void mqttinit_task(void *pvParameters) {
     //freePointer(&ffd_topic_cmd);
     LOGD("--------- subscribe remote feature request topic done\r\n");
 #endif
-#endif
 
     vTaskDelay(pdMS_TO_TICKS(200));
     mqtt_init_done = 1;
-//    run_at_cmd("AT\r\n", 2, 3000);
-
-//    run_at_cmd("AT+RST", 2, 3000);
-//    run_at_cmd("AT\r\n", 2, 3000);
-
-//    do {
-//    	LOGD("\r\n%s run mqttinit_task\r\n", logTag);
-//    	vTaskDelay(pdMS_TO_TICKS(2000));
-//    } while (1);
-
-//    vTaskSuspend(NULL);
     LOGD("\r\n%s end...\r\n", logTag);
     vTaskDelete(NULL);
 }
@@ -673,68 +599,6 @@ static void uartrecv_task(void *pvParameters)
 {
     MqttDevEsp32::getInstance()->receiveMqtt();
     return;
-	char const *logTag = "[UART8_WIFI]:uartrecv_task-";
-    LOGD("%s start...\r\n", logTag);
-    int error;
-    size_t n = 0;
-    memset(recv_buffer8, 0, sizeof(recv_buffer8));
-    do
-    {
-//        error = LPUART_RTOS_Receive(&handle8, recv_buffer8, sizeof(recv_buffer8), &n);
-        error = LPUART_RTOS_Receive(&handle8, recv_buffer8, 1, &n);
-        if ( error == kStatus_Success)
-        {
-            if (current_recv_line_len >= MAX_MSG_LEN_OF_LINE) {
-            	LOGD("\r\n--- receive line length is %d greater than %d, discard---\r\n", current_recv_line_len, MAX_MSG_LEN_OF_LINE);
-            } else {
-            	char lastest_char = recv_buffer8[0];
-            	recv_msg_lines[current_recv_line][current_recv_line_len++] = lastest_char;
-            	if (lastest_char == 0x0a) {
-            		if (current_recv_line_len > 1) {
-            			char lastest_char2 = recv_msg_lines[current_recv_line][current_recv_line_len-2];
-            			if (lastest_char2 == 0x0d) {
-            				recv_msg_lines[current_recv_line][current_recv_line_len - 2] = '\0';
-            				if (current_recv_line_len == 2) {
-            					// 当只有0x0d0x0a的时候，忽略此行，并且重置current_recv_len为0
-            					current_recv_line_len = 0;
-            					recv_msg_lines[current_recv_line][1] = '\0';
-            					continue;
-            				}
-            			}
-            			recv_msg_lines[current_recv_line][current_recv_line_len - 1] = '\0';
-            			//LOGD("--- recv_msg_line is %s\r\n", get_short_str((const char *)recv_msg_lines[current_recv_line]));
-            			current_recv_line++;
-            			current_recv_line_len = 0;
-            			if (current_recv_line >= MAX_MSG_LINES) {
-            				current_recv_line = 0;
-            			}
-            			handle_line();
-            		} else {
-            			// 当只有一个0x0a的时候，忽略此行，并且重置current_recv_len为0
-            			current_recv_line_len = 0;
-            			recv_msg_lines[current_recv_line][current_recv_line_len] = '\0';
-            		}
-            	}else {
-                    //LOGD("%s receive %d bytes and message is %s\r\n",logTag, n, recv_buffer8);
-            	}
-            }
-         }
-
-        if (error == kStatus_LPUART_RxHardwareOverrun)
-        {
-            /* Notify about hardware buffer overrun */
-        	LOGD("%s RX hardware overrun\r\n", logTag);
-        }
-        if (error == kStatus_LPUART_RxRingBufferOverrun)
-        {
-            /* Notify about ring buffer overrun */
-        	LOGD("%s RX ring buffer overrun\r\n", logTag);
-        }
-    } while (1); //(kStatus_Success == error);
-    LPUART_RTOS_Deinit(&handle8);
-    vTaskDelete(NULL);
-
-    LOGD("\r\n%s end...\r\n", logTag);
 }
 
 int handlePayload(char *payload, char *msg_idStr) {
@@ -1502,126 +1366,6 @@ void testFeatureDownload(char *featureJson) {
     int ret = analyzeRemoteFeature(featureJson, (char*)&msgId);
     LOGD("testFeatureDownload ret %d\r\n", ret);
     return;
-}
-
-static int is_handling_line = 0;
-static int handle_line() {
-    const char *curr_line = (const char*)recv_msg_lines[current_handle_line];
-    return handleLine(curr_line);
-}
-
-int handleLine(const char *curr_line) {
-	int rx_len = 0;
-
-	if (is_handling_line) {
-		return 0;
-	}
-	is_handling_line = 1;
-//	do {
-/*
-    	if (current_handle_line == current_recv_line) {
-    		break;
-    	}
-*/
-//    	const char *curr_line = (const char*)recv_msg_lines[current_handle_line];
-//		LOGD("---------------- line %d is : %d %s\r\n", current_handle_line, strlen(curr_line), get_short_str((const char*)recv_msg_lines[current_handle_line]));
-        LOGD("---------------- line %d is : %d %s\r\n", current_handle_line, strlen(curr_line), curr_line);
-#if 0
-		// 如果是MQTT的TOPIC RECEIVE
-		if (strncmp(curr_line, "+MQTTSUBRECV:", strlen("+MQTTSUBRECV:")) == 0) {
-			LOGD("\r\n----------------- message from mqtt server : %s -------------- \r\n", curr_line);
-			// TODO: handle message from mqtt server
-		} else if (strncmp(curr_line, "ready", 5) == 0) {
-			wifi_ready = 1;
-		} else {
-#endif
-#if 0
-			// 如果是处于AT指令执行状态，则需要判断AT指令的执行情况
-			if (AT_CMD_MODE_ACTIVE == at_cmd_mode) {
-#endif
-				if (strncmp(curr_line, "OK", 2) == 0) {
-					LOGD("\r\n----------------- RUN COMMAND OK ---------- \r\n");
-					at_cmd_result = AT_CMD_RESULT_OK;
-				} else if (strncmp(curr_line, "ERROR", 5) == 0) {
-					LOGD("\r\n----------------- RUN COMMAND FAIL ---------- \r\n");
-					at_cmd_result = AT_CMD_RESULT_ERROR;
-				} else if (strncmp((const char*)recv_msg_lines[current_handle_line], ">+MQTTPUB:OK", 12) == 0 || strncmp((const char*)recv_msg_lines[current_handle_line], "+MQTTPUB:OK", 11) == 0) {
-					at_cmd_result = AT_CMD_RESULT_OK;
-					LOGD("raw data sent OK\r\n");
-				} else if (strncmp((const char*)recv_msg_lines[current_handle_line], ">+MQTTPUB:ERROR", 15) == 0 || strncmp((const char*)recv_msg_lines[current_handle_line], "+MQTTPUB:ERROR", 14) == 0) {
-                    at_cmd_result = AT_CMD_RESULT_ERROR;
-                    LOGD("raw data sent ERROR\r\n");
-                }else if (strncmp((const char*)recv_msg_lines[current_handle_line], MQTT_CWJAP, MQTT_CWJAP_SIZE) == 0) {
-                    LOGD("\r\n----------------- RUN COMMAND CWJAP ---------- \r\n");
-                    char *second = (char *) strstr((const char *) recv_msg_lines[current_handle_line], MQTT_CWJAP);
-                    // TODO: 确认是否有OK
-                    // GET RSSI
-
-                    rx_len = 0;
-                    LOGD("----------------");
-                    LOGD("uart rx get wifi RSSI:%s\r\n", second);
-                    LOGD("----------------");
-                    // +CWJAP:"wireless_052E81","c8:ee:a6:05:2e:81",1,-40,0,0,3,0
-                    if (second != NULL) {
-                        char field11[MQTT_RSSI_LEN];
-                        char field21[MQTT_RSSI_LEN];
-                        char field22[MQTT_RSSI_LEN];
-                        char field31[MQTT_RSSI_LEN];
-                        char field32[MQTT_RSSI_LEN];
-                        char field41[MQTT_RSSI_LEN];
-                        char field42[MQTT_RSSI_LEN];
-                        char field5[MQTT_RSSI_LEN];
-                        memset(field42, '\0', MQTT_RSSI_LEN);
-                        mysplit(second, field11, field21, (char *)",");
-                        //LOGD("field21 is %s\n", field21);
-                        mysplit(field21, field22, field31, (char *)",");
-                        //LOGD("field31 is %s\n", field31);
-                        mysplit(field31, field32, field41, (char *)",");
-                        //LOGD("field41 is %s\n", field41);
-                        mysplit(field41, field42, field5, (char *)",");
-                        //LOGD("field42 is %s\n", field42);
-                        if (field42 != NULL && strlen(field42) > 0) {
-                            LOGD("RSSI is %s\r\n", field42);
-                            strcpy(wifi_rssi, field42);
-                            //at_state = AT_CMD_OK;
-							g_is_wifi_connected = 1;
-                            rx_len = 0;
-                        }
-                    }
-				} else if (strncmp((const char*)recv_msg_lines[current_handle_line], "+CIPSTAMAC:", 11) == 0) {
-					LOGD("\r\n----------------- RUN COMMAND CIPSTAMAC %s---------- \r\n", curr_line);
-				}else if (strncmp((const char*)recv_msg_lines[current_handle_line], "+MQTTSUBRECV:", 13) == 0) {
-					LOGD("####receive subscribe message from mqtt server %s \r\n", get_short_str((const char*)recv_msg_lines[current_handle_line]));
-                    int ret = analyzeMQTTMsgInternal((char*)recv_msg_lines[current_handle_line]);
-                }else if (((strncmp((const char*)recv_msg_lines[current_handle_line], MQTT_DISCONNECT, MQTT_DISCONNECT_SIZE) == 0) ||
-                        (strncmp((const char*)recv_msg_lines[current_handle_line], MQTT_RAW_DISCONNECT, MQTT_RAW_DISCONNECT_SIZE) == 0)) && (mqtt_init_done == 1)) {
-                    LOGD("###receive disconnect message from wifi_module \r\n");
-                    g_has_more_upload_data = 0;
-                    g_has_more_download_data = 0;
-#if 0
-                    char pub_msg[50];
-                    memset(pub_msg, '\0', 50);
-                    sprintf(pub_msg, "%s%s", DEFAULT_HEADER, "reconnect");
-                    // NOTE: 此处必须异步操作
-                    //MessageSend(1883, pub_msg, strlen(pub_msg));
-                    SendMsgToMQTT(pub_msg, strlen(pub_msg));
-#endif
-                }
-#if 0
-			}
-#endif
-#if 0
-		}
-#endif
-//		memset(recv_msg_lines[current_handle_line], '\0', MAX_MSG_LEN_OF_LINE);
-//		current_handle_line++;
-//		if (current_handle_line >= MAX_MSG_LINES) {
-//			current_handle_line = 0;
-//		}
-//	} while (1);
-	LOGD("=============== handle_line finished =================\r\n");
-	is_handling_line = 0;
-	return 0;
 }
 
 int uploadRecord(char *msgId, Record *record) {

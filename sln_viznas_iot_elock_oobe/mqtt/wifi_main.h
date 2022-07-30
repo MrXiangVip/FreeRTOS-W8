@@ -35,7 +35,6 @@ extern void freePointer(char **p);
 
 extern int fakeWifiCmd(char *wifi_cmd);
 int WIFI_Start();
-int handleLine(const char* line);
 
 #ifdef __cplusplus
 }
