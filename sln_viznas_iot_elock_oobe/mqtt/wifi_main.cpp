@@ -934,175 +934,175 @@ static char g_ffd_data[UART_RX_BUF_LEN];
 static char g_rfd_data[UART_RX_BUF_LEN];
 #endif
 
-#define MQTT_LINKID_LEN     16
-#define MQTT_TOPIC_LEN      64
-#define MQTT_DATALEN_LEN    16
-#define MQTT_DATA_LEN       128
-#define MQTT_LASTTOP_LEN    64
-#define MQTT_LASTDATA_LEN   16
-int analyzeMQTTMsgInternal(char *msg) {
-	static int ana_timeout_count = 0;
-	int result = -1;
-	char *pNext;
-
-	pNext = (char *)strstr(msg,"+MQTTSUBRECV:"); //必须使用(char *)进行强制类型转换(虽然不写有的编译器中不会出现指针错误)
-	if (pNext != NULL) {
-        LOGD("---- it is sub recv\r\n");
-
-		// TODO: 只要服务器下发指令下来，我们就认为服务器已经确认在线
-		g_is_online = 1;
-#if	FFD_SUPPORT != 0 || REMOTE_FEATURE != 0
-		char firstWithLinkId[MQTT_AT_LEN];
-		char topic[MQTT_AT_LEN];
-		char dataLen[MQTT_AT_LEN];
-		char data[UART_RX_BUF_LEN];
-		char lastWithTopic[UART_RX_BUF_LEN];
-		char lastWithDataLen[UART_RX_BUF_LEN];
-#else
-		char firstWithLinkId[MQTT_LINKID_LEN];
-		char topic[MQTT_TOPIC_LEN];
-		char dataLen[MQTT_DATALEN_LEN];
-		char data[MQTT_DATA_LEN];
-		char lastWithTopic[MQTT_LASTTOP_LEN];
-		char lastWithDataLen[MQTT_LASTDATA_LEN];
-#endif
-		mysplit(msg, firstWithLinkId, lastWithTopic, (char *)",\"");
-
-		mysplit(lastWithTopic, topic, lastWithDataLen, (char *)"\",");
-
-		mysplit(lastWithDataLen, dataLen, data, (char *)",");
-
-		if (dataLen == NULL || data == NULL) {
-			LOGD("analyzeMQTTMsgInternal dataLen is NULL or data is is NULL");
-			return false;
-		}
-		int data_len = atoi(dataLen);
-
-		if (data != NULL) {
-			if (strlen(data) >= data_len) {
-				char *ota_topic_cmd = get_ota_topic_cmd();
-				if (strncmp(topic, ota_topic_cmd, strlen(ota_topic_cmd)) == 0) {
-					if (data[0] == '{') {
-						memset(g_ota_data, '\0', sizeof(g_ota_data));
-						strcpy(g_ota_data, data);
-					} else {
-						int len = strlen(g_ota_data);
-						strcpy(&g_ota_data[len], data);
-					} 
-					if (data[data_len - 1] == '}') {
-						// log_info("get ota data %d: %s", strlen(g_ota_data), g_ota_data);
-						char msgId[MQTT_AT_LEN];
-						memset(msgId, '\0', MQTT_AT_LEN);
-						int ret = analyzeOTA(g_ota_data, (char*)&msgId);
-						LOGD("analyzeOTA ret %d", ret);
-					}
-					//freePointer(&ota_topic_cmd);
-					return true;
-				}
-				//freePointer(&ota_topic_cmd);
-#if	FFD_SUPPORT != 0
-				char *ffd_topic_cmd = get_ffd_topic_cmd();
-				if (strncmp(topic, ffd_topic_cmd, strlen(ffd_topic_cmd)) == 0) {
-					if (data[0] == '{') {
-						memset(g_ffd_data, '\0', sizeof(g_ffd_data));
-						strcpy(g_ffd_data, data);
-					} else {
-						int len = strlen(g_ffd_data);
-						strcpy(&g_ffd_data[len], data);
-					} 
-					if (data[data_len - 1] == '}') {
-						// log_info("get ffd data %d: %s", strlen(g_ffd_data), g_ffd_data);
-						char msgId[MQTT_AT_LEN];
-						memset(msgId, '\0', MQTT_AT_LEN);
-						int ret = analyzeFFD(g_ffd_data, (char*)&msgId);
-						LOGD("analyzeFFD ret %d", ret);
-					}
-					//freePointer(&ffd_topic_cmd);
-					return true;
-				}
-				//freePointer(&ffd_topic_cmd);
-#endif
-#if	REMOTE_FEATURE != 0
-                // 请求上传feature
-                char *rfr_topic= get_sub_topic_feature_request();
-                LOGD("analyze rfr_topic %s topic %s\r\n", rfr_topic, topic);
-                if (strncmp(topic, rfr_topic, strlen(rfr_topic)) == 0) {
-                    if (data[0] == '{') {
-                        memset(g_rfd_data, '\0', sizeof(g_rfd_data));
-                        strcpy(g_rfd_data, data);
-                        LOGD("analyzeRemoteFeature g_rfd_data %s", g_rfd_data);
-                    } else {
-                        int len = strlen(g_rfd_data);
-                        strcpy(&g_rfd_data[len], data);
-                        LOGD("analyzeRemoteFeature g_rfd_data %s", g_rfd_data);
-                    }
-                    if (data[data_len - 1] == '}') {
-                        // log_info("get rfd data %d: %s", strlen(g_rfd_data), g_rfd_data);
-                        char msgId[MQTT_AT_LEN];
-                        memset(msgId, '\0', MQTT_AT_LEN);
-                        LOGD("requestFeatureUpload g_rfd_data %s", g_rfd_data);
-                        int ret = requestFeatureUpload(g_rfd_data, (char*)&msgId);
-                        LOGD("requestFeatureUpload ret %d", ret);
-                    }
-                    //freePointer(&rfd_topic_cmd);
-                    return true;
-                }
-
-                // 下载feature到设备
-                char *rfd_topic= get_sub_topic_feature_download();
-                LOGD("analyze rfd_topic %s topic %s\r\n", rfd_topic, topic);
-				if (strncmp(topic, rfd_topic, strlen(rfd_topic)) == 0) {
-					if (data[0] == '{') {
-						memset(g_rfd_data, '\0', sizeof(g_rfd_data));
-						strcpy(g_rfd_data, data);
-                        LOGD("analyzeRemoteFeature g_rfd_data %s", g_rfd_data);
-					} else {
-						int len = strlen(g_rfd_data);
-						strcpy(&g_rfd_data[len], data);
-                        LOGD("analyzeRemoteFeature g_rfd_data %s", g_rfd_data);
-					}
-					if (data[data_len - 1] == '}') {
-						// log_info("get rfd data %d: %s", strlen(g_rfd_data), g_rfd_data);
-						char msgId[MQTT_AT_LEN];
-						memset(msgId, '\0', MQTT_AT_LEN);
-                        LOGD("analyzeRemoteFeature g_rfd_data %s", g_rfd_data);
-						int ret = analyzeRemoteFeature(g_rfd_data, (char*)&msgId);
-						LOGD("analyzeRemoteFeature ret %d", ret);
-					}
-					//freePointer(&rfd_topic_cmd);
-					return true;
-				}
-				//freePointer(&ffd_topic_cmd);
-#endif
-				char payload[MQTT_AT_LEN];
-				strncpy(payload, data, data_len);
-				payload[data_len] = '\0';
-				ana_timeout_count = 0;
-				LOGD("payload is %s len is %d\r\n", payload, strlen(payload));
-				int ret = handleJsonMsg(payload);
-				if (ret < 0)  {
-					result = -3; // command fail
-				} else {
-					result = 0;
-				}
-				// freePointer(&payload);
-			} else {
-				if (++ana_timeout_count > 10) {
-					LOGD("analyze timeout\n");
-					result = -2;
-					ana_timeout_count = 0;
-				}
-			}
-		}
-
-	} else {
-	    LOGD("---- it is not sub recv\r\n");
-	}
-	// 下面的初始化会导致strtok 段错误
-	// char *data = "+MQTTSUBRECV:0,\"testtopic\",26,{ \"msg\": \"Hello, World!\" }";
-
-	return result;
-}
+//#define MQTT_LINKID_LEN     16
+//#define MQTT_TOPIC_LEN      64
+//#define MQTT_DATALEN_LEN    16
+//#define MQTT_DATA_LEN       128
+//#define MQTT_LASTTOP_LEN    64
+//#define MQTT_LASTDATA_LEN   16
+//int analyzeMQTTMsgInternal(char *msg) {
+//	static int ana_timeout_count = 0;
+//	int result = -1;
+//	char *pNext;
+//
+//	pNext = (char *)strstr(msg,"+MQTTSUBRECV:"); //必须使用(char *)进行强制类型转换(虽然不写有的编译器中不会出现指针错误)
+//	if (pNext != NULL) {
+//        LOGD("---- it is sub recv\r\n");
+//
+//		// TODO: 只要服务器下发指令下来，我们就认为服务器已经确认在线
+//		g_is_online = 1;
+//#if	FFD_SUPPORT != 0 || REMOTE_FEATURE != 0
+//		char firstWithLinkId[MQTT_AT_LEN];
+//		char topic[MQTT_AT_LEN];
+//		char dataLen[MQTT_AT_LEN];
+//		char data[UART_RX_BUF_LEN];
+//		char lastWithTopic[UART_RX_BUF_LEN];
+//		char lastWithDataLen[UART_RX_BUF_LEN];
+//#else
+//		char firstWithLinkId[MQTT_LINKID_LEN];
+//		char topic[MQTT_TOPIC_LEN];
+//		char dataLen[MQTT_DATALEN_LEN];
+//		char data[MQTT_DATA_LEN];
+//		char lastWithTopic[MQTT_LASTTOP_LEN];
+//		char lastWithDataLen[MQTT_LASTDATA_LEN];
+//#endif
+//		mysplit(msg, firstWithLinkId, lastWithTopic, (char *)",\"");
+//
+//		mysplit(lastWithTopic, topic, lastWithDataLen, (char *)"\",");
+//
+//		mysplit(lastWithDataLen, dataLen, data, (char *)",");
+//
+//		if (dataLen == NULL || data == NULL) {
+//			LOGD("analyzeMQTTMsgInternal dataLen is NULL or data is is NULL");
+//			return false;
+//		}
+//		int data_len = atoi(dataLen);
+//
+//		if (data != NULL) {
+//			if (strlen(data) >= data_len) {
+//				char *ota_topic_cmd = get_ota_topic_cmd();
+//				if (strncmp(topic, ota_topic_cmd, strlen(ota_topic_cmd)) == 0) {
+//					if (data[0] == '{') {
+//						memset(g_ota_data, '\0', sizeof(g_ota_data));
+//						strcpy(g_ota_data, data);
+//					} else {
+//						int len = strlen(g_ota_data);
+//						strcpy(&g_ota_data[len], data);
+//					}
+//					if (data[data_len - 1] == '}') {
+//						// log_info("get ota data %d: %s", strlen(g_ota_data), g_ota_data);
+//						char msgId[MQTT_AT_LEN];
+//						memset(msgId, '\0', MQTT_AT_LEN);
+//						int ret = analyzeOTA(g_ota_data, (char*)&msgId);
+//						LOGD("analyzeOTA ret %d", ret);
+//					}
+//					//freePointer(&ota_topic_cmd);
+//					return true;
+//				}
+//				//freePointer(&ota_topic_cmd);
+//#if	FFD_SUPPORT != 0
+//				char *ffd_topic_cmd = get_ffd_topic_cmd();
+//				if (strncmp(topic, ffd_topic_cmd, strlen(ffd_topic_cmd)) == 0) {
+//					if (data[0] == '{') {
+//						memset(g_ffd_data, '\0', sizeof(g_ffd_data));
+//						strcpy(g_ffd_data, data);
+//					} else {
+//						int len = strlen(g_ffd_data);
+//						strcpy(&g_ffd_data[len], data);
+//					}
+//					if (data[data_len - 1] == '}') {
+//						// log_info("get ffd data %d: %s", strlen(g_ffd_data), g_ffd_data);
+//						char msgId[MQTT_AT_LEN];
+//						memset(msgId, '\0', MQTT_AT_LEN);
+//						int ret = analyzeFFD(g_ffd_data, (char*)&msgId);
+//						LOGD("analyzeFFD ret %d", ret);
+//					}
+//					//freePointer(&ffd_topic_cmd);
+//					return true;
+//				}
+//				//freePointer(&ffd_topic_cmd);
+//#endif
+//#if	REMOTE_FEATURE != 0
+//                // 请求上传feature
+//                char *rfr_topic= get_sub_topic_feature_request();
+//                LOGD("analyze rfr_topic %s topic %s\r\n", rfr_topic, topic);
+//                if (strncmp(topic, rfr_topic, strlen(rfr_topic)) == 0) {
+//                    if (data[0] == '{') {
+//                        memset(g_rfd_data, '\0', sizeof(g_rfd_data));
+//                        strcpy(g_rfd_data, data);
+//                        LOGD("analyzeRemoteFeature g_rfd_data %s", g_rfd_data);
+//                    } else {
+//                        int len = strlen(g_rfd_data);
+//                        strcpy(&g_rfd_data[len], data);
+//                        LOGD("analyzeRemoteFeature g_rfd_data %s", g_rfd_data);
+//                    }
+//                    if (data[data_len - 1] == '}') {
+//                        // log_info("get rfd data %d: %s", strlen(g_rfd_data), g_rfd_data);
+//                        char msgId[MQTT_AT_LEN];
+//                        memset(msgId, '\0', MQTT_AT_LEN);
+//                        LOGD("requestFeatureUpload g_rfd_data %s", g_rfd_data);
+//                        int ret = requestFeatureUpload(g_rfd_data, (char*)&msgId);
+//                        LOGD("requestFeatureUpload ret %d", ret);
+//                    }
+//                    //freePointer(&rfd_topic_cmd);
+//                    return true;
+//                }
+//
+//                // 下载feature到设备
+//                char *rfd_topic= get_sub_topic_feature_download();
+//                LOGD("analyze rfd_topic %s topic %s\r\n", rfd_topic, topic);
+//				if (strncmp(topic, rfd_topic, strlen(rfd_topic)) == 0) {
+//					if (data[0] == '{') {
+//						memset(g_rfd_data, '\0', sizeof(g_rfd_data));
+//						strcpy(g_rfd_data, data);
+//                        LOGD("analyzeRemoteFeature g_rfd_data %s", g_rfd_data);
+//					} else {
+//						int len = strlen(g_rfd_data);
+//						strcpy(&g_rfd_data[len], data);
+//                        LOGD("analyzeRemoteFeature g_rfd_data %s", g_rfd_data);
+//					}
+//					if (data[data_len - 1] == '}') {
+//						// log_info("get rfd data %d: %s", strlen(g_rfd_data), g_rfd_data);
+//						char msgId[MQTT_AT_LEN];
+//						memset(msgId, '\0', MQTT_AT_LEN);
+//                        LOGD("analyzeRemoteFeature g_rfd_data %s", g_rfd_data);
+//						int ret = analyzeRemoteFeature(g_rfd_data, (char*)&msgId);
+//						LOGD("analyzeRemoteFeature ret %d", ret);
+//					}
+//					//freePointer(&rfd_topic_cmd);
+//					return true;
+//				}
+//				//freePointer(&ffd_topic_cmd);
+//#endif
+//				char payload[MQTT_AT_LEN];
+//				strncpy(payload, data, data_len);
+//				payload[data_len] = '\0';
+//				ana_timeout_count = 0;
+//				LOGD("payload is %s len is %d\r\n", payload, strlen(payload));
+//				int ret = handleJsonMsg(payload);
+//				if (ret < 0)  {
+//					result = -3; // command fail
+//				} else {
+//					result = 0;
+//				}
+//				// freePointer(&payload);
+//			} else {
+//				if (++ana_timeout_count > 10) {
+//					LOGD("analyze timeout\n");
+//					result = -2;
+//					ana_timeout_count = 0;
+//				}
+//			}
+//		}
+//
+//	} else {
+//	    LOGD("---- it is not sub recv\r\n");
+//	}
+//	// 下面的初始化会导致strtok 段错误
+//	// char *data = "+MQTTSUBRECV:0,\"testtopic\",26,{ \"msg\": \"Hello, World!\" }";
+//
+//	return result;
+//}
 
 void testFeatureDownload(char *featureJson) {
     char msgId[MQTT_AT_LEN];

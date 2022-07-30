@@ -10,6 +10,7 @@
 #include "mqtt_dev_esp32.h"
 #include "wifi_main.h"
 #include "mqtt_util.h"
+#include "mqtt_manager.h"
 
 lpuart_rtos_handle_t m_uart_handle_esp32;
 struct _lpuart_handle m_t_handle_esp32;
@@ -234,7 +235,7 @@ int MqttDevEsp32::handleLine(const char *curr_line) {
         LOGD("\r\n----------------- RUN COMMAND CIPSTAMAC %s---------- \r\n", curr_line);
     }else if (strncmp(curr_line, "+MQTTSUBRECV:", 13) == 0) {
         LOGD("####receive subscribe message from mqtt server %s \r\n", curr_line);
-//        int ret = analyzeMQTTMsgInternal((char*)recv_msg_lines[current_handle_line]);
+        int ret = MqttManager::getInstance()->analyzeMqttMsg((char*)curr_line);
 //    }else if (((strncmp(curr_line, MQTT_DISCONNECT, MQTT_DISCONNECT_SIZE) == 0) ||
 //               (strncmp(curr_line, MQTT_RAW_DISCONNECT, MQTT_RAW_DISCONNECT_SIZE) == 0)) && (mqtt_init_done == 1)) {
     }else if (strncmp(curr_line, MQTT_DISCONNECT, MQTT_DISCONNECT_SIZE) == 0 ||

@@ -66,8 +66,6 @@ class MqttDevEsp32 {
 private:
     SemaphoreHandle_t m_send_at_cmd_lock;
 
-//    lpuart_rtos_handle_t *m_uart_handle_esp32;
-//    struct _lpuart_handle *m_t_handle_esp32;
     uint8_t m_background_buffer_esp32[256];
 
     uint8_t recv_msg_lines[MAX_MSG_LINES][MAX_MSG_LEN_OF_LINE];

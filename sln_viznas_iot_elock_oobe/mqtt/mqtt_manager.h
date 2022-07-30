@@ -5,10 +5,16 @@
 #ifndef _MQTT_MANAGER_H_
 #define _MQTT_MANAGER_H_
 
+class MqttManager {
+private:
+    MqttManager() {};
+public:
+    static MqttManager *getInstance() {
+        static MqttManager m_instance;
+        return &m_instance;
+    };
 
-class mqtt_manager {
-
+    int analyzeMqttMsg(char *msg);
 };
-
 
 #endif //_MQTT_MANAGER_H_
