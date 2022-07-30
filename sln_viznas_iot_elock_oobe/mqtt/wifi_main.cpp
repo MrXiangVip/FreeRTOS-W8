@@ -157,42 +157,6 @@ bool bOasisRecordUpload = false;
 extern bool g_is_save_file;
 extern int pressure_test;
 
-static int random_gen = 1;
-
-void freePointer(char **p) {
-    if (*p != NULL) {
-        vPortFree(*p);
-        *p = NULL;
-    }
-}
-
-
-//10 MAC + 9 tv_sec + 1 random
-#define MSG_ID_LEN 20
-#define MSG_BT_MAC_LEN	10
-char *gen_msgId() {
-    char *msgId = (char *) pvPortMalloc(MSG_ID_LEN + 1);
-    memset(msgId, '\0', MSG_ID_LEN + 1);
-    // mac
-    struct timeval tv;
-    tv.tv_sec = ws_systime;
-    tv.tv_usec = 0;
-    //gettimeofday(&tv, NULL);
-    // 可能秒就够了
-    // long id = tv.tv_sec*1000000 + tv.tv_usec;
-    // sprintf(msgId, "%s%d%06d%03d", btWifiConfig.wifi_mac, tv.tv_sec, tv.tv_usec, random_gen);
-    // sprintf(msgId, "%s%d%d", btWifiConfig.wifi_mac, tv.tv_sec, random_gen);
-    long a = tv.tv_sec % 1000000000;
-    char bt_mac_string[MSG_BT_MAC_LEN + 1];
-	memset(bt_mac_string, '\0', MSG_BT_MAC_LEN + 1);
-	memcpy(bt_mac_string, btWifiConfig.bt_mac + 2, MSG_BT_MAC_LEN);
-    if (++random_gen >= 10) {
-        random_gen = 1;
-    }
-    sprintf(msgId, "%s%09d%d", bt_mac_string, a, random_gen);
-    return msgId;
-}
-
 void remove_mqtt_instruction_from_pool(char instruction_dest, char cmd_code) {
     int cmd_index = MqttInstruction::getCmdIndex(instruction_dest, cmd_code);
     mqtt_instruction_pool.removeMqttInstruction(cmd_index);
@@ -213,6 +177,7 @@ int run_at_raw_cmd(char const *cmd, char *data, int data_len, int retry_times, i
 void update_rssi() {
     run_at_cmd("AT+CWJAP?", 1, 1000);
 }
+
 static void mqttinit_task(void *pvParameters) {
     char const *logTag = "[UART8_WIFI]:mqttinit_task-";
     LOGD("%s start...\r\n", logTag);
@@ -433,18 +398,6 @@ static void uartrecv_timeout_task(void *pvParameters)
     LOGD("\r\n%s end...\r\n", logTag);
 }
 #endif
-
-char short_str[256] = {0};
-char* get_short_str(const char *str) {
-    if(strlen(str) < 256) {
-        return (char *)str;
-    }else {
-        memset(short_str, 0, sizeof(short_str));
-        memcpy(short_str, str, 127);
-        return (char *)short_str;
-    }
-}
-
 
 static void uartrecv_task(void *pvParameters)
 {

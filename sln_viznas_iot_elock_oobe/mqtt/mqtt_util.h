@@ -9,6 +9,8 @@ void freePointer(char **p);
 int mysplit(char *src, char *first, char *last, char *separator);
 int mysplit2(char *src, char *first, char *separator);
 int del_char(char *src, char sep);
+char* get_short_str(const char *str);
+char *gen_msgId();
 #ifdef __cplusplus
 }
 #endif
