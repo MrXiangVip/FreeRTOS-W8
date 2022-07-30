@@ -665,6 +665,8 @@ char* get_short_str(const char *str) {
 
 static void uartrecv_task(void *pvParameters)
 {
+    MqttDevEsp32::getInstance()->receiveMqtt();
+    return;
 	char const *logTag = "[UART8_WIFI]:uartrecv_task-";
     LOGD("%s start...\r\n", logTag);
     int error;
@@ -1497,24 +1499,31 @@ void testFeatureDownload(char *featureJson) {
 }
 
 static int is_handling_line = 0;
-static int handle_line()
-{
+static int handle_line() {
+    const char *curr_line = (const char*)recv_msg_lines[current_handle_line];
+    return handleLine(curr_line);
+}
+
+int handleLine(const char *curr_line) {
 	int rx_len = 0;
 
 	if (is_handling_line) {
 		return 0;
 	}
 	is_handling_line = 1;
-	do {
+//	do {
+/*
     	if (current_handle_line == current_recv_line) {
     		break;
     	}
-    	const char *curr_line = (const char*)recv_msg_lines[current_handle_line];
-		LOGD("---------------- line %d is : %d %s\r\n", current_handle_line, strlen(curr_line), get_short_str((const char*)recv_msg_lines[current_handle_line]));
+*/
+//    	const char *curr_line = (const char*)recv_msg_lines[current_handle_line];
+//		LOGD("---------------- line %d is : %d %s\r\n", current_handle_line, strlen(curr_line), get_short_str((const char*)recv_msg_lines[current_handle_line]));
+        LOGD("---------------- line %d is : %d %s\r\n", current_handle_line, strlen(curr_line), curr_line);
 #if 0
 		// 如果是MQTT的TOPIC RECEIVE
-		if (strncmp((const char*)recv_msg_lines[current_handle_line], "+MQTTSUBRECV:", strlen("+MQTTSUBRECV:")) == 0) {
-			LOGD("\r\n----------------- message from mqtt server : %s -------------- \r\n", recv_msg_lines[current_handle_line]);
+		if (strncmp(curr_line, "+MQTTSUBRECV:", strlen("+MQTTSUBRECV:")) == 0) {
+			LOGD("\r\n----------------- message from mqtt server : %s -------------- \r\n", curr_line);
 			// TODO: handle message from mqtt server
 		} else if (strncmp(curr_line, "ready", 5) == 0) {
 			wifi_ready = 1;
@@ -1524,10 +1533,10 @@ static int handle_line()
 			// 如果是处于AT指令执行状态，则需要判断AT指令的执行情况
 			if (AT_CMD_MODE_ACTIVE == at_cmd_mode) {
 #endif
-				if (strncmp((const char*)recv_msg_lines[current_handle_line], "OK", 2) == 0) {
+				if (strncmp(curr_line, "OK", 2) == 0) {
 					LOGD("\r\n----------------- RUN COMMAND OK ---------- \r\n");
 					at_cmd_result = AT_CMD_RESULT_OK;
-				} else if (strncmp((const char*)recv_msg_lines[current_handle_line], "ERROR", 5) == 0) {
+				} else if (strncmp(curr_line, "ERROR", 5) == 0) {
 					LOGD("\r\n----------------- RUN COMMAND FAIL ---------- \r\n");
 					at_cmd_result = AT_CMD_RESULT_ERROR;
 				} else if (strncmp((const char*)recv_msg_lines[current_handle_line], ">+MQTTPUB:OK", 12) == 0 || strncmp((const char*)recv_msg_lines[current_handle_line], "+MQTTPUB:OK", 11) == 0) {
@@ -1598,12 +1607,12 @@ static int handle_line()
 #if 0
 		}
 #endif
-		memset(recv_msg_lines[current_handle_line], '\0', MAX_MSG_LEN_OF_LINE);
-		current_handle_line++;
-		if (current_handle_line >= MAX_MSG_LINES) {
-			current_handle_line = 0;
-		}
-	} while (1);
+//		memset(recv_msg_lines[current_handle_line], '\0', MAX_MSG_LEN_OF_LINE);
+//		current_handle_line++;
+//		if (current_handle_line >= MAX_MSG_LINES) {
+//			current_handle_line = 0;
+//		}
+//	} while (1);
 	LOGD("=============== handle_line finished =================\r\n");
 	is_handling_line = 0;
 	return 0;
