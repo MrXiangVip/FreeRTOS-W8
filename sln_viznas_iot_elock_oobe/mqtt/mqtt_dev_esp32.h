@@ -20,6 +20,8 @@
 #define MAX_MSG_LEN_OF_LINE     256
 #endif
 
+#define MQTT_AT_LEN 256
+
 typedef enum {
     SEND_AT_CMD_OK      = 0x00,
     SEND_AT_CMD_FAILED  = -0x01,
@@ -28,6 +30,14 @@ typedef enum {
     SEND_AT_CMD_ERETRY  = -0x04,
     SEND_AT_CMD_NOSPACE = -0x05,
 } SEND_AT_CMD_LOCK_STATUS;
+
+//typedef enum {
+//    AT_CMD_RESULT_OK 	    =	0x00,
+//    AT_CMD_RESULT_ERROR     =	-0x01,
+//    AT_CMD_RESULT_TIMEOUT 	=	-0x02,
+//    AT_CMD_RESULT_BUSY 	    =	-0x03,
+//    AT_CMD_RESULT_UNDEF 	=	-0x04,
+//} AT_CMD_RESULT;
 
 class MqttDevEsp32 {
 private:
@@ -54,7 +64,7 @@ public:
     }
 
     void receiveMqtt();
-//    int initUart();
+    int sendATCmd(char const *cmd, int retry_times, int cmd_timeout_usec, int &m_at_cmd_result);
     int initUart(lpuart_rtos_handle_t *handle, lpuart_handle_t *t_handle, const lpuart_rtos_config_t *cfg);
 };
 

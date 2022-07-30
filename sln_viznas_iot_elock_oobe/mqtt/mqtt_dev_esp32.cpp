@@ -145,3 +145,41 @@ void MqttDevEsp32::receiveMqtt() {
 
     LOGD("\r\n%s end...\r\n", logTag);
 }
+int MqttDevEsp32::sendATCmd(char const *cmd, int retry_times, int cmd_timeout_usec, int &m_at_cmd_result) {
+    lockSendATCmd();
+
+    char at_cmd[MQTT_AT_LEN];
+    memset(at_cmd, '\0', MQTT_AT_LEN);
+    sprintf(at_cmd, "%s\r\n", cmd);
+    LOGD("start AT command %s\r\n", cmd);
+    int result = AT_CMD_RESULT_UNDEF;
+    for (int i = 0; i < retry_times; i++) {
+        if (kStatus_Success != LPUART_RTOS_Send(m_uart_handle_esp32, (uint8_t *)at_cmd, strlen(at_cmd))) {
+            LOGD("Failed to run command %s\r\n", cmd);
+            result = AT_CMD_RESULT_ERROR;
+            break;
+        }
+        int timeout_usec = 0;
+        int delay_usec = 10;
+        do {
+            vTaskDelay(pdMS_TO_TICKS(delay_usec));
+            timeout_usec += delay_usec;
+            if (AT_CMD_RESULT_OK == m_at_cmd_result || AT_CMD_RESULT_ERROR == m_at_cmd_result) {
+                // at_cmd_mode = AT_CMD_MODE_INACTIVE;
+                LOGD("run command %s %s\r\n", cmd, (m_at_cmd_result == AT_CMD_RESULT_OK) ? "OK": "ERROR");
+                result = m_at_cmd_result;
+                unlockSendATCmd();
+                return result;
+            }
+            if (timeout_usec >= cmd_timeout_usec) {
+                LOGD("run command %s timeout index %d\r\n", cmd, i);
+                break;
+            }
+        } while (1);
+    }
+
+    LOGD("run command %s timeout end\r\n", cmd);
+    result = AT_CMD_RESULT_TIMEOUT;
+    unlockSendATCmd();
+    return result;
+}

@@ -227,6 +227,8 @@ void remove_mqtt_instruction_from_pool(char instruction_dest, char cmd_code) {
 
 int run_at_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
 {
+    int result = MqttDevEsp32::getInstance()->sendATCmd(cmd, retry_times, cmd_timeout_usec, at_cmd_result);
+    return result;
 //	if (AT_CMD_MODE_ACTIVE == at_cmd_mode) {
 //		return AT_CMD_RESULT_BUSY;
 //	}
@@ -454,7 +456,8 @@ static void mqttinit_task(void *pvParameters) {
             update_need_reset("false");
         }
     }else {
-        int result3 = run_at_cmd("ATE0", 2, 1200);
+//        int result3 = run_at_cmd("ATE0", 2, 1200);
+        int result3 = MqttDevEsp32::getInstance()->sendATCmd("ATE0", 2, 1200, at_cmd_result);
     }
 
 #if	WIFI_SUPPORT_BAUD921600
