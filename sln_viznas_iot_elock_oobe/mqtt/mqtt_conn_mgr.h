@@ -27,6 +27,8 @@ public:
     MQTT_CONN_STATE getMqttConnState();
     bool isWifiConnected();
     bool isMqttConnected();
+
+    int resetWifi();
 };
 
 #endif //_MQTT_STATE_H_

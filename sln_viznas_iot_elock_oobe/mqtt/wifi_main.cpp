@@ -155,9 +155,10 @@ static void mqttinit_task(void *pvParameters) {
 
     int result = AT_CMD_RESULT_OK;
     if (strncmp("true", btWifiConfig.need_reset, 4) == 0 ) {
-        result = run_at_cmd("AT+RST", 2, 1200);
-        LOGD("run AT+RST result %d\r\n", result);
-        notifyWifiInitialized(result);
+//        result = run_at_cmd("AT+RST", 2, 1200);
+//        LOGD("run AT+RST result %d\r\n", result);
+//        notifyWifiInitialized(result);
+        result = MqttConnMgr::getInstance()->resetWifi();
         if (AT_CMD_RESULT_OK != result) {
             LOGD("%sFailed to reset WiFi module\r\n", logTag);
             // TODO: try to notify MCU
@@ -206,7 +207,7 @@ static void mqttinit_task(void *pvParameters) {
     while (!MqttConnMgr::getInstance()->isWifiConnected() && wifi_count < 10) {
 //        run_at_cmd("AT+CWJAP?", 1, 1000);
         update_rssi();
-        LOGD("--------- connect to wifi %d %d\n", MqttConnMgr::getInstance()->isWifiConnected(), MqttConnMgr::getInstance()->getMqttConnState());
+        LOGD("--------- connect to wifi %d %d\r\n", MqttConnMgr::getInstance()->isWifiConnected(), MqttConnMgr::getInstance()->getMqttConnState());
         // 睡眠300ms
         vTaskDelay(pdMS_TO_TICKS(300));
         wifi_count++;
