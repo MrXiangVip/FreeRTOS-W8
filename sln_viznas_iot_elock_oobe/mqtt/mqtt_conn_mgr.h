@@ -63,6 +63,7 @@ public:
     };
     // Connection State
     int initWifiConnection(const char* ssid, const char* password);
+    int initMqttConnection(const char* clientId, const char* username, const char* password, const char* serverIp, const char* serverPort);
     void keepConnection();
 
     void setMqttConnState(MQTT_CONN_STATE mqttConnState);

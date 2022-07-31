@@ -7,6 +7,7 @@
 #include "FreeRTOS.h"
 #include "mqtt_conn_mgr.h"
 #include "mqtt-mcu.h"
+#include "mqtt-topic.h"
 #include "mqtt_dev_esp32.h"
 #include "fsl_log.h"
 
@@ -40,6 +41,51 @@ int MqttConnMgr::initWifiConnection(const char* ssid, const char* password) {
     }
     notifyWifiConnected(0);
 
+    return result;
+}
+
+int MqttConnMgr::initMqttConnection(const char* clientId, const char* username, const char* password, const char* serverIp, const char* serverPort) {
+    // 连接MQTT
+    int result = quickConnectMQTT(clientId, username, password, serverIp, serverPort);
+    notifyMqttConnected(result);
+    if (result != 0) {
+        LOGD("--------- Failed to connect to MQTT\r\n");
+        return -1;
+    }
+    LOGD("--------- connect to mqtt done\r\n");
+
+//    vTaskDelay(pdMS_TO_TICKS(200));
+
+    char *sub_topic_cmd = get_sub_topic_cmd();
+    result = subscribeMQTT(sub_topic_cmd);
+    if (result != 0) {
+        notifyHeartBeat(CODE_FAILURE);
+        LOGD("--------- Failed to subscribe topic\r\n");
+    }
+    LOGD("--------- subscribe topic done\r\n");
+//    freePointer(&sub_topic_cmd);
+
+#if	REMOTE_FEATURE != 0
+//    vTaskDelay(pdMS_TO_TICKS(20));
+    char *rfd_topic = get_sub_topic_feature_download();
+    result = subscribeMQTT(rfd_topic);
+    if (result < 0) {
+        LOGD("--------- Failed to subscribe remote feature download topic\r\n");
+        return;
+    }
+//    freePointer(&rfd_topic_cmd);
+    LOGD("--------- subscribe remote feature download topic done\r\n");
+//    vTaskDelay(pdMS_TO_TICKS(20));
+    char *rfr_topic = get_sub_topic_feature_request();
+    result = subscribeMQTT(rfr_topic);
+    if (result < 0) {
+        LOGD("--------- Failed to subscribe remote feature request topic\r\n");
+        return;
+    }
+    LOGD("--------- subscribe remote feature request topic done\r\n");
+    //freePointer(&rfr_topic_cmd);
+#endif
+    setMqttConnState(MQTT_CONNECTED);
     return result;
 }
 
