@@ -95,7 +95,13 @@ public:
     int sendRawATCmd(char const *cmd, char *data, int data_len, int cmd_timeout_usec = MQTT_AT_CMD_DEFAULT_TIMEOUT, int retry_times = MQTT_AT_CMD_DEFAULT_RETRY_TIME);
 
     int initUart();
-//    int initUart(lpuart_rtos_handle_t *handle, lpuart_handle_t *t_handle, const lpuart_rtos_config_t *cfg);
+    int setEcho(int echoOn = 1);
+    int setSysLog(int sysLogOn = 1);
+    // 0: 无 Wi-Fi 模式，并且关闭 Wi-Fi RF
+    // 1: Station 模式
+    // 2: SoftAP 模式
+    // 3: SoftAP+Station 模式
+    int setWifiMode(int wifiMode = 1);
 };
 
 #ifdef __cplusplus

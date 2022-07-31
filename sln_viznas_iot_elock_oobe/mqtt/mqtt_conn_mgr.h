@@ -61,8 +61,10 @@ public:
         static MqttConnMgr m_instance;
         return &m_instance;
     };
-
     // Connection State
+    int initWifiConnection(const char* ssid, const char* password);
+    void keepConnection();
+
     void setMqttConnState(MQTT_CONN_STATE mqttConnState);
     MQTT_CONN_STATE getMqttConnState();
     bool isWifiConnected();

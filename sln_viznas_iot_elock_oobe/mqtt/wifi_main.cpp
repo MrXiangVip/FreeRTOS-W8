@@ -149,38 +149,7 @@ static void mqttinit_task(void *pvParameters) {
     LOGD("%s start...\r\n", logTag);
 
     int result = AT_CMD_RESULT_OK;
-    if (strncmp("true", btWifiConfig.need_reset, 4) == 0 ) {
-//        result = run_at_cmd("AT+RST", 2, 1200);
-//        LOGD("run AT+RST result %d\r\n", result);
-//        notifyWifiInitialized(result);
-        result = MqttConnMgr::getInstance()->resetWifi();
-        if (AT_CMD_RESULT_OK != result) {
-            LOGD("%sFailed to reset WiFi module\r\n", logTag);
-            // TODO: try to notify MCU
-            vTaskDelete(NULL);
-            return;
-        }
-
-        for (int i = 0; i < 10; i++) {
-            if (MqttConnMgr::getInstance()->isWifiConnected()) {
-                LOGD("%sSuccess to reset WiFi module\r\n", logTag);
-                break;
-            }
-            vTaskDelay(pdMS_TO_TICKS(100));
-        }
-
-        int result1 = run_at_cmd("AT+SYSLOG=1", 2, 1200);
-        int result2 = run_at_cmd("AT+CWMODE=1", 1, 1200);
-        int result3 = run_at_cmd("ATE0", 1, 1200);
-
-        if (result == 0 && result1 == 0 && result2 == 0 && result3 == 0) {
-            update_need_reset("false");
-        }
-    }else {
-        int result1 = run_at_cmd("AT+SYSLOG=1", 2, 1200);
-        int result2 = run_at_cmd("AT+CWMODE=1", 1, 1200);
-        int result3 = run_at_cmd("ATE0", 1, 1200);
-    }
+	MqttConnMgr::getInstance()->initWifiConnection(btWifiConfig.ssid, btWifiConfig.password);
 
 #if	WIFI_SUPPORT_BAUD921600
     vTaskDelay(pdMS_TO_TICKS(20));
@@ -196,35 +165,6 @@ static void mqttinit_task(void *pvParameters) {
         LOGD("--------- connect to URART8\n");
     }
 #endif
-
-    int wifi_count = 0;
-    // 尽量3s以内判断wifi是否已自动连接，若已经自动连接，则无需处理下面的操作
-    while (!MqttConnMgr::getInstance()->isWifiConnected() && wifi_count < 10) {
-        MqttConnMgr::getInstance()->updateWifiRSSI();
-        LOGD("--------- connect to wifi %d %d\r\n", MqttConnMgr::getInstance()->isWifiConnected(), MqttConnMgr::getInstance()->getMqttConnState());
-        // 睡眠300ms
-        vTaskDelay(pdMS_TO_TICKS(300));
-        wifi_count++;
-    }
-
-    if (!MqttConnMgr::getInstance()->isWifiConnected() || strncmp(btWifiConfig.need_reconnect, "true", 4) == 0) {
-        // 连接WIFI
-        result = MqttConnMgr::getInstance()->connectWifi(btWifiConfig.ssid, btWifiConfig.password);
-        // sendStatusToMCU(0x01, ret);
-        MqttConnMgr::getInstance()->updateWifiRSSI();
-        if (result < 0) {
-            LOGD("--------- Failed to connect to WIFI\r\n");
-            vTaskDelete(NULL);
-            return;
-        } else {
-            update_need_reconnect("false");
-        }
-        LOGD("--------- connect to WIFI done\r\n");
-    } else {
-        LOGD("--------- auto connect to WIFI done\r\n");
-        notifyWifiConnected(0);
-    }
-    vTaskDelay(pdMS_TO_TICKS(300));
 
     char lwtMsg[50];
     // sprintf(lwtMsg, "{\"username\":\"%s\",\"state\":\"0\"}", btWifiConfig.wifi_mac);

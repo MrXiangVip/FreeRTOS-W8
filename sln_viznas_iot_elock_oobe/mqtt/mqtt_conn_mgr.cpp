@@ -11,6 +11,42 @@
 #include "fsl_log.h"
 
 /**************** Connection State start********************/
+int MqttConnMgr::initWifiConnection(const char* ssid, const char* password) {
+    MqttDevEsp32::getInstance()->setSysLog(1);
+    MqttDevEsp32::getInstance()->setEcho(0);
+    int result = MqttDevEsp32::getInstance()->setWifiMode(1);
+
+    int wifi_count = 0;
+    // 尽量3s以内判断wifi是否已自动连接，若已经自动连接，则无需处理下面的操作
+    while (!isWifiConnected() && wifi_count < 10) {
+        updateWifiRSSI();
+        LOGD("initConnection connect to wifi %d %d\r\n", MqttConnMgr::getInstance()->isWifiConnected(), MqttConnMgr::getInstance()->getMqttConnState());
+        // 睡眠300ms
+        vTaskDelay(pdMS_TO_TICKS(300));
+        wifi_count++;
+    }
+
+    if (!isWifiConnected()) {
+        // 连接WIFI
+        result = connectWifi(ssid, password);
+        updateWifiRSSI();
+        if (result < 0) {
+            LOGD("initConnection Failed to connect to WIFI\r\n");
+            return -1;
+        }
+        LOGD("initConnection connect to WIFI done\r\n");
+    } else {
+        LOGD("initConnection auto connect to WIFI done\r\n");
+    }
+    notifyWifiConnected(0);
+
+    return result;
+}
+
+void MqttConnMgr::keepConnection() {
+
+}
+
 void MqttConnMgr::setMqttConnState(MQTT_CONN_STATE mqttConnState) {
     m_mqtt_conn_state = mqttConnState;
 }

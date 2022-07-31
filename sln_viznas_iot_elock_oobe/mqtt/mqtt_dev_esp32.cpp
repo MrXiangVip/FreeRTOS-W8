@@ -299,3 +299,21 @@ int MqttDevEsp32::sendRawATCmd(char const *cmd, char *data, int data_len, int cm
 
     return m_at_cmd_result;
 }
+
+int MqttDevEsp32::setEcho(int echoOn) {
+    char cmd[6] = {0};
+    sprintf(cmd, "ATE%d", echoOn);
+    return sendATCmd(cmd);
+}
+
+int MqttDevEsp32::setSysLog(int sysLogOn) {
+    char cmd[12] = {0};
+    sprintf(cmd, "AT+SYSLOG=%d", sysLogOn);
+    return sendATCmd(cmd);
+}
+
+int MqttDevEsp32::setWifiMode(int wifiMode) {
+    char cmd[12] = {0};
+    sprintf(cmd, "AT+CWMODE=%d", wifiMode);
+    return sendATCmd(cmd);
+}
