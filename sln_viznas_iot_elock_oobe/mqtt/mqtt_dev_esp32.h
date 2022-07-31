@@ -8,6 +8,7 @@
 #include "fsl_lpuart_freertos.h"
 #include "fsl_lpuart.h"
 #include "board.h"
+#include "mqtt-common.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -90,8 +91,8 @@ public:
 
     void receiveMqtt();
 
-    int sendATCmd(char const *cmd, int retry_times, int cmd_timeout_usec);
-    int sendRawATCmd(char const *cmd, char *data, int data_len, int retry_times, int cmd_timeout_usec);
+    int sendATCmd(char const *cmd, int cmd_timeout_usec = MQTT_AT_CMD_DEFAULT_TIMEOUT, int retry_times = MQTT_AT_CMD_DEFAULT_RETRY_TIME);
+    int sendRawATCmd(char const *cmd, char *data, int data_len, int cmd_timeout_usec = MQTT_AT_CMD_DEFAULT_TIMEOUT, int retry_times = MQTT_AT_CMD_DEFAULT_RETRY_TIME);
 
     int initUart();
 //    int initUart(lpuart_rtos_handle_t *handle, lpuart_handle_t *t_handle, const lpuart_rtos_config_t *cfg);
