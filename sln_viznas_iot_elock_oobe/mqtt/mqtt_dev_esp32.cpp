@@ -147,7 +147,7 @@ void MqttDevEsp32::receiveMqtt() {
     // TODO: LPUART_RTOS_Deinit(&m_uart_handle_esp32);
 }
 
-int MqttDevEsp32::sendATCmd(char const *cmd, int retry_times, int cmd_timeout_usec) {
+int MqttDevEsp32::sendATCmd(char const *cmd, int cmd_timeout_usec, int retry_times) {
     lockSendATCmd();
 
     char at_cmd[MQTT_AT_LEN];
@@ -252,7 +252,7 @@ int MqttDevEsp32::handleLine(const char *curr_line) {
     return 0;
 }
 
-int MqttDevEsp32::sendRawATCmd(char const *cmd, char *data, int data_len, int retry_times, int cmd_timeout_usec) {
+int MqttDevEsp32::sendRawATCmd(char const *cmd, char *data, int data_len, int cmd_timeout_usec, int retry_times) {
     int ret = 0;
     LOGD("start AT raw command %s data_len is %d\r\n", cmd, data_len);
 

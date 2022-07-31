@@ -148,6 +148,7 @@ int MqttConnMgr::quickConnectMQTT(const char* clientId, const char* username, co
         return resSetup;
     }
 
+//    vTaskDelay(pdMS_TO_TICKS(50));
     int resConn = connectMQTT(hostIp, port);
     return resConn;
 }

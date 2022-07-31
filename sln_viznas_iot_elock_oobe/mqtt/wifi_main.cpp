@@ -134,13 +134,13 @@ void remove_mqtt_instruction_from_pool(char instruction_dest, char cmd_code) {
 
 int run_at_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
 {
-    int result = MqttDevEsp32::getInstance()->sendATCmd(cmd, retry_times, cmd_timeout_usec);
+    int result = MqttDevEsp32::getInstance()->sendATCmd(cmd, cmd_timeout_usec, retry_times);
     return result;
 }
 
 int run_at_raw_cmd(char const *cmd, char *data, int data_len, int retry_times, int cmd_timeout_usec)
 {
-    int result = MqttDevEsp32::getInstance()->sendRawATCmd(cmd, data, data_len, retry_times, cmd_timeout_usec);
+    int result = MqttDevEsp32::getInstance()->sendRawATCmd(cmd, data, data_len, cmd_timeout_usec, retry_times);
     return result;
 }
 
@@ -177,8 +177,8 @@ static void mqttinit_task(void *pvParameters) {
             update_need_reset("false");
         }
     }else {
-//        int result1 = run_at_cmd("AT+SYSLOG=1", 2, 1200);
-//        int result2 = run_at_cmd("AT+CWMODE=1", 1, 1200);
+        int result1 = run_at_cmd("AT+SYSLOG=1", 2, 1200);
+        int result2 = run_at_cmd("AT+CWMODE=1", 1, 1200);
         int result3 = run_at_cmd("ATE0", 1, 1200);
     }
 
@@ -231,10 +231,10 @@ static void mqttinit_task(void *pvParameters) {
     //sprintf(lwtMsg, "{\"username\":\"%s\",\"state\":\"0\"}", btWifiConfig.bt_mac);
     sprintf(lwtMsg, "{\\\"username\\\":\\\"%s\\\"\\,\\\"state\\\":\\\"0\\\"}", "7CDFA102AB68");
 
-    char *pub_topic_last_will = get_pub_topic_last_will();
+//    char *pub_topic_last_will = get_pub_topic_last_will();
     // 连接MQTT
-    result = quickConnectMQTT(mqttConfig.client_id, mqttConfig.username, mqttConfig.password, mqttConfig.server_ip,
-                           mqttConfig.server_port, pub_topic_last_will, lwtMsg);
+    result = MqttConnMgr::getInstance()->quickConnectMQTT(mqttConfig.client_id, mqttConfig.username, mqttConfig.password, mqttConfig.server_ip,
+                           mqttConfig.server_port);
     //result = quickConnectMQTT(mqttConfig.client_id, "7CDFA102AB68", "0000000000000000", "10.0.14.61",
     //                          "9883", pub_topic_last_will, lwtMsg);
 
@@ -251,7 +251,7 @@ static void mqttinit_task(void *pvParameters) {
 
     vTaskDelay(pdMS_TO_TICKS(200));
 
-    result = quickPublishMQTT(pub_topic_last_will, "{}");
+//    result = quickPublishMQTT(pub_topic_last_will, "{}");
 
     //freePointer(&pub_topic_last_will);
 
