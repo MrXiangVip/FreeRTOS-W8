@@ -69,7 +69,6 @@
 
 #define WIFI_SUPPORT_BAUD921600        0
 int mqtt_init_done = 0;
-static int at_is_running = 0;
 // 本次开机心跳序列
 static int g_heartbeat_index = 0;
 // 是否已经确认服务器在线
@@ -210,9 +209,8 @@ static void mqttinit_task(void *pvParameters) {
 
     if (!MqttConnMgr::getInstance()->isWifiConnected() || strncmp(btWifiConfig.need_reconnect, "true", 4) == 0) {
         // 连接WIFI
-        result = connectWifi(btWifiConfig.ssid, btWifiConfig.password);
+        result = MqttConnMgr::getInstance()->connectWifi(btWifiConfig.ssid, btWifiConfig.password);
         // sendStatusToMCU(0x01, ret);
-        notifyWifiConnected(result);
         MqttConnMgr::getInstance()->updateWifiRSSI();
         if (result < 0) {
             LOGD("--------- Failed to connect to WIFI\r\n");

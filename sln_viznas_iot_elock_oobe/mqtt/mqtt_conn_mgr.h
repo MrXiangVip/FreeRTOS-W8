@@ -5,6 +5,8 @@
 #ifndef _MQTT_STATE_H_
 #define _MQTT_STATE_H_
 
+#include "mqtt-common.h"
+
 typedef enum {
     WIFI_DISCONNECTED = 0x00,
     WIFI_CONNECTED = 0x01,
@@ -14,6 +16,7 @@ typedef enum {
 class MqttConnMgr {
 private:
     int m_wifi_rssi;
+    char m_at_cmd[MQTT_AT_CMD_LEN];
 
     MqttConnMgr() {
         m_mqtt_conn_state = WIFI_DISCONNECTED;
@@ -34,7 +37,7 @@ public:
     void setWifiRSSI(int wifiRSSI);
     int getWifiRSSI();
     int updateWifiRSSI();
-    int connectWifi(bool forceConnect = true);
+    int connectWifi(const char* ssid, const char* password);
 };
 
 #endif //_MQTT_STATE_H_

@@ -48,6 +48,12 @@ int MqttConnMgr::updateWifiRSSI() {
     return result;
 }
 
-int MqttConnMgr::connectWifi(bool forceConnect) {
-	return 0;
+int MqttConnMgr::connectWifi(const char* ssid, const char* password) {
+    memset(m_at_cmd, '\0', sizeof(m_at_cmd));
+    sprintf(m_at_cmd, "AT+CWJAP=\"%s\",\"%s\"", ssid, password);
+    int result = MqttDevEsp32::getInstance()->sendATCmd(m_at_cmd, 2, 10000);
+    LOGD("connectWifi result %d\r\n", result);
+    notifyWifiConnected(result);
+    // TODO: 此处仅仅是wifi配置了，但是是否获取到IP不确定，也许需要updateWifiRSSI?
+    return result;
 }

@@ -12,7 +12,8 @@
 #define CMD_FEATURE_UP "fu"
 
 #define MQTT_MSG_ID_LEN 50
-#define MQTT_AT_LEN 128
+#define MQTT_AT_LEN 256
+#define MQTT_AT_CMD_LEN 256
 #define MQTT_AT_TOPIC_LEN 64
 #define AT_SEND_BUF_LEN 256
 #define UART_RX_BUF_LEN 1536 //2048//8292
