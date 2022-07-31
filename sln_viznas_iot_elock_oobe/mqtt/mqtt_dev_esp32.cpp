@@ -11,6 +11,7 @@
 #include "wifi_main.h"
 #include "mqtt_util.h"
 #include "mqtt_manager.h"
+#include "mqtt_conn_mgr.h"
 
 lpuart_rtos_handle_t m_uart_handle_esp32;
 struct _lpuart_handle m_t_handle_esp32;
@@ -152,6 +153,7 @@ int MqttDevEsp32::sendATCmd(char const *cmd, int retry_times, int cmd_timeout_us
     char at_cmd[MQTT_AT_LEN];
     memset(at_cmd, '\0', MQTT_AT_LEN);
     sprintf(at_cmd, "%s\r\n", cmd);
+    LOGD("\r\n\r\n");
     LOGD(">>>>>> start AT command %s\r\n", cmd);
     m_at_cmd_result = AT_CMD_RESULT_UNDEF;
     for (int i = 0; i < retry_times; i++) {
@@ -167,7 +169,7 @@ int MqttDevEsp32::sendATCmd(char const *cmd, int retry_times, int cmd_timeout_us
             timeout_usec += delay_usec;
             if (AT_CMD_RESULT_OK == m_at_cmd_result || AT_CMD_RESULT_ERROR == m_at_cmd_result) {
                 // at_cmd_mode = AT_CMD_MODE_INACTIVE;
-                LOGD("<<<<<< run command %s %s\r\n", cmd, (m_at_cmd_result == AT_CMD_RESULT_OK) ? "OK": "ERROR");
+                LOGD("<<<<<< run command %s %s\r\n\r\n", cmd, (m_at_cmd_result == AT_CMD_RESULT_OK) ? "OK": "ERROR");
                 unlockSendATCmd();
                 return m_at_cmd_result;
 //            } else {
@@ -180,7 +182,7 @@ int MqttDevEsp32::sendATCmd(char const *cmd, int retry_times, int cmd_timeout_us
         } while (1);
     }
 
-    LOGD("<<<<<< run command %s timeout end\r\n", cmd);
+    LOGD("<<<<<< run command %s timeout end\r\n\r\n", cmd);
     m_at_cmd_result = AT_CMD_RESULT_TIMEOUT;
     unlockSendATCmd();
     return m_at_cmd_result;
@@ -230,6 +232,7 @@ int MqttDevEsp32::handleLine(const char *curr_line) {
                 m_wifi_rssi = atoi(field42);
                 //at_state = AT_CMD_OK;
                 m_at_cmd_result = AT_CMD_RESULT_OK;
+                MqttConnMgr::getInstance()->setMqttConnState(WIFI_CONNECTED);
 //                g_is_wifi_connected = 1;
             }
         }

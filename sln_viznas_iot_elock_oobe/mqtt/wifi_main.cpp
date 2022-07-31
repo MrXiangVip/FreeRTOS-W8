@@ -45,6 +45,7 @@
 #include "database.h"
 #include "oasis.h"
 #include "mqtt_dev_esp32.h"
+#include "mqtt_conn_mgr.h"
 
 /*******************************************************************************
  * Definitions
@@ -87,8 +88,6 @@ static int g_shutdown_notified = 0;
 int g_priority = 0;
 // 是否是自动上传过程中	: 0 未上传/上传完成 1 上传中 2 上传中断
 static int g_is_auto_uploading = 0;
-// wifi是否已自动连接
-static int g_is_wifi_connected = 0;
 // 心跳是否立即执行
 static int g_heart_beat_executed = 0;
 
@@ -115,10 +114,6 @@ DTC_BSS static StaticTask_t s_Uart8SendheartbeatTaskTCB;
 DTC_BSS static StackType_t Uart8UploadDataTaskStack[UART8UPLOADDATATASK_STACKSIZE];
 DTC_BSS static StaticTask_t s_Uart8UploadDataTaskTCB;
 #endif
-
-static int at_cmd_mode = AT_CMD_MODE_INACTIVE;
-
-static int wifi_ready = 0;
 
 int uploadRecordImage(Record *record, bool online);
 #if	FFD_SUPPORT != 0
@@ -171,7 +166,7 @@ static void mqttinit_task(void *pvParameters) {
         }
 
         for (int i = 0; i < 10; i++) {
-            if (wifi_ready == 1) {
+            if (MqttConnMgr::getInstance()->isWifiConnected()) {
                 LOGD("%sSuccess to reset WiFi module\r\n", logTag);
                 break;
             }
@@ -186,10 +181,8 @@ static void mqttinit_task(void *pvParameters) {
             update_need_reset("false");
         }
     }else {
-//        int result3 = run_at_cmd("ATE0", 2, 1200);
-//        int result3 = MqttDevEsp32::getInstance()->sendATCmd("ATE0", 2, 1200, at_cmd_result);
-        int result1 = run_at_cmd("AT+SYSLOG=1", 2, 1200);
-        int result2 = run_at_cmd("AT+CWMODE=1", 1, 1200);
+//        int result1 = run_at_cmd("AT+SYSLOG=1", 2, 1200);
+//        int result2 = run_at_cmd("AT+CWMODE=1", 1, 1200);
         int result3 = run_at_cmd("ATE0", 1, 1200);
     }
 
@@ -210,15 +203,16 @@ static void mqttinit_task(void *pvParameters) {
 
     int wifi_count = 0;
     // 尽量3s以内判断wifi是否已自动连接，若已经自动连接，则无需处理下面的操作
-    while (g_is_wifi_connected == 0 && wifi_count < 10) {
-        run_at_cmd("AT+CWJAP?", 1, 1000);
+    while (!MqttConnMgr::getInstance()->isWifiConnected() && wifi_count < 10) {
+//        run_at_cmd("AT+CWJAP?", 1, 1000);
+        update_rssi();
+        LOGD("--------- connect to wifi %d %d\n", MqttConnMgr::getInstance()->isWifiConnected(), MqttConnMgr::getInstance()->getMqttConnState());
         // 睡眠300ms
-        //usleep(300000);
         vTaskDelay(pdMS_TO_TICKS(300));
         wifi_count++;
     }
 
-    if (g_is_wifi_connected == 0 || strncmp(btWifiConfig.need_reconnect, "true", 4) == 0) {
+    if (!MqttConnMgr::getInstance()->isWifiConnected() || strncmp(btWifiConfig.need_reconnect, "true", 4) == 0) {
         // 连接WIFI
         result = connectWifi(btWifiConfig.ssid, btWifiConfig.password);
         // sendStatusToMCU(0x01, ret);
@@ -331,7 +325,7 @@ static void mqttinit_task(void *pvParameters) {
 #endif
 
     vTaskDelay(pdMS_TO_TICKS(200));
-    mqtt_init_done = 1;
+    MqttConnMgr::getInstance()->setMqttConnState(MQTT_CONNECTED);
     LOGD("\r\n%s end...\r\n", logTag);
     vTaskDelete(NULL);
 }
