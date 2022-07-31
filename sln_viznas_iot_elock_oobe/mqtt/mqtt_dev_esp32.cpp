@@ -229,10 +229,11 @@ int MqttDevEsp32::handleLine(const char *curr_line) {
             //LOGD("field42 is %s\n", field42);
             if (field42 != NULL && strlen(field42) > 0) {
                 LOGD("RSSI is %s\r\n", field42);
-                m_wifi_rssi = atoi(field42);
+                int wifi_rssi = atoi(field42);
                 //at_state = AT_CMD_OK;
                 m_at_cmd_result = AT_CMD_RESULT_OK;
                 MqttConnMgr::getInstance()->setMqttConnState(WIFI_CONNECTED);
+                MqttConnMgr::getInstance()->setWifiRSSI(wifi_rssi);
 //                g_is_wifi_connected = 1;
             }
         }

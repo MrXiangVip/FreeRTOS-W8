@@ -13,6 +13,8 @@ typedef enum {
 
 class MqttConnMgr {
 private:
+    int m_wifi_rssi;
+
     MqttConnMgr() {
         m_mqtt_conn_state = WIFI_DISCONNECTED;
     };
@@ -29,6 +31,10 @@ public:
     bool isMqttConnected();
 
     int resetWifi();
+    void setWifiRSSI(int wifiRSSI);
+    int getWifiRSSI();
+    int updateWifiRSSI();
+    int connectWifi(bool forceConnect = true);
 };
 
 #endif //_MQTT_STATE_H_

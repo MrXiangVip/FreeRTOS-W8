@@ -145,10 +145,6 @@ int run_at_raw_cmd(char const *cmd, char *data, int data_len, int retry_times, i
     return result;
 }
 
-void update_rssi() {
-    run_at_cmd("AT+CWJAP?", 1, 1000);
-}
-
 static void mqttinit_task(void *pvParameters) {
     char const *logTag = "[UART8_WIFI]:mqttinit_task-";
     LOGD("%s start...\r\n", logTag);
@@ -205,8 +201,7 @@ static void mqttinit_task(void *pvParameters) {
     int wifi_count = 0;
     // 尽量3s以内判断wifi是否已自动连接，若已经自动连接，则无需处理下面的操作
     while (!MqttConnMgr::getInstance()->isWifiConnected() && wifi_count < 10) {
-//        run_at_cmd("AT+CWJAP?", 1, 1000);
-        update_rssi();
+        MqttConnMgr::getInstance()->updateWifiRSSI();
         LOGD("--------- connect to wifi %d %d\r\n", MqttConnMgr::getInstance()->isWifiConnected(), MqttConnMgr::getInstance()->getMqttConnState());
         // 睡眠300ms
         vTaskDelay(pdMS_TO_TICKS(300));
@@ -218,7 +213,7 @@ static void mqttinit_task(void *pvParameters) {
         result = connectWifi(btWifiConfig.ssid, btWifiConfig.password);
         // sendStatusToMCU(0x01, ret);
         notifyWifiConnected(result);
-        update_rssi();
+        MqttConnMgr::getInstance()->updateWifiRSSI();
         if (result < 0) {
             LOGD("--------- Failed to connect to WIFI\r\n");
             vTaskDelete(NULL);
@@ -1238,7 +1233,7 @@ static void msghandle_task(void *pvParameters)
 
         if (count % 30 == 0) {
 			if (g_has_more_upload_data == 0 && g_is_uploading_data == 0) {
-				update_rssi();
+				MqttConnMgr::getInstance()->updateWifiRSSI();
 			}
         }
 

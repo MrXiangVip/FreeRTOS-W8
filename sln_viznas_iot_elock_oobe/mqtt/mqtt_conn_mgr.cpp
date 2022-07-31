@@ -33,3 +33,21 @@ int MqttConnMgr::resetWifi() {
     notifyWifiInitialized(result);
     return result;
 }
+
+void MqttConnMgr::setWifiRSSI(int wifiRSSI) {
+    m_wifi_rssi = wifiRSSI;
+}
+
+int MqttConnMgr::getWifiRSSI() {
+    return m_wifi_rssi;
+}
+
+int MqttConnMgr::updateWifiRSSI() {
+    int result = MqttDevEsp32::getInstance()->sendATCmd("AT+CWJAP?", 1, 1000);
+    LOGD("getWifiRSSI result %d\r\n", result);
+    return result;
+}
+
+int MqttConnMgr::connectWifi(bool forceConnect) {
+	return 0;
+}

@@ -73,7 +73,6 @@ private:
     int current_recv_line_len = 0;
     int current_handle_line = 0;
     int m_at_cmd_result = AT_CMD_RESULT_UNDEF;
-    int m_wifi_rssi;
 
     MqttDevEsp32();
 
