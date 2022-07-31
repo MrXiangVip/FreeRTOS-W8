@@ -117,7 +117,6 @@ DTC_BSS static StaticTask_t s_Uart8UploadDataTaskTCB;
 #endif
 
 static int at_cmd_mode = AT_CMD_MODE_INACTIVE;
-static int at_cmd_result = AT_CMD_RESULT_UNDEF;
 
 static int wifi_ready = 0;
 
@@ -141,13 +140,13 @@ void remove_mqtt_instruction_from_pool(char instruction_dest, char cmd_code) {
 
 int run_at_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
 {
-    int result = MqttDevEsp32::getInstance()->sendATCmd(cmd, retry_times, cmd_timeout_usec, at_cmd_result);
+    int result = MqttDevEsp32::getInstance()->sendATCmd(cmd, retry_times, cmd_timeout_usec);
     return result;
 }
 
 int run_at_raw_cmd(char const *cmd, char *data, int data_len, int retry_times, int cmd_timeout_usec)
 {
-    int result = MqttDevEsp32::getInstance()->sendRawATCmd(cmd, data, data_len, retry_times, cmd_timeout_usec, at_cmd_result);
+    int result = MqttDevEsp32::getInstance()->sendRawATCmd(cmd, data, data_len, retry_times, cmd_timeout_usec);
     return result;
 }
 

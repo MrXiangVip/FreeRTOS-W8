@@ -146,13 +146,13 @@ void MqttDevEsp32::receiveMqtt() {
     // TODO: LPUART_RTOS_Deinit(&m_uart_handle_esp32);
 }
 
-int MqttDevEsp32::sendATCmd(char const *cmd, int retry_times, int cmd_timeout_usec, int &m_at_cmd_result) {
+int MqttDevEsp32::sendATCmd(char const *cmd, int retry_times, int cmd_timeout_usec) {
     lockSendATCmd();
 
     char at_cmd[MQTT_AT_LEN];
     memset(at_cmd, '\0', MQTT_AT_LEN);
     sprintf(at_cmd, "%s\r\n", cmd);
-    LOGD("start AT command %s\r\n", cmd);
+    LOGD(">>>>>> start AT command %s\r\n", cmd);
     m_at_cmd_result = AT_CMD_RESULT_UNDEF;
     for (int i = 0; i < retry_times; i++) {
         if (kStatus_Success != LPUART_RTOS_Send(&m_uart_handle_esp32, (uint8_t *)at_cmd, strlen(at_cmd))) {
@@ -167,9 +167,11 @@ int MqttDevEsp32::sendATCmd(char const *cmd, int retry_times, int cmd_timeout_us
             timeout_usec += delay_usec;
             if (AT_CMD_RESULT_OK == m_at_cmd_result || AT_CMD_RESULT_ERROR == m_at_cmd_result) {
                 // at_cmd_mode = AT_CMD_MODE_INACTIVE;
-                LOGD("run command %s %s\r\n", cmd, (m_at_cmd_result == AT_CMD_RESULT_OK) ? "OK": "ERROR");
+                LOGD("<<<<<< run command %s %s\r\n", cmd, (m_at_cmd_result == AT_CMD_RESULT_OK) ? "OK": "ERROR");
                 unlockSendATCmd();
                 return m_at_cmd_result;
+//            } else {
+//                LOGD("run command %s %d\r\n", cmd, m_at_cmd_result);
             }
             if (timeout_usec >= cmd_timeout_usec) {
                 LOGD("run command %s timeout index %d\r\n", cmd, i);
@@ -178,7 +180,7 @@ int MqttDevEsp32::sendATCmd(char const *cmd, int retry_times, int cmd_timeout_us
         } while (1);
     }
 
-    LOGD("run command %s timeout end\r\n", cmd);
+    LOGD("<<<<<< run command %s timeout end\r\n", cmd);
     m_at_cmd_result = AT_CMD_RESULT_TIMEOUT;
     unlockSendATCmd();
     return m_at_cmd_result;
@@ -246,11 +248,11 @@ int MqttDevEsp32::handleLine(const char *curr_line) {
     return 0;
 }
 
-int MqttDevEsp32::sendRawATCmd(char const *cmd, char *data, int data_len, int retry_times, int cmd_timeout_usec, int &m_at_cmd_result) {
+int MqttDevEsp32::sendRawATCmd(char const *cmd, char *data, int data_len, int retry_times, int cmd_timeout_usec) {
     int ret = 0;
     LOGD("start AT raw command %s data_len is %d\r\n", cmd, data_len);
 
-    ret = sendATCmd(cmd, retry_times, cmd_timeout_usec, m_at_cmd_result);
+    ret = sendATCmd(cmd, retry_times, cmd_timeout_usec);
 
     lockSendATCmd();
 
