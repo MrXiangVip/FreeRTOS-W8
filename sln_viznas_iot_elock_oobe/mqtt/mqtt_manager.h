@@ -15,6 +15,7 @@ public:
     };
 
     int analyzeMqttMsg(char *msg);
+    int handleJsonMsg(char *jsonMsg);
 };
 
 #endif //_MQTT_MANAGER_H_

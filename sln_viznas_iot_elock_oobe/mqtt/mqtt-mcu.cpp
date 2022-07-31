@@ -63,9 +63,24 @@ int notifyShutdown() {
 	return sendStatusToMCU(0x05, 0);
 }
 
+int syncTimeToMCU(char *tsStr) {
+    char payload_bin[20];
+    memset(payload_bin, '\0', sizeof(payload_bin));
+    payload_bin[0] = 0x23;
+    payload_bin[1] = 0x8a;
+    payload_bin[2] = 0x0a;
+    int len = strlen(tsStr);
+    strncpy(&payload_bin[3], tsStr, len);
+    unsigned short cal_crc16 = CRC16_X25(reinterpret_cast<unsigned char*>(payload_bin), 3 + len);
+    payload_bin[len + 3] = (char)cal_crc16;
+    payload_bin[len + 4] = (char)(cal_crc16 >> 8);
+    int result = SendMsgToMCU((unsigned char *)payload_bin, 5 + len);
+    return result;
+}
+
 // int sendStatusToMCU(int biz, int ret);
 int sendStatusToMCU(int biz, int ret) {
-	if (ret == 0 && biz == 2) {
+    if (ret == 0 && biz == 2) {
 		//SHM::getInstance()->setMQTTStatus(biz);
 	}
 	char payload_bin[16];

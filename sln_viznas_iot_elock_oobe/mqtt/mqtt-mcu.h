@@ -7,6 +7,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+int syncTimeToMCU(char *tsStr);
 int sendStatusToMCU(int biz, int ret);
 // WIFI已初始化 0x00
 int notifyWifiInitialized(int code);

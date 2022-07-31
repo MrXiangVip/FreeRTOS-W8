@@ -2,11 +2,16 @@
 // Created by wszgx on 2022/7/29.
 //
 
+#include <stdio.h>
+
+#include "aw_wstime.h"
 #include "mqtt_manager.h"
 #include "mqtt-common.h"
 #include "mqtt_util.h"
 #include "fsl_log.h"
 #include "mqtt-topic.h"
+#include "cJSON.h"
+#include "mqtt-mcu.h"
 
 char jsonData[UART_RX_BUF_LEN];
 int MqttManager::analyzeMqttMsg(char *msg) {
@@ -95,7 +100,7 @@ int MqttManager::analyzeMqttMsg(char *msg) {
                 ana_timeout_count = 0;
                 LOGD("payload is %s len is %d\r\n", payload, strlen(payload));
                 int ret = 0;
-//                ret = handleJsonMsg(payload);
+                ret = handleJsonMsg(payload);
                 if (ret < 0)  {
                     result = -3; // command fail
                 } else {
@@ -119,3 +124,68 @@ int MqttManager::analyzeMqttMsg(char *msg) {
 
     return result;
 }
+
+int MqttManager::handleJsonMsg(char *jsonMsg) {
+    cJSON *mqtt = NULL;
+    cJSON *msg_id = NULL;
+    cJSON *data = NULL;
+    cJSON *timestamp = NULL;
+    char *msg_idStr = NULL;
+    char *dataStr = NULL;
+    char *tsStr = NULL;
+
+    mqtt = cJSON_Parse(jsonMsg);
+    msg_id = cJSON_GetObjectItem(mqtt, "msgId");
+    msg_idStr = cJSON_GetStringValue(msg_id);
+
+    int result = 0;
+
+    data = cJSON_GetObjectItem(mqtt, "data");
+    if (data != NULL) {
+        dataStr = cJSON_GetStringValue(data);
+        LOGD("---JSON data is %s\r\n", dataStr);
+        if ((dataStr != NULL) && (strlen(dataStr) > 0)) {
+            // 来源于服务器
+            if (strncmp(dataStr, "sf:", 3) == 0) {
+                if (strncmp(dataStr, "sf:nodata", 9) == 0) {
+                    LOGD("no more data to download from server by server");
+                } else {
+                    char pub_msg[80];
+                    memset(pub_msg, '\0', 80);
+                    sprintf(pub_msg, "%s{\"msgId\":\"%s\",\"result\":4}", DEFAULT_HEADER, msg_idStr);
+                    // NOTE: 此处必须异步操作
+                    // TODO:
+//                    SendMsgToMQTT(pub_msg, strlen(pub_msg));
+                }
+            } else {
+                // TODO:
+//                result = handlePayload(dataStr, msg_idStr);
+            }
+        }
+    }
+
+    timestamp = cJSON_GetObjectItem(mqtt, "time");
+    if (timestamp != NULL) {
+        tsStr = cJSON_GetStringValue(timestamp);
+        LOGD("--- timestamp is %s len is %d\n", tsStr, strlen(tsStr));
+        if (tsStr != NULL && strlen(tsStr) > 0) {
+
+            int currentSec = atoi(tsStr);
+            if (currentSec > 1618965299) {
+                LOGD("__network time sync networkTime is %d can setTimestamp\n", currentSec);
+                setTimestamp(currentSec);
+                //mqtt_log_init();
+            } else {
+                LOGD("__network time sync networkTime is %d don't setTimestamp\n", currentSec);
+            }
+
+            result = syncTimeToMCU(tsStr);
+        }
+    }
+    if (mqtt != NULL) {
+        cJSON_Delete(mqtt);
+        mqtt = NULL;
+    }
+    return result;
+}
+
