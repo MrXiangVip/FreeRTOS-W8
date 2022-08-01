@@ -4,6 +4,8 @@
 #include "fsl_log.h"
 #include "config.h"
 #include "mqtt_cmd_mgr.h"
+#include "mqtt_topic_mgr.h"
+#include "mqtt_conn_mgr.h"
 #include "MCU_UART5_Layer.h"
 
 char* MqttCmdMgr::genMsgId() {
@@ -19,4 +21,15 @@ char* MqttCmdMgr::genMsgId() {
     }
     sprintf(m_msg_id, "%s%09d%d", bt_mac_string, a, random_gen);
     return m_msg_id;
+}
+
+void MqttCmdMgr::atCmdResponse() {
+    char pubMsg[MQTT_AT_CMD_LEN] = {0};
+    char *msgId = MqttCmdMgr::getInstance()->genMsgId();
+    sprintf(pubMsg,
+            "{\\\"id\\\":\\\"%s\\\"\\,\\\"res\\\":%d\\,\\\"msg\\\":\\\"%s\\\"}",
+            msgId, 1, "");
+    char *topic = MqttTopicMgr::getInstance()->getPubTopicCmdResponse();
+    int result = MqttConnMgr::getInstance()->publishMQTT(topic, pubMsg);
+    LOGD("do atCmdResponse result %d\r\n", result);
 }

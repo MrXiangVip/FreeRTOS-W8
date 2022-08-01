@@ -1119,44 +1119,6 @@ static void msghandle_task(void *pvParameters)
     LOGD("\r\n%s end...\r\n", logTag);
 }
 
-static void send_heartbeat_task(void *pvParameters)
-{
-    char const *logTag = "[UART8_WIFI]:send_heartbeat_task-";
-    LOGD("%s start...\r\n", logTag);
-	int count = 0;
-
-    char *pub_topic = NULL;
-    char pub_msg[MQTT_AT_LONG_LEN];
-    do {
-        vTaskDelay(pdMS_TO_TICKS(1000));
-
-        if((count % MAX_COUNT == 0) || (g_heart_beat_executed == 1)) {
-            if ((mqtt_init_done == 1) && (bPubOasisImage == false) && (g_is_uploading_data == 0)) {
-                char *msgId = gen_msgId();
-                memset(pub_msg, '\0', MQTT_AT_LONG_LEN);
-                // sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"btmac\":\"%s\",\"wifi_rssi\":%s,\"battery\":%d,\"version\":\"%s\"}", msgId, btWifiConfig.wifi_mac, btWifiConfig.bt_mac, wifi_rssi, battery_level, getFirmwareVersion());
-                sprintf(pub_msg,
-                        "{\"msgId\":\"%s\",\"mac\":\"%s\",\"wifi_rssi\":%s,\"battery\":%d,\"index\":%d,\"version\":\"%s\"}",
-//                        msgId, btWifiConfig.bt_mac, wifi_rssi, battery_level, g_heartbeat_index++,
-                        msgId, btWifiConfig.bt_mac, 0, battery_level, g_heartbeat_index++,
-                        getFirmwareVersion());
-                freePointer(&msgId);
-                pub_topic = get_pub_topic_heart_beat();
-                //LOGD("%s pub_msg is %s\n", __FUNCTION__, pub_msg);
-                int ret = quickPublishMQTTWithPriority(pub_topic, pub_msg, 1);
-                if(g_heart_beat_executed == 1) {
-                	g_heart_beat_executed = 0;
-                }
-            }
-        }
-
-        count++;
-
-    } while (1);
-    vTaskDelete(NULL);
-    LOGD("\r\n%s end...\r\n", logTag);
-}
-
 static void uploaddata_task(void *pvParameters)
 {
     char const *logTag = "[UART8_WIFI]:uploaddata_task-";
@@ -1249,17 +1211,6 @@ int WIFI_Start()
     	while (1);
     }
 #endif
-
-#if (configSUPPORT_STATIC_ALLOCATION == 1)
-    if (NULL == xTaskCreateStatic(send_heartbeat_task, "send_heartbeat_task", UART8SENDHEARTBEATTASK_STACKSIZE, NULL, UART8SENDHEARTBEATTASK_PRIORITY,
-                                            Uart8SendheartbeatTaskStack, &s_Uart8SendheartbeatTaskTCB))
-#else
-    if (xTaskCreate(send_heartbeat_task, "send_heartbeat_task", UART8SENDHEARTBEATTASK_STACKSIZE, NULL, UART8SENDHEARTBEATTASK_PRIORITY, NULL) != pdPASS)
-#endif
-    {
-    	LOGD("%s failed to create send_heartbeat_task\r\n", logTag);
-    	while (1);
-    }
 
 #if (configSUPPORT_STATIC_ALLOCATION == 1)
     if (NULL == xTaskCreateStatic(uploaddata_task, "uploaddata_task", UART8UPLOADDATATASK_STACKSIZE, NULL, UART8UPLOADDATATASK_PRIORITY,

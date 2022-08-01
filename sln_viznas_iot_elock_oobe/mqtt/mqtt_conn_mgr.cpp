@@ -53,42 +53,20 @@ int MqttConnMgr::initMqttConnection(const char* clientId, const char* username, 
     disconnectMQTT();
     // 连接MQTT
     int result = quickConnectMQTT(clientId, username, password, serverIp, serverPort);
-    notifyMqttConnected(result);
     if (result != 0) {
         LOGD("--------- Failed to connect to MQTT\r\n");
         return -1;
     }
     LOGD("--------- connect to mqtt done\r\n");
 
-    char *sub_topic_cmd = get_sub_topic_cmd();
-    result = subscribeMQTT(sub_topic_cmd);
-    if (result != 0) {
-        notifyHeartBeat(CODE_FAILURE);
-        LOGD("--------- Failed to subscribe topic\r\n");
-    }
-    LOGD("--------- subscribe topic done\r\n");
-//    freePointer(&sub_topic_cmd);
+    char *crTopic = MqttTopicMgr::getInstance()->getSubTopicCmdRequest();
+    result = subscribeMQTT(crTopic);
+    char *frTopic = MqttTopicMgr::getInstance()->getSubTopicFeatureRequest();
+    result = subscribeMQTT(frTopic);
+    char *fdTopic = MqttTopicMgr::getInstance()->getSubTopicFeatureDownload();
+    result = subscribeMQTT(fdTopic);
 
-#if	REMOTE_FEATURE != 0
-//    vTaskDelay(pdMS_TO_TICKS(20));
-    char *rfd_topic = get_sub_topic_feature_download();
-    result = subscribeMQTT(rfd_topic);
-    if (result < 0) {
-        LOGD("--------- Failed to subscribe remote feature download topic\r\n");
-        return -1;
-    }
-//    freePointer(&rfd_topic_cmd);
-    LOGD("--------- subscribe remote feature download topic done\r\n");
-//    vTaskDelay(pdMS_TO_TICKS(20));
-    char *rfr_topic = get_sub_topic_feature_request();
-    result = subscribeMQTT(rfr_topic);
-    if (result < 0) {
-        LOGD("--------- Failed to subscribe remote feature request topic\r\n");
-        return -1;
-    }
-    LOGD("--------- subscribe remote feature request topic done\r\n");
-    //freePointer(&rfr_topic_cmd);
-#endif
+    notifyMqttConnected(result);
     setMqttConnState(MQTT_CONNECTED);
     return result;
 }
@@ -131,13 +109,13 @@ void MqttConnMgr::keepConnectionAlive() {
                 }
             }
         }
-        vTaskDelay(pdMS_TO_TICKS(10000));
-//        LOGD("keepConnectionAlive heart_beat_count %d mqtt_fail_count %d wifi_fail_count %d\r\n", heart_beat_count, mqtt_fail_count, wifi_fail_count);
-//        do heartbeat every 60s
         if (isMqttConnected() && heart_beat_count++ % 6 == 0) {
             // TODO: insert into command queue
             heartbeat();
         }
+        vTaskDelay(pdMS_TO_TICKS(10000));
+//        LOGD("keepConnectionAlive heart_beat_count %d mqtt_fail_count %d wifi_fail_count %d\r\n", heart_beat_count, mqtt_fail_count, wifi_fail_count);
+//        do heartbeat every 60s
         if (mqtt_fail_count > 1) {
             LOGD("keepConnectionAlive disconnectMQTT mqtt_fail_count %d wifi_fail_count %d\r\n", mqtt_fail_count, wifi_fail_count);
             disconnectMQTT();

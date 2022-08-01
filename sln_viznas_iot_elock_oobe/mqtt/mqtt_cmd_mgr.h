@@ -19,6 +19,8 @@ public:
         return &m_instance;
     };
     char *genMsgId();
+
+    void atCmdResponse();
 };
 
 #ifdef __cplusplus

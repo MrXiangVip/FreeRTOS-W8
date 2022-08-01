@@ -34,7 +34,7 @@ char* MqttTopicMgr::getPubTopicHeartBeat() {
 
 // 命令返回给mqtt后台
 char* MqttTopicMgr::getPubTopicCmdResponse() {
-    return generateTopic("WAVE/S/%s/C/REQ");
+    return generateTopic("WAVE/S/%s/C/RSP");
 }
 
 // face feature 人脸特征上传后台
