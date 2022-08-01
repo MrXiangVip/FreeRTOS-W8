@@ -7,6 +7,7 @@
 #include "mqtt_topic_mgr.h"
 #include "mqtt_conn_mgr.h"
 #include "MCU_UART5_Layer.h"
+#include "PriorityQueue.h"
 
 char* MqttCmdMgr::genMsgId() {
     struct timeval tv;
@@ -23,13 +24,30 @@ char* MqttCmdMgr::genMsgId() {
     return m_msg_id;
 }
 
-void MqttCmdMgr::atCmdResponse() {
+void MqttCmdMgr::atCmdResponse(int result, char *rspMsg) {
     char pubMsg[MQTT_AT_CMD_LEN] = {0};
     char *msgId = MqttCmdMgr::getInstance()->genMsgId();
     sprintf(pubMsg,
             "{\\\"id\\\":\\\"%s\\\"\\,\\\"res\\\":%d\\,\\\"msg\\\":\\\"%s\\\"}",
-            msgId, 1, "");
+            msgId, result, rspMsg);
     char *topic = MqttTopicMgr::getInstance()->getPubTopicCmdResponse();
-    int result = MqttConnMgr::getInstance()->publishMQTT(topic, pubMsg);
-    LOGD("do atCmdResponse result %d\r\n", result);
+    MqttCmd *mqttCmd = new MqttCmd(1, 0, topic, pubMsg);
+    m_mqtt_cmds.Push(mqttCmd);
+    LOGD("push size %d\r\n", m_mqtt_cmds.Size());
+//    int result = MqttConnMgr::getInstance()->publishMQTT(topic, pubMsg);
+//    LOGD("do atCmdResponse result %d\r\n", result);
+}
+
+void MqttCmdMgr::loopSendMqttMsgs() {
+    for(;;) {
+        while (!m_mqtt_cmds.Empty())
+        {
+            MqttCmd mqttCmd = m_mqtt_cmds.Top();
+            m_mqtt_cmds.Pop();
+            int result = MqttConnMgr::getInstance()->publishMQTT(mqttCmd.getTopic(), mqttCmd.getData());
+            LOGD("do topic %s result %d\r\n", mqttCmd.getTopic(), result);
+            mqttCmd.free();
+        }
+        vTaskDelay(pdMS_TO_TICKS(50));
+    }
 }

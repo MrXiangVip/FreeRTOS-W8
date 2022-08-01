@@ -55,7 +55,7 @@ int MqttManager::analyzeMqttMsg(char *msg) {
                         return 0;
                     } else {
                         LOGE("fr data is not formatted with JSON\r\n");
-//                        MqttCmdMgr::getInstance()->atCmdResponse();
+                        MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_ERROR, get_short_str(data));
                         return -1;
                     }
                 }
@@ -69,7 +69,7 @@ int MqttManager::analyzeMqttMsg(char *msg) {
                         return 0;
                     } else {
                         LOGE("fd data is not formatted with JSON\r\n");
-//                        MqttCmdMgr::getInstance()->atCmdResponse();
+                        MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_ERROR, get_short_str(data));
                         return -1;
                     }
                 }
@@ -82,17 +82,17 @@ int MqttManager::analyzeMqttMsg(char *msg) {
                         return 0;
                     } else {
                         LOGE("cr data is not formatted with JSON\r\n");
-//                        MqttCmdMgr::getInstance()->atCmdResponse();
+                        MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_ERROR, get_short_str(data));
                         return -1;
                     }
                 }
 
                 LOGD("analyze topic %s is not supported\r\n", topic);
-//                MqttCmdMgr::getInstance()->atCmdResponse();
+                MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_NOT_SUPPORT, get_short_str(data));
                 return -1;
             } else {
                 LOGD("analyze topic %s supposed at data_len is %d is greater than strlen(data) is %d\r\n", topic, data_len, strlen(data));
-//                MqttCmdMgr::getInstance()->atCmdResponse();
+                MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_ERROR, get_short_str(data));
                 return -1;
             }
         }

@@ -46,6 +46,7 @@
 #include "oasis.h"
 #include "mqtt_dev_esp32.h"
 #include "mqtt_conn_mgr.h"
+#include "mqtt_cmd_mgr.h"
 
 /*******************************************************************************
  * Definitions
@@ -151,7 +152,7 @@ static void mqtt_conn_task(void *pvParameters) {
     vTaskDelete(NULL);
 }
 
-static void uartrecv_task(void *pvParameters)
+static void mqtt_recv_task(void *pvParameters)
 {
     MqttDevEsp32::getInstance()->receiveMqtt();
     return;
@@ -1026,97 +1027,11 @@ int uploadOasisFeature(Record *record, bool online) {
 
 int MAX_COUNT = 35;
 
-static void msghandle_task(void *pvParameters)
+static void mqtt_send_task(void *pvParameters)
 {
-    char const *logTag = "[UART8_WIFI]:msghandle_task-";
+    char const *logTag = "[UART8_WIFI]:mqtt_send_task-";
     LOGD("%s start...\r\n", logTag);
-	int count = 0;
-
-    int is_online_handled = 0;	// g_is_online只处理一次
-
-    int TIMEOUT_COUNT = 20;
-	//mqtt_init_done = 1;
-    do {
-        vTaskDelay(pdMS_TO_TICKS(1000));
-
-        if (count % 30 == 0) {
-			if (g_has_more_upload_data == 0 && g_is_uploading_data == 0) {
-				MqttConnMgr::getInstance()->updateWifiRSSI();
-			}
-        }
-
-        // 如果后台已经有指令反馈，我们认为已经连接上后台了，这个时候，30s进行一次心跳
-        if (g_is_online == 1 && is_online_handled == 0) {
-            // 通知MCU，需要将后台指示灯长亮
-            MAX_COUNT = 30;
-            notifyHeartBeat(CODE_SUCCESS);
-            vTaskDelay(pdMS_TO_TICKS(20));
-            is_online_handled = 1;
-        }
-
-        // 判断是否需要下电
-        if (g_is_online == 1) {
-            if (g_has_more_download_data == 0) {
-                // 没有更多下载数据
-                if (g_has_more_upload_data == 0 && g_is_uploading_data == 0 && (g_shutdown_notified == 0 || (g_shutdown_notified == 1 && count % 5 == 0))) {
-                    // 没有更多上传数据
-                    if (g_command_executed) {
-                        // 如果远程开锁完成或者其他指令执行完成，并且上传也执行完成了
-                        if(g_is_shutdown == 0) {
-#if LONG_LIVE
-//                            save_files_before_pwd();
-#else
-							CloseLcdBackground();
-							LOGD("need to notify command executed 1\r\n");
-							vTaskDelay(pdMS_TO_TICKS(100));
-                        	g_is_shutdown = 1;
-							save_files_before_pwd();
-                            notifyCommandExecuted(0);
-#endif
-                        }
-                        // } else if (g_shutdown_notified == 0) {
-                    } else { // if (g_shutdown_notified == 0) {
-                        // 如果没有收到指令执行完成的状况，可以尝试通知MCU下电，MCU根据是否是远程开锁决定是否下电
-							//notifyShutdown();
-                    }
-                    g_shutdown_notified = 1;
-                } else if (count % 10 == 0) {
-                    // 每隔10s发送一次心跳，确保不会随意下电
-                    LOGD("need to keep alive1\r\n");
-                    //LOGD("g_has_more_upload_data is %d, g_is_uploading_data is %d\r\n", g_has_more_upload_data, g_is_uploading_data);
-                    notifyKeepAlive();
-                    vTaskDelay(pdMS_TO_TICKS(20));
-                }
-			} else if (count % 10 == 0) {
-				// 每隔10s发送一次心跳，确保不会随意下电
-				LOGD("need to keep alive2\r\n");
-				notifyKeepAlive();
-                vTaskDelay(pdMS_TO_TICKS(20));
-			}
-        } else if (g_is_online == 0) {
-            // 20秒，如果还没有连接上后台，可以下电
-			if (count >= TIMEOUT_COUNT) {
-				// TODO: 后续可以使用下电指令来代替
-				// notifyShutdown();
-				if(g_is_shutdown == 0) {
-#if LONG_LIVE
-//                    save_files_before_pwd();
-#else
-					CloseLcdBackground();
-					LOGD("need to notify command executed 2\r\n");
-					vTaskDelay(pdMS_TO_TICKS(100));
-					g_is_shutdown = 1;
-					save_files_before_pwd();
-                    notifyCommandExecuted(0);
-#endif
-                }
-			}
-        }
-        count++;
-
-    } while (1);
-    vTaskDelete(NULL);
-    LOGD("\r\n%s end...\r\n", logTag);
+    MqttCmdMgr::getInstance()->loopSendMqttMsgs();
 }
 
 static void uploaddata_task(void *pvParameters)
@@ -1180,34 +1095,25 @@ int WIFI_Start()
         LOGD("%s failed to create mqtt_conn_task\r\n", logTag);
         while (1);
     }
-#ifndef TIMEOUT_TEST
 #if (configSUPPORT_STATIC_ALLOCATION == 1)
-    if (NULL == xTaskCreateStatic(uartrecv_task, "uartrecv_task", UART8RECVTASK_STACKSIZE, NULL, UART8RECVTASK_PRIORITY,
+    if (NULL == xTaskCreateStatic(mqtt_recv_task, "mqtt_recv_task", UART8RECVTASK_STACKSIZE, NULL, UART8RECVTASK_PRIORITY,
                                             Uart8RecvStack, &s_Uart8RecvTaskTCB))
 #else
-    if (xTaskCreate(uartrecv_task, "uartrecv_task", UART8RECVTASK_STACKSIZE, NULL, UART8RECVTASK_PRIORITY, NULL) != pdPASS)
-#endif
-#else
-#if (configSUPPORT_STATIC_ALLOCATION == 1)
-    if (NULL == xTaskCreateStatic(uartrecv_timeout_task, "uartrecv_timeout_task", UART8RECVTASK_STACKSIZE, NULL, UART8RECVTASK_PRIORITY,
-                                            Uart8RecvStack, &s_Uart8RecvTaskTCB))
-#else
-    if (xTaskCreate(uartrecv_timeout_task, "uartrecv_timeout_task", UART8RECVTASK_STACKSIZE, NULL, UART8RECVTASK_PRIORITY, NULL) != pdPASS)
-#endif
+    if (xTaskCreate(uartrecv_task, "mqtt_recv_task", UART8RECVTASK_STACKSIZE, NULL, UART8RECVTASK_PRIORITY, NULL) != pdPASS)
 #endif
     {
-        LOGD("%s failed to create uartrecv_task\r\n", logTag);
+        LOGD("%s failed to create mqtt_recv_task\r\n", logTag);
         while (1);
     }
 #ifndef TIMEOUT_TEST
 #if (configSUPPORT_STATIC_ALLOCATION == 1)
-    if (NULL == xTaskCreateStatic(msghandle_task, "msghandle_task", UART8MSGHANDLETASK_STACKSIZE, NULL, UART8MSGHANDLETASK_PRIORITY,
+    if (NULL == xTaskCreateStatic(mqtt_send_task, "mqtt_send_task", UART8MSGHANDLETASK_STACKSIZE, NULL, UART8MSGHANDLETASK_PRIORITY,
                                             Uart8MsgHandleTaskStack, &s_Uart8MsgHandleTaskTCB))
 #else
-    if (xTaskCreate(msghandle_task, "msghandle_task", UART8RECVTASK_STACKSIZE, NULL, UART8MSGHANDLETASK_PRIORITY, NULL) != pdPASS)
+    if (xTaskCreate(mqtt_send_task, "mqtt_send_task", UART8RECVTASK_STACKSIZE, NULL, UART8MSGHANDLETASK_PRIORITY, NULL) != pdPASS)
 #endif
     {
-    	LOGD("%s failed to create msghandle_task\r\n", logTag);
+    	LOGD("%s failed to create mqtt_send_task\r\n", logTag);
     	while (1);
     }
 #endif
