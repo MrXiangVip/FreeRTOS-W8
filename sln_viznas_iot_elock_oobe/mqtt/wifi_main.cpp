@@ -144,32 +144,10 @@ int run_at_raw_cmd(char const *cmd, char *data, int data_len, int retry_times, i
     return result;
 }
 
-static void mqttinit_task(void *pvParameters) {
-    char const *logTag = "[UART8_WIFI]:mqttinit_task-";
+static void mqtt_conn_task(void *pvParameters) {
+    char const *logTag = "[UART8_WIFI]:mqtt_conn_task-";
     LOGD("%s start...\r\n", logTag);
-
-    int result = AT_CMD_RESULT_OK;
-	MqttConnMgr::getInstance()->initWifiConnection(btWifiConfig.ssid, btWifiConfig.password);
-
-#if	WIFI_SUPPORT_BAUD921600
-    vTaskDelay(pdMS_TO_TICKS(20));
-    result = run_at_cmd("AT+UART_CUR=921600,8,1,0,1", 1, 1000);
-    //result = run_at_cmd("AT+UART_DEF=2000000,8,1,0,0", 2, 5000);
-    //result = run_at_cmd("AT+UART_DEF=115200,8,1,0,0", 2, 5000);
-    //result = run_at_cmd("AT+UART_DEF=921600,8,1,0,0", 2, 5000);
-    if (result == 0) {
-        // 设置WIFI串口速率
-    	int result = LPUART_SetBaudRate(LPUART8, 921600U, DEMO_LPUART_CLK_FREQ);
-        //LOGD("%s result is %d, DEMO_LPUART_CLK_FREQ is %d\r\n", logTag, result, DEMO_LPUART_CLK_FREQ);
-        vTaskDelay(pdMS_TO_TICKS(20));
-        LOGD("--------- connect to URART8\n");
-    }
-#endif
-
-    // 连接MQTT
-    result = MqttConnMgr::getInstance()->initMqttConnection(mqttConfig.client_id, mqttConfig.username, mqttConfig.password, mqttConfig.server_ip,
-                           mqttConfig.server_port);
-    LOGD("\r\n%s end...\r\n", logTag);
+    MqttConnMgr::getInstance()->keepConnectionAlive();
     vTaskDelete(NULL);
 }
 
@@ -1231,13 +1209,13 @@ int WIFI_Start()
     MqttDevEsp32::getInstance()->initUart();
 
 #if (configSUPPORT_STATIC_ALLOCATION == 1)
-    if (NULL == xTaskCreateStatic(mqttinit_task, "mqttinit_task", MQTTTASK_STACKSIZE, NULL, MQTTTASK_PRIORITY,
+    if (NULL == xTaskCreateStatic(mqtt_conn_task, "mqtt_conn_task", MQTTTASK_STACKSIZE, NULL, MQTTTASK_PRIORITY,
                                         MqttTaskStack, &s_MqttTaskTCB))
 #else
-    if (xTaskCreate(mqttinit_task, "mqttinit_task", MQTTTASK_STACKSIZE, NULL, MQTTTASK_PRIORITY, NULL) != pdPASS)
+    if (xTaskCreate(mqtt_conn_task, "mqtt_conn_task", MQTTTASK_STACKSIZE, NULL, MQTTTASK_PRIORITY, NULL) != pdPASS)
 #endif
     {
-        LOGD("%s failed to create mqttinit_task\r\n", logTag);
+        LOGD("%s failed to create mqtt_conn_task\r\n", logTag);
         while (1);
     }
 #ifndef TIMEOUT_TEST

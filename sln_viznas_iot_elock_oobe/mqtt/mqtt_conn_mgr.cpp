@@ -8,8 +8,10 @@
 #include "mqtt_conn_mgr.h"
 #include "mqtt-mcu.h"
 #include "mqtt-topic.h"
+#include "mqtt_topic_mgr.h"
 #include "mqtt_dev_esp32.h"
 #include "fsl_log.h"
+#include "config.h"
 
 /**************** Connection State start********************/
 int MqttConnMgr::initWifiConnection(const char* ssid, const char* password) {
@@ -30,11 +32,11 @@ int MqttConnMgr::initWifiConnection(const char* ssid, const char* password) {
     if (!isWifiConnected()) {
         // 连接WIFI
         result = connectWifi(ssid, password);
-        updateWifiRSSI();
         if (result < 0) {
             LOGD("initConnection Failed to connect to WIFI\r\n");
             return -1;
         }
+        updateWifiRSSI();
         LOGD("initConnection connect to WIFI done\r\n");
     } else {
         LOGD("initConnection auto connect to WIFI done\r\n");
@@ -53,8 +55,6 @@ int MqttConnMgr::initMqttConnection(const char* clientId, const char* username, 
         return -1;
     }
     LOGD("--------- connect to mqtt done\r\n");
-
-//    vTaskDelay(pdMS_TO_TICKS(200));
 
     char *sub_topic_cmd = get_sub_topic_cmd();
     result = subscribeMQTT(sub_topic_cmd);
@@ -89,8 +89,55 @@ int MqttConnMgr::initMqttConnection(const char* clientId, const char* username, 
     return result;
 }
 
-void MqttConnMgr::keepConnection() {
-
+void MqttConnMgr::keepConnectionAlive() {
+    int wifi_fail_count = 0;
+    int mqtt_fail_count = 0;
+    do {
+        if (!isWifiConnected()) {
+            initWifiConnection(btWifiConfig.ssid, btWifiConfig.password);
+            if (isWifiConnected()) {
+                wifi_fail_count = 0;
+                initMqttConnection(mqttConfig.client_id,
+                                   mqttConfig.username,
+                                   mqttConfig.password,
+                                   mqttConfig.server_ip,
+                                   mqttConfig.server_port);
+                if (!isMqttConnected()) {
+                    mqtt_fail_count++;
+                } else {
+                    mqtt_fail_count = 0;
+                    wifi_fail_count = 0;
+                }
+            } else {
+                wifi_fail_count++;
+            }
+        } else {
+            if (!isMqttConnected()) {
+                initMqttConnection(mqttConfig.client_id,
+                        mqttConfig.username,
+                        mqttConfig.password,
+                        mqttConfig.server_ip,
+                        mqttConfig.server_port);
+                if (!isMqttConnected()) {
+                    mqtt_fail_count++;
+                } else {
+                    mqtt_fail_count = 0;
+                    wifi_fail_count = 0;
+                }
+            }
+        }
+        vTaskDelay(pdMS_TO_TICKS(10000));
+        if (mqtt_fail_count > 1) {
+            LOGD("keepConnectionAlive disconnectMQTT mqtt_fail_count %d wifi_fail_count %d\r\n", mqtt_fail_count, wifi_fail_count);
+            disconnectMQTT();
+        } else if (mqtt_fail_count > 5) {
+            LOGD("keepConnectionAlive setMqttConnState WIFI_DISCONNECTED mqtt_fail_count %d wifi_fail_count %d\r\n", mqtt_fail_count, wifi_fail_count);
+            setMqttConnState(WIFI_DISCONNECTED);
+        } else if (mqtt_fail_count > 10 || wifi_fail_count > 2) {
+            LOGD("keepConnectionAlive resetWifi mqtt_fail_count %d wifi_fail_count %d\r\n", mqtt_fail_count, wifi_fail_count);
+            resetWifi();
+        }
+    } while(1);
 }
 
 void MqttConnMgr::setMqttConnState(MQTT_CONN_STATE mqttConnState) {
@@ -102,12 +149,12 @@ MQTT_CONN_STATE MqttConnMgr::getMqttConnState() {
 }
 
 bool MqttConnMgr::isWifiConnected() {
-    LOGD("isWifiConnected %d\r\n", m_mqtt_conn_state);
+//    LOGD("isWifiConnected %d\r\n", m_mqtt_conn_state);
     return m_mqtt_conn_state != WIFI_DISCONNECTED;
 }
 
 bool MqttConnMgr::isMqttConnected() {
-    LOGD("isMqttConnected %d\r\n", m_mqtt_conn_state);
+//    LOGD("isMqttConnected %d\r\n", m_mqtt_conn_state);
     return m_mqtt_conn_state == MQTT_CONNECTED;
 }
 /**************** Connection State end ********************/

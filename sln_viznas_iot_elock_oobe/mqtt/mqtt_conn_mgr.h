@@ -47,6 +47,7 @@ typedef enum {
 
 class MqttConnMgr {
 private:
+    // WIFI RSSI
     int m_wifi_rssi;
     char m_at_cmd[MQTT_AT_CMD_LEN];
 
@@ -56,15 +57,16 @@ private:
     MQTT_CONN_STATE m_mqtt_conn_state;
 
     // MQTT
+    // Connection State
+    int initWifiConnection(const char* ssid, const char* password);
+    int initMqttConnection(const char* clientId, const char* username, const char* password, const char* serverIp, const char* serverPort);
 public:
     static MqttConnMgr *getInstance() {
         static MqttConnMgr m_instance;
         return &m_instance;
     };
     // Connection State
-    int initWifiConnection(const char* ssid, const char* password);
-    int initMqttConnection(const char* clientId, const char* username, const char* password, const char* serverIp, const char* serverPort);
-    void keepConnection();
+    void keepConnectionAlive();
 
     void setMqttConnState(MQTT_CONN_STATE mqttConnState);
     MQTT_CONN_STATE getMqttConnState();
