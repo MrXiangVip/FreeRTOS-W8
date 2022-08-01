@@ -67,6 +67,7 @@ public:
     };
     // Connection State
     void keepConnectionAlive();
+    void heartbeat();
 
     void setMqttConnState(MQTT_CONN_STATE mqttConnState);
     MQTT_CONN_STATE getMqttConnState();
@@ -74,13 +75,15 @@ public:
     bool isMqttConnected();
 
     // WIFI
-    int resetWifi();
+    int resetWifi();    // reset wifi module
     void setWifiRSSI(int wifiRSSI);
     int getWifiRSSI();
     int updateWifiRSSI();
     int connectWifi(const char* ssid, const char* password);
+    void reconnectWifiAsync();
 
     // MQTT
+    void reconnectMqttAsync();
     // 配置MQTT UserConfig参数
     int setupMQTTUserConfig(const char* clientId, const char* username, const char* password,
             int scheme = MQTT_SCHEME_TCP,

@@ -12,6 +12,9 @@
 #include "mqtt_dev_esp32.h"
 #include "fsl_log.h"
 #include "config.h"
+#include "mqtt_util.h"
+#include "MCU_UART5_Layer.h"
+#include "mqtt_cmd_mgr.h"
 
 /**************** Connection State start********************/
 int MqttConnMgr::initWifiConnection(const char* ssid, const char* password) {
@@ -47,6 +50,7 @@ int MqttConnMgr::initWifiConnection(const char* ssid, const char* password) {
 }
 
 int MqttConnMgr::initMqttConnection(const char* clientId, const char* username, const char* password, const char* serverIp, const char* serverPort) {
+    disconnectMQTT();
     // 连接MQTT
     int result = quickConnectMQTT(clientId, username, password, serverIp, serverPort);
     notifyMqttConnected(result);
@@ -71,7 +75,7 @@ int MqttConnMgr::initMqttConnection(const char* clientId, const char* username, 
     result = subscribeMQTT(rfd_topic);
     if (result < 0) {
         LOGD("--------- Failed to subscribe remote feature download topic\r\n");
-        return;
+        return -1;
     }
 //    freePointer(&rfd_topic_cmd);
     LOGD("--------- subscribe remote feature download topic done\r\n");
@@ -80,7 +84,7 @@ int MqttConnMgr::initMqttConnection(const char* clientId, const char* username, 
     result = subscribeMQTT(rfr_topic);
     if (result < 0) {
         LOGD("--------- Failed to subscribe remote feature request topic\r\n");
-        return;
+        return -1;
     }
     LOGD("--------- subscribe remote feature request topic done\r\n");
     //freePointer(&rfr_topic_cmd);
@@ -92,6 +96,7 @@ int MqttConnMgr::initMqttConnection(const char* clientId, const char* username, 
 void MqttConnMgr::keepConnectionAlive() {
     int wifi_fail_count = 0;
     int mqtt_fail_count = 0;
+    int heart_beat_count = 0;
     do {
         if (!isWifiConnected()) {
             initWifiConnection(btWifiConfig.ssid, btWifiConfig.password);
@@ -127,17 +132,55 @@ void MqttConnMgr::keepConnectionAlive() {
             }
         }
         vTaskDelay(pdMS_TO_TICKS(10000));
+//        LOGD("keepConnectionAlive heart_beat_count %d mqtt_fail_count %d wifi_fail_count %d\r\n", heart_beat_count, mqtt_fail_count, wifi_fail_count);
+//        do heartbeat every 60s
+        if (isMqttConnected() && heart_beat_count++ % 6 == 0) {
+            // TODO: insert into command queue
+            heartbeat();
+        }
         if (mqtt_fail_count > 1) {
             LOGD("keepConnectionAlive disconnectMQTT mqtt_fail_count %d wifi_fail_count %d\r\n", mqtt_fail_count, wifi_fail_count);
             disconnectMQTT();
         } else if (mqtt_fail_count > 5) {
             LOGD("keepConnectionAlive setMqttConnState WIFI_DISCONNECTED mqtt_fail_count %d wifi_fail_count %d\r\n", mqtt_fail_count, wifi_fail_count);
-            setMqttConnState(WIFI_DISCONNECTED);
+//            setMqttConnState(WIFI_DISCONNECTED);
+            reconnectWifiAsync();
         } else if (mqtt_fail_count > 10 || wifi_fail_count > 2) {
             LOGD("keepConnectionAlive resetWifi mqtt_fail_count %d wifi_fail_count %d\r\n", mqtt_fail_count, wifi_fail_count);
             resetWifi();
         }
-    } while(1);
+    } while(1 > 0);
+}
+
+void MqttConnMgr::heartbeat() {
+    static int heartbeatIdx = 1;
+    static int heartbeatFailCount = 0;
+    char pubMsg[MQTT_AT_CMD_LEN] = {0};
+    char *msgId = MqttCmdMgr::getInstance()->genMsgId();
+//    LOGD("heartbeat msgId %s\r\n", msgId);
+    sprintf(pubMsg,
+//            "{\"id\":\"%s\",\"ts\":%d,\"wr\":%d,\"idx\":%d,\"ver\":\"%s\"}",
+            "{\\\"id\\\":\\\"%s\\\"\\,\\\"ts\\\":%d\\,\\\"wr\\\":%d\\,\\\"idx\\\":%d\\,\\\"ver\\\":\\\"%s\\\"}",
+            msgId, ws_systime, m_wifi_rssi, heartbeatIdx++, "");
+    char *topic = MqttTopicMgr::getInstance()->getPubTopicHeartBeat();
+//    LOGD("do heartbeat topic %s %s\r\n", topic, pubMsg);
+    int result = 0;
+    result = publishMQTT(topic, pubMsg);
+//    LOGD("do heartbeat result %d\r\n", result);
+    if (result != 0) {
+        if (heartbeatFailCount++ > 2) {
+//            this->setMqttConnState(WIFI_CONNECTED);
+            reconnectMqttAsync();
+        }
+    }
+}
+
+void MqttConnMgr::reconnectWifiAsync() {
+    setMqttConnState(WIFI_DISCONNECTED);
+}
+
+void MqttConnMgr::reconnectMqttAsync() {
+    setMqttConnState(WIFI_CONNECTED);
 }
 
 void MqttConnMgr::setMqttConnState(MQTT_CONN_STATE mqttConnState) {
@@ -232,7 +275,7 @@ int MqttConnMgr::subscribeMQTT(char* topic, int qos, int linkId) {
     memset(m_at_cmd, 0, sizeof(m_at_cmd));
     sprintf(m_at_cmd, "AT+MQTTSUB=%d,\"%s\",%d", linkId, topic, qos);
     int result = MqttDevEsp32::getInstance()->sendATCmd(m_at_cmd);
-    vPortFree(topic);
+//    vPortFree(topic);
     return result;
 }
 
@@ -241,7 +284,7 @@ int MqttConnMgr::unsubscribeMQTT(char* topic, int linkId) {
     memset(m_at_cmd, 0, sizeof(m_at_cmd));
     sprintf(m_at_cmd, "AT+MQTTUNSUB=%d,\"%s\"", linkId, topic);
     int result = MqttDevEsp32::getInstance()->sendATCmd(m_at_cmd);
-    vPortFree(topic);
+//    vPortFree(topic);
     return result;
 }
 
@@ -250,7 +293,7 @@ int MqttConnMgr::publishMQTT(char* topic, const char* data, int qos, int retain,
     memset(m_at_cmd, 0, sizeof(m_at_cmd));
     sprintf(m_at_cmd, "AT+MQTTPUB=%d,\"%s\",\"%s\",%d,%d", linkId, topic, data, qos, retain);
     int result = MqttDevEsp32::getInstance()->sendATCmd(m_at_cmd);
-    vPortFree(topic);
+//    vPortFree(topic);
     return result;
 }
 
@@ -258,7 +301,7 @@ int MqttConnMgr::publishMQTT(char* topic, const char* data, int qos, int retain,
 int MqttConnMgr::publishRawMQTT(char* topic, char* data, int data_len, int qos, int retain, int linkId) {
     sprintf(m_at_cmd, "AT+MQTTPUBRAW=%d,\"%s\",%d,%d,%d", linkId, topic, data_len, qos, retain);
     int result = MqttDevEsp32::getInstance()->sendRawATCmd(m_at_cmd, data, data_len, 15000);
-    vPortFree(topic);
+//    vPortFree(topic);
     return result;
 }
 
