@@ -117,4 +117,20 @@ char *gen_msgId() {
     return msgId;
 }
 
+void Remote_convertInt2ascii(void *value, int bytes, unsigned char *ascii)
+{
+    unsigned char nibble;
+    unsigned char hex_table[] = "0123456789abcdef";
+    unsigned char *p_value    = (unsigned char *)value;
+    unsigned char *p_ascii    = ascii;
+
+    for (int j = 0; j < bytes; j++)
+    {
+        nibble     = *p_value++;
+        int low    = nibble & 0x0f;
+        int high   = (nibble >> 4) & 0x0f;
+        *p_ascii++ = hex_table[high];
+        *p_ascii++ = hex_table[low];
+    }
+}
 
