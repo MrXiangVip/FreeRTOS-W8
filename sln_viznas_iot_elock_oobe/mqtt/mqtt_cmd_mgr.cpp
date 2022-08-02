@@ -60,11 +60,11 @@ int MqttCmdMgr::timeSync(char *ts) {
             setTimestamp(currentSec);
         } else {
             LOGD("__network time sync networkTime is %d don't setTimestamp\r\n", currentSec);
-            return -1;
+            return AT_RSP_ERROR;
         }
 
         int result = syncTimeToMCU(ts);
-        return result;
+        return result == 0 ? AT_RSP_SUCCESS : AT_RSP_ERROR;
     }
-    return -1;
+    return AT_RSP_ERROR;
 }

@@ -95,7 +95,7 @@ int g_is_shutdown = 0;
 
 
 
-MqttInstructionPool mqtt_instruction_pool;
+MqttInstructionPool *mqtt_instruction_pool = MqttInstructionPool::getInstance();
 int battery_level = -1;
 
 #if (configSUPPORT_STATIC_ALLOCATION == 1)
@@ -130,7 +130,7 @@ extern int pressure_test;
 
 void remove_mqtt_instruction_from_pool(char instruction_dest, char cmd_code) {
     int cmd_index = MqttInstruction::getCmdIndex(instruction_dest, cmd_code);
-    mqtt_instruction_pool.removeMqttInstruction(cmd_index);
+    mqtt_instruction_pool->removeMqttInstruction(cmd_index);
 }
 
 int run_at_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
@@ -224,7 +224,7 @@ int handlePayload(char *payload, char *msg_idStr) {
             }
         }
         MqttInstruction instruction(x7_cmd, x7_cmd_code, timeout, msg_idStr);
-        int ret = mqtt_instruction_pool.insertMqttInstruction(instruction);
+        int ret = mqtt_instruction_pool->insertMqttInstruction(instruction);
         if (ret == -1) {
             char pub_msg[80];
             memset(pub_msg, '\0', 80);
@@ -451,7 +451,7 @@ int doSendMsgToMQTT(char *mqtt_payload, int len) {
     } else {
         char mqtt_msg_id[256];
         memset(mqtt_msg_id, '\0', 256);
-        strcpy(mqtt_msg_id, mqtt_instruction_pool.getMsgId((char) (mqtt_payload[0]), (char) (mqtt_payload[1])));
+        strcpy(mqtt_msg_id, mqtt_instruction_pool->getMsgId((char) (mqtt_payload[0]), (char) (mqtt_payload[1])));
         LOGD("out mqtt_msg_id is %s", mqtt_msg_id);
         if ((int) (char) (mqtt_payload[0]) == 0x24) {
             remove_mqtt_instruction_from_pool((char) (mqtt_payload[0]), (char) (mqtt_payload[1]));

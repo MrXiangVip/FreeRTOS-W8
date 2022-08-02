@@ -11,8 +11,13 @@
 using namespace::std;
 
 class MqttInstructionPool {
+private:
     map<int, MqttInstruction> m_mqtt_instructions;
 public:
+    static MqttInstructionPool *getInstance() {
+        static MqttInstructionPool m_instance;
+        return &m_instance;
+    };
     int insertMqttInstruction(MqttInstruction mqtt_instruction);
     int insertOrUpdateMqttInstruction(MqttInstruction mqtt_instruction);
     int removeMqttInstruction(int cmd_index);
