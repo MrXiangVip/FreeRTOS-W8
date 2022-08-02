@@ -24,9 +24,8 @@ char* MqttCmdMgr::genMsgId() {
     return m_msg_id;
 }
 
-void MqttCmdMgr::atCmdResponse(int result, char *rspMsg) {
+void MqttCmdMgr::atCmdResponse(int result, char *msgId, char *rspMsg) {
     char pubMsg[MQTT_AT_CMD_LEN] = {0};
-    char *msgId = MqttCmdMgr::getInstance()->genMsgId();
     sprintf(pubMsg,
             "{\\\"id\\\":\\\"%s\\\"\\,\\\"res\\\":%d\\,\\\"msg\\\":\\\"%s\\\"}",
             msgId, result, rspMsg);

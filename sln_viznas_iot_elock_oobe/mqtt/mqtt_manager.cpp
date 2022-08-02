@@ -58,7 +58,7 @@ int MqttManager::analyzeMqttMsg(char *msg) {
                         return 0;
                     } else {
                         LOGE("fr data is not formatted with JSON\r\n");
-                        MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_ERROR, get_short_str(data));
+                        MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_ERROR, MqttCmdMgr::getInstance()->genMsgId(), get_short_str(data));
                         return -1;
                     }
                 }
@@ -74,7 +74,7 @@ int MqttManager::analyzeMqttMsg(char *msg) {
                         return 0;
                     } else {
                         LOGE("fd data is not formatted with pure JSON\r\n");
-                        MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_ERROR, get_short_str(data));
+                        MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_ERROR, MqttCmdMgr::getInstance()->genMsgId(), get_short_str(data));
                         return -1;
                     }
                 }
@@ -83,21 +83,22 @@ int MqttManager::analyzeMqttMsg(char *msg) {
                 if (strncmp(topic, cr_topic, strlen(cr_topic)) == 0) {
                     LOGD("do cmd request\r\n");
                     if (data[0] == '{' && data[data_len - 1] == '}') {
-//                        int result = handleJsonMsg(data, (char*)&msgId);
+                        int result = handleJsonMsg(data);
                         return 0;
                     } else {
                         LOGE("cr data is not formatted with pure JSON\r\n");
-                        MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_ERROR, get_short_str(data));
+                        MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_ERROR, MqttCmdMgr::getInstance()->genMsgId(), get_short_str(data));
                         return -1;
                     }
                 }
 
                 LOGD("analyze topic %s is not supported\r\n", topic);
-                MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_NOT_SUPPORT, get_short_str(data));
+                MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_NOT_SUPPORT, MqttCmdMgr::getInstance()->genMsgId(), get_short_str(data));
                 return -1;
             } else {
                 LOGD("analyze topic %s supposed at data_len is %d is greater than strlen(data) is %d\r\n", topic, data_len, strlen(data));
-                MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_ERROR, get_short_str(data));
+                char *msgId = MqttCmdMgr::getInstance()->genMsgId();
+                MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_ERROR, MqttCmdMgr::getInstance()->genMsgId(), get_short_str(data));
                 return -1;
             }
         }
@@ -110,60 +111,75 @@ int MqttManager::analyzeMqttMsg(char *msg) {
 int MqttManager::handleJsonMsg(char *jsonMsg) {
     cJSON *mqtt = NULL;
     cJSON *msg_id = NULL;
-    cJSON *data = NULL;
+    cJSON *cmd_type = NULL;
+    cJSON *cmd_data = NULL;
     cJSON *timestamp = NULL;
-    char *msg_idStr = NULL;
+    char *idStr = NULL;
+    char *typeStr = NULL;
     char *dataStr = NULL;
     char *tsStr = NULL;
-
-    mqtt = cJSON_Parse(jsonMsg);
-    msg_id = cJSON_GetObjectItem(mqtt, "msgId");
-    msg_idStr = cJSON_GetStringValue(msg_id);
-
     int result = 0;
 
-    data = cJSON_GetObjectItem(mqtt, "data");
-    if (data != NULL) {
-        dataStr = cJSON_GetStringValue(data);
-        LOGD("---JSON data is %s\r\n", dataStr);
-        if ((dataStr != NULL) && (strlen(dataStr) > 0)) {
-            // 来源于服务器
-            if (strncmp(dataStr, "sf:", 3) == 0) {
-                if (strncmp(dataStr, "sf:nodata", 9) == 0) {
-                    LOGD("no more data to download from server by server");
-                } else {
-                    char pub_msg[80];
-                    memset(pub_msg, '\0', 80);
-                    sprintf(pub_msg, "%s{\"msgId\":\"%s\",\"result\":4}", DEFAULT_HEADER, msg_idStr);
-                    // NOTE: 此处必须异步操作
-                    // TODO:
-//                    SendMsgToMQTT(pub_msg, strlen(pub_msg));
-                }
-            } else {
-                // TODO:
-//                result = handlePayload(dataStr, msg_idStr);
-            }
-        }
+    mqtt = cJSON_Parse(jsonMsg);
+    msg_id = cJSON_GetObjectItem(mqtt, "id");
+    idStr = cJSON_GetStringValue(msg_id);
+    cmd_type = cJSON_GetObjectItem(mqtt, "ct");
+    typeStr = cJSON_GetStringValue(cmd_type);
+    cmd_data = cJSON_GetObjectItem(mqtt, "cd");
+    dataStr = cJSON_GetStringValue(cmd_data);
+    if (idStr == NULL || typeStr == NULL || dataStr == NULL) {
+        // TODO: invalid command
+        MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_NOT_SUPPORT, (idStr == NULL || strlen(idStr) == 0 ? MqttCmdMgr::getInstance()->genMsgId() : idStr), "Paramater Missing");
+        return -1;
     }
+    if (strcmp("tc", typeStr) == 0) {
 
-    timestamp = cJSON_GetObjectItem(mqtt, "time");
-    if (timestamp != NULL) {
-        tsStr = cJSON_GetStringValue(timestamp);
-        LOGD("--- timestamp is %s len is %d\n", tsStr, strlen(tsStr));
-        if (tsStr != NULL && strlen(tsStr) > 0) {
-
-            int currentSec = atoi(tsStr);
-            if (currentSec > 1618965299) {
-                LOGD("__network time sync networkTime is %d can setTimestamp\n", currentSec);
-                setTimestamp(currentSec);
-                //mqtt_log_init();
-            } else {
-                LOGD("__network time sync networkTime is %d don't setTimestamp\n", currentSec);
-            }
-
-            result = syncTimeToMCU(tsStr);
-        }
+    } else if (strcmp("ts", typeStr) == 0) {
+    } else if (strcmp("du", typeStr) == 0) {
+    } else if (strcmp("da", typeStr) == 0) {
+    } else if (strcmp("uu", typeStr) == 0) {
+    } else {
+        MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_NOT_SUPPORT, idStr, "Command Type Invalid");
+        return -1;
     }
+//        if ((dataStr != NULL) && (strlen(dataStr) > 0)) {
+//            LOGD("--- command data is %s\r\n", dataStr);
+//            // 来源于服务器
+//            if (strncmp(dataStr, "sf:", 3) == 0) {
+//                if (strncmp(dataStr, "sf:nodata", 9) == 0) {
+//                    LOGD("no more data to download from server by server");
+//                } else {
+//                    char pub_msg[80];
+//                    memset(pub_msg, '\0', 80);
+//                    sprintf(pub_msg, "%s{\"msgId\":\"%s\",\"result\":4}", DEFAULT_HEADER, msg_idStr);
+//                    // NOTE: 此处必须异步操作
+//                    // TODO:
+////                    SendMsgToMQTT(pub_msg, strlen(pub_msg));
+//                }
+//            } else {
+//                // TODO:
+////                result = handlePayload(dataStr, msg_idStr);
+//            }
+//        }
+//
+//    timestamp = cJSON_GetObjectItem(mqtt, "time");
+//    if (timestamp != NULL) {
+//        tsStr = cJSON_GetStringValue(timestamp);
+//        LOGD("--- timestamp is %s len is %d\n", tsStr, strlen(tsStr));
+//        if (tsStr != NULL && strlen(tsStr) > 0) {
+//
+//            int currentSec = atoi(tsStr);
+//            if (currentSec > 1618965299) {
+//                LOGD("__network time sync networkTime is %d can setTimestamp\n", currentSec);
+//                setTimestamp(currentSec);
+//                //mqtt_log_init();
+//            } else {
+//                LOGD("__network time sync networkTime is %d don't setTimestamp\n", currentSec);
+//            }
+//
+//            result = syncTimeToMCU(tsStr);
+//        }
+//    }
     if (mqtt != NULL) {
         cJSON_Delete(mqtt);
         mqtt = NULL;

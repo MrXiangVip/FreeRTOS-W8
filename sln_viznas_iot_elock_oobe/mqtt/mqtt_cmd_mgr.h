@@ -35,7 +35,7 @@ public:
     };
     char *genMsgId();
 
-    void atCmdResponse(int result, char *rspMsg);
+    void atCmdResponse(int result, char *msgId, char *rspMsg);
 
     void loopSendMqttMsgs();
 };
