@@ -21,8 +21,8 @@
 #include "MCU_UART5_Layer.h"
 #include "DBManager.h"
 
-char jsonData[UART_RX_BUF_LEN];
-int MqttManager::analyzeMqttMsg(char *msg) {
+// 分析最原始的MQTT AT消息
+int MqttManager::analyzeMqttRecvLine(char *msg) {
     static int ana_timeout_count = 0;
     int result = -1;
     char *pNext;
@@ -88,7 +88,7 @@ int MqttManager::analyzeMqttMsg(char *msg) {
                 if (strncmp(topic, cr_topic, strlen(cr_topic)) == 0) {
                     LOGD("do cmd request\r\n");
                     if (data[0] == '{' && data[data_len - 1] == '}') {
-                        int result = handleJsonMsg(data);
+                        int result = handleMqttMsgData(data);
                         return 0;
                     } else {
                         LOGE("cr data is not formatted with pure JSON\r\n");
@@ -113,7 +113,8 @@ int MqttManager::analyzeMqttMsg(char *msg) {
     }
 }
 
-int MqttManager::handleJsonMsg(char *jsonMsg) {
+// 解包之后的MQTT AT数据包
+int MqttManager::handleMqttMsgData(char *jsonMsg) {
     cJSON *mqtt = NULL;
     cJSON *msg_id = NULL;
     cJSON *cmd_type = NULL;
@@ -138,7 +139,7 @@ int MqttManager::handleJsonMsg(char *jsonMsg) {
         return -1;
     }
     if (strcmp("tc", typeStr) == 0) {
-        result = handlePayload(dataStr, idStr);
+        result = handlePassThroughPayload(dataStr, idStr);
     } else if (strcmp("ts", typeStr) == 0) {
         result = MqttCmdMgr::getInstance()->timeSync(dataStr);
         MqttCmdMgr::getInstance()->atCmdResponse(result, idStr, result == AT_RSP_SUCCESS ? (char*)"OK" : (char*)"Error");
@@ -160,7 +161,8 @@ int MqttManager::handleJsonMsg(char *jsonMsg) {
     return result;
 }
 
-int MqttManager::handlePayload(char *payload, char *idStr) {
+// 透传指令解析
+int MqttManager::handlePassThroughPayload(char *payload, char *idStr) {
     if (payload != NULL) {
         int payload_len = strlen(payload);
         int payload_bin_len = (payload_len / 4 - 1) * 3 + 1;

@@ -241,7 +241,7 @@ int MqttDevEsp32::handleLine(const char *curr_line) {
         LOGD("\r\n----------------- RUN COMMAND CIPSTAMAC %s---------- \r\n", curr_line);
     }else if (strncmp(curr_line, "+MQTTSUBRECV:", 13) == 0) {
         LOGD("####receive subscribe message from mqtt server %s \r\n", curr_line);
-        int ret = MqttManager::getInstance()->analyzeMqttMsg((char*)curr_line);
+        int ret = MqttManager::getInstance()->analyzeMqttRecvLine((char*)curr_line);
 //    }else if (((strncmp(curr_line, MQTT_DISCONNECT, MQTT_DISCONNECT_SIZE) == 0) ||
 //               (strncmp(curr_line, MQTT_RAW_DISCONNECT, MQTT_RAW_DISCONNECT_SIZE) == 0)) && (mqtt_init_done == 1)) {
     }else if (strncmp(curr_line, MQTT_DISCONNECT, MQTT_DISCONNECT_SIZE) == 0 ||
