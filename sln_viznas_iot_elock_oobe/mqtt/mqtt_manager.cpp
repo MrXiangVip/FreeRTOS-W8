@@ -148,44 +148,6 @@ int MqttManager::handleJsonMsg(char *jsonMsg) {
         MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_NOT_SUPPORT, idStr, "Command Type Invalid");
         return -1;
     }
-//        if ((dataStr != NULL) && (strlen(dataStr) > 0)) {
-//            LOGD("--- command data is %s\r\n", dataStr);
-//            // 来源于服务器
-//            if (strncmp(dataStr, "sf:", 3) == 0) {
-//                if (strncmp(dataStr, "sf:nodata", 9) == 0) {
-//                    LOGD("no more data to download from server by server");
-//                } else {
-//                    char pub_msg[80];
-//                    memset(pub_msg, '\0', 80);
-//                    sprintf(pub_msg, "%s{\"msgId\":\"%s\",\"result\":4}", DEFAULT_HEADER, msg_idStr);
-//                    // NOTE: 此处必须异步操作
-//                    // TODO:
-////                    SendMsgToMQTT(pub_msg, strlen(pub_msg));
-//                }
-//            } else {
-//                // TODO:
-////                result = handlePayload(dataStr, msg_idStr);
-//            }
-//        }
-//
-//    timestamp = cJSON_GetObjectItem(mqtt, "time");
-//    if (timestamp != NULL) {
-//        tsStr = cJSON_GetStringValue(timestamp);
-//        LOGD("--- timestamp is %s len is %d\n", tsStr, strlen(tsStr));
-//        if (tsStr != NULL && strlen(tsStr) > 0) {
-//
-//            int currentSec = atoi(tsStr);
-//            if (currentSec > 1618965299) {
-//                LOGD("__network time sync networkTime is %d can setTimestamp\n", currentSec);
-//                setTimestamp(currentSec);
-//                //mqtt_log_init();
-//            } else {
-//                LOGD("__network time sync networkTime is %d don't setTimestamp\n", currentSec);
-//            }
-//
-//            result = syncTimeToMCU(tsStr);
-//        }
-//    }
     if (mqtt != NULL) {
         cJSON_Delete(mqtt);
         mqtt = NULL;
