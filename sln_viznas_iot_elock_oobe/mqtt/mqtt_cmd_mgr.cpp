@@ -8,6 +8,7 @@
 #include "mqtt_conn_mgr.h"
 #include "MCU_UART5_Layer.h"
 #include "PriorityQueue.h"
+#include "mqtt-mcu.h"
 
 char* MqttCmdMgr::genMsgId() {
     struct timeval tv;
@@ -49,4 +50,21 @@ void MqttCmdMgr::loopSendMqttMsgs() {
         }
         vTaskDelay(pdMS_TO_TICKS(50));
     }
+}
+
+int MqttCmdMgr::timeSync(char *ts) {
+    if (ts != NULL && strlen(ts) > 0) {
+        int currentSec = atoi(ts);
+        if (currentSec > 1618965299) {
+            LOGD("__network time sync networkTime is %d can setTimestamp\r\n", currentSec);
+            setTimestamp(currentSec);
+        } else {
+            LOGD("__network time sync networkTime is %d don't setTimestamp\r\n", currentSec);
+            return -1;
+        }
+
+        int result = syncTimeToMCU(ts);
+        return result;
+    }
+    return -1;
 }

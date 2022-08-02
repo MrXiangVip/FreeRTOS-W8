@@ -135,6 +135,7 @@ int MqttManager::handleJsonMsg(char *jsonMsg) {
     if (strcmp("tc", typeStr) == 0) {
 
     } else if (strcmp("ts", typeStr) == 0) {
+        result = MqttCmdMgr::getInstance()->timeSync(dataStr);
     } else if (strcmp("du", typeStr) == 0) {
     } else if (strcmp("da", typeStr) == 0) {
     } else if (strcmp("uu", typeStr) == 0) {

@@ -38,6 +38,8 @@ public:
     void atCmdResponse(int result, char *msgId, char *rspMsg);
 
     void loopSendMqttMsgs();
+
+    int timeSync(char *ts);
 };
 
 //#ifdef __cplusplus
