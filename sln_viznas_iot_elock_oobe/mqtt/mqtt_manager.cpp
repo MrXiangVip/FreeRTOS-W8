@@ -14,6 +14,7 @@
 #include "mqtt-mcu.h"
 #include "mqtt_topic_mgr.h"
 #include "mqtt_cmd_mgr.h"
+#include "mqtt-remote-feature.h"
 
 char jsonData[UART_RX_BUF_LEN];
 int MqttManager::analyzeMqttMsg(char *msg) {
@@ -51,7 +52,9 @@ int MqttManager::analyzeMqttMsg(char *msg) {
                 if (strncmp(topic, fr_topic, strlen(fr_topic)) == 0) {
                     LOGD("do feature upload request\r\n");
                     if (data[0] == '{' && data[data_len - 1] == '}') {
-//                        int result = requestFeatureUpload(g_rfd_data, (char*)&msgId);
+                        char msgId[MSG_ID_LEN];
+                        memset(msgId, '\0', sizeof(msgId));
+                        int result = requestFeatureUpload(data, (char*)&msgId);
                         return 0;
                     } else {
                         LOGE("fr data is not formatted with JSON\r\n");
@@ -65,10 +68,12 @@ int MqttManager::analyzeMqttMsg(char *msg) {
                 if (strncmp(topic, fd_topic, strlen(fd_topic)) == 0) {
                     LOGD("do feature download\r\n");
                     if (data[0] == '{' && data[data_len - 1] == '}') {
-//                        int result = requestFeatureUpload(g_rfd_data, (char*)&msgId);
+                        char msgId[MSG_ID_LEN];
+                        memset(msgId, '\0', sizeof(msgId));
+                        int result = analyzeRemoteFeature(data, (char*)&msgId);
                         return 0;
                     } else {
-                        LOGE("fd data is not formatted with JSON\r\n");
+                        LOGE("fd data is not formatted with pure JSON\r\n");
                         MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_ERROR, get_short_str(data));
                         return -1;
                     }
@@ -78,10 +83,10 @@ int MqttManager::analyzeMqttMsg(char *msg) {
                 if (strncmp(topic, cr_topic, strlen(cr_topic)) == 0) {
                     LOGD("do cmd request\r\n");
                     if (data[0] == '{' && data[data_len - 1] == '}') {
-//                        int result = handleJsonMsg(g_rfd_data, (char*)&msgId);
+//                        int result = handleJsonMsg(data, (char*)&msgId);
                         return 0;
                     } else {
-                        LOGE("cr data is not formatted with JSON\r\n");
+                        LOGE("cr data is not formatted with pure JSON\r\n");
                         MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_ERROR, get_short_str(data));
                         return -1;
                     }
