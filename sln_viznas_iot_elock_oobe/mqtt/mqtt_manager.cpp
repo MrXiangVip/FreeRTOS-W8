@@ -19,6 +19,7 @@
 #include "util.h"
 #include "MCU_UART5.h"
 #include "MCU_UART5_Layer.h"
+#include "DBManager.h"
 
 char jsonData[UART_RX_BUF_LEN];
 int MqttManager::analyzeMqttMsg(char *msg) {
@@ -137,12 +138,16 @@ int MqttManager::handleJsonMsg(char *jsonMsg) {
         return -1;
     }
     if (strcmp("tc", typeStr) == 0) {
-        handlePayload(dataStr, idStr);
+        result = handlePayload(dataStr, idStr);
     } else if (strcmp("ts", typeStr) == 0) {
         result = MqttCmdMgr::getInstance()->timeSync(dataStr);
         MqttCmdMgr::getInstance()->atCmdResponse(result, idStr, result == AT_RSP_SUCCESS ? (char*)"OK" : (char*)"Error");
     } else if (strcmp("du", typeStr) == 0) {
+        result = DBManager::getInstance()->deleteRecordByUUID(dataStr);
+        MqttCmdMgr::getInstance()->atCmdResponse(result, idStr, result == AT_RSP_SUCCESS ? (char*)"OK" : (char*)"Error");
     } else if (strcmp("da", typeStr) == 0) {
+        result = DBManager::getInstance()->clearRecord();
+        MqttCmdMgr::getInstance()->atCmdResponse(result, idStr, result == AT_RSP_SUCCESS ? (char*)"OK" : (char*)"Error");
     } else if (strcmp("uu", typeStr) == 0) {
     } else {
         MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_NOT_SUPPORT, idStr, "Command Type Invalid");
