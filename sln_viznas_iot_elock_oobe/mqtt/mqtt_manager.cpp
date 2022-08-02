@@ -151,7 +151,7 @@ int MqttManager::handleMqttMsgData(char *jsonMsg) {
         MqttCmdMgr::getInstance()->atCmdResponse(result, idStr, result == AT_RSP_SUCCESS ? (char*)"OK" : (char*)"Error");
     } else if (strcmp("uu", typeStr) == 0) {
     } else {
-        MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_NOT_SUPPORT, idStr, "Command Type Invalid");
+        MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_NOT_SUPPORT, idStr, "Command Type Invalid", PRIORITY_LOW);
         return -1;
     }
     if (mqtt != NULL) {

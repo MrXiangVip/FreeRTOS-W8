@@ -7,6 +7,14 @@
 //extern "C" {
 //#endif
 
+typedef enum {
+    PRIORITY_HIGHEST    = 0x01,
+    PRIORITY_HIGH       = 0x02,
+    PRIORITY_MEDIUM     = 0x03,
+    PRIORITY_LOW        = 0x04,
+    PRIORITY_LOWEST     = 0x05,
+} AT_RSP_PRIORITY;
+
 class MqttCmd {
 private:
     int m_priority;

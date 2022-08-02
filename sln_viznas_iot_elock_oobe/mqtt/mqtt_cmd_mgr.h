@@ -35,9 +35,10 @@ public:
     };
     char *genMsgId();
 
-    void atCmdResponse(int result, char *msgId, char *rspMsg);
+    void atCmdResponse(int result, char *msgId, char *rspMsg, int priority = PRIORITY_HIGH);
 
     void loopSendMqttMsgs();
+    void uploadRecords();
 
     int timeSync(char *ts);
 };

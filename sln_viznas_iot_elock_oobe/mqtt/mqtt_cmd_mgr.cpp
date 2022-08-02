@@ -25,14 +25,16 @@ char* MqttCmdMgr::genMsgId() {
     return m_msg_id;
 }
 
-void MqttCmdMgr::atCmdResponse(int result, char *msgId, char *rspMsg) {
+void MqttCmdMgr::atCmdResponse(int result, char *msgId, char *rspMsg, int priority) {
     char pubMsg[MQTT_AT_CMD_LEN] = {0};
     sprintf(pubMsg,
             "{\\\"id\\\":\\\"%s\\\"\\,\\\"res\\\":%d\\,\\\"msg\\\":\\\"%s\\\"}",
             msgId, result, rspMsg);
     char *topic = MqttTopicMgr::getInstance()->getPubTopicCmdResponse();
-    MqttCmd *mqttCmd = new MqttCmd(1, 0, topic, pubMsg);
+    MqttCmd *mqttCmd = new MqttCmd(priority, 0, topic, pubMsg);
     m_mqtt_cmds.Push(mqttCmd);
+    // TODO: don't try to use Top().getData() or it will make this program crash
+//    LOGD("push size %d %s\r\n", m_mqtt_cmds.Size(), m_mqtt_cmds.Top().getData());
     LOGD("push size %d\r\n", m_mqtt_cmds.Size());
 //    int result = MqttConnMgr::getInstance()->publishMQTT(topic, pubMsg);
 //    LOGD("do atCmdResponse result %d\r\n", result);
@@ -49,6 +51,7 @@ void MqttCmdMgr::loopSendMqttMsgs() {
             mqttCmd.free();
         }
         vTaskDelay(pdMS_TO_TICKS(50));
+//        vTaskDelay(pdMS_TO_TICKS(25000));
     }
 }
 
@@ -67,4 +70,11 @@ int MqttCmdMgr::timeSync(char *ts) {
         return result == 0 ? AT_RSP_SUCCESS : AT_RSP_ERROR;
     }
     return AT_RSP_ERROR;
+}
+
+void MqttCmdMgr::uploadRecords() {
+    for(;;) {
+
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
 }
