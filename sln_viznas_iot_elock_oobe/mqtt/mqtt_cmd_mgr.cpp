@@ -57,6 +57,11 @@ void MqttCmdMgr::loopSendMqttMsgs() {
                 int rid = atoi(recordId);
                 Record record;
                 int ret = DBManager::getInstance()->getRecordByID(rid, &record);
+                if (cmdType == CMD_TYPE_RECORD_TEXT) {
+                    uploadRecordText(&record);
+                } else {
+                    uploadRecordImage(&record);
+                }
             }
             mqttCmd.free();
         }
@@ -80,6 +85,16 @@ int MqttCmdMgr::timeSync(char *ts) {
         return result == 0 ? AT_RSP_SUCCESS : AT_RSP_ERROR;
     }
     return AT_RSP_ERROR;
+}
+
+int MqttCmdMgr::uploadRecordText(Record *record) {
+    LOGD("uploadRecordText record id %d\r\n", record->ID);
+    return 0;
+}
+
+int MqttCmdMgr::uploadRecordImage(Record *record) {
+    LOGD("uploadRecordImage record id %d\r\n", record->ID);
+    return 0;
 }
 
 int MqttCmdMgr::pushRecord(int uploadStatus, int cmdType, int maxCount) {
@@ -106,6 +121,11 @@ int MqttCmdMgr::pushRecord(int uploadStatus, int cmdType, int maxCount) {
 void MqttCmdMgr::uploadRecords() {
     int timeoutCount = 0;
     for(;;) {
+        if (!MqttConnMgr::getInstance()->isMqttConnected()) {
+            vTaskDelay(pdMS_TO_TICKS(1000));
+            continue;
+        }
+
         int recordCount = pushRecord(BOTH_UNUPLOAD, CMD_TYPE_RECORD_TEXT, 20);
         if (recordCount > 0) {
             vTaskDelay(pdMS_TO_TICKS(100*recordCount));

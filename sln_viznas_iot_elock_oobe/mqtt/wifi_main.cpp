@@ -47,6 +47,7 @@
 #include "mqtt_dev_esp32.h"
 #include "mqtt_conn_mgr.h"
 #include "mqtt_cmd_mgr.h"
+#include "sln_cli.h"
 
 /*******************************************************************************
  * Definitions
@@ -113,6 +114,9 @@ DTC_BSS static StaticTask_t s_Uart8SendheartbeatTaskTCB;
 
 DTC_BSS static StackType_t Uart8UploadDataTaskStack[UART8UPLOADDATATASK_STACKSIZE];
 DTC_BSS static StaticTask_t s_Uart8UploadDataTaskTCB;
+
+DTC_BSS static StackType_t TestTaskStack[TESTTASK_STACKSIZE];
+DTC_BSS static StaticTask_t s_TestTaskTCB;
 #endif
 
 int uploadRecordImage(Record *record, bool online);
@@ -936,6 +940,48 @@ static void mqtt_send_task(void *pvParameters)
     vTaskDelete(NULL);
 }
 
+static void do_test(char *cmd, char *data1, char *data2) {
+//    char *data = (char*)pvPortMalloc(24);
+//    strcpy(data, "hello");
+//    LOGD("test data is %s\r\n", data);
+//    vPortFree(data);
+    if (strcmp(cmd, "addrecord") == 0) {
+        Record *record = (Record *) pvPortMalloc(sizeof(Record));
+        memset(record, 0, sizeof(Record));
+        strcpy(record->UUID, objUserExtend.UUID);
+        record->action = REGISTE;// 0 代表注册
+        record->time_stamp = ws_systime;//当前时间
+//        memset(image_path, 0, sizeof(image_path)); // 对注册成功的用户保存一张压缩过的jpeg图片
+//        snprintf(image_path, sizeof(image_path), "%x.jpg", record->time_stamp);
+//        memcpy(record->image_path, image_path, sizeof(image_path));//image_path
+        record->data[0]=0xFF;
+        record->data[1]=0xFF;
+
+        record->upload = BOTH_UNUPLOAD;// 0代表没上传 1代表记录上传图片未上传 2代表均已
+        LOGD("%s往数据库中插入本次注册记录 \r\n", "do_test");
+        DBManager::getInstance()->addRecord(record);
+    }
+}
+
+//extern char g_test_argv[4][24]; /* The shell command parameters */
+//extern int g_test_argc;                                                 /* The shell command number of paramters */
+static void test_task(void *pvParameters)
+{
+    char const *logTag = "[UART8_WIFI]:mqtt_send_task-";
+    LOGD("%s start...\r\n", logTag);
+    for (;;) {
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        if (g_test_argc > 1) {
+            for (int i = 0; i < g_test_argc; i++) {
+                LOGD("test argv %d is %s\r\n", i, g_test_argv[i]);
+            }
+            do_test(g_test_argv[1], g_test_argv[2], g_test_argv[3]);
+            reset_test_args();
+        }
+    }
+    vTaskDelete(NULL);
+}
+
 static void uploaddata_task(void *pvParameters)
 {
     char const *logTag = "[UART8_WIFI]:uploaddata_task-";
@@ -1030,6 +1076,17 @@ int WIFI_Start()
     {
     	LOGD("%s failed to create uploaddata_task\r\n", logTag);
     	while (1);
+    }
+
+#if (configSUPPORT_STATIC_ALLOCATION == 1)
+    if (NULL == xTaskCreateStatic(test_task, "test_task", TESTTASK_STACKSIZE, NULL, TESTTASK_PRIORITY,
+                                            TestTaskStack, &s_TestTaskTCB))
+#else
+    if (xTaskCreate(test_task, "test_task", TESTTASK_STACKSIZE, NULL, TESTTASK_PRIORITY, NULL) != pdPASS)
+#endif
+    {
+        LOGD("%s failed to create test_task\r\n", logTag);
+        while (1);
     }
 
     LOGD("%s started...\r\n", logTag);

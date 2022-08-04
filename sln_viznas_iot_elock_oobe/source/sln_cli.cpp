@@ -29,6 +29,10 @@
  * Prototypes
  *******************************************************************************/
 
+static shell_status_t FFI_CLI_TestCommand(shell_handle_t shellContextHandle,
+                                          int32_t argc,
+                                          char **argv); /*!< test command */
+
 static shell_status_t FFI_CLI_ListCommand(shell_handle_t shellContextHandle,
                                           int32_t argc,
                                           char **argv); /*!< list command */
@@ -110,8 +114,12 @@ shell_status_t SHELL_ExitCommand(shell_handle_t shellContextHandle, int32_t argc
 /*******************************************************************************
  * Variables
  *******************************************************************************/
+SHELL_COMMAND_DEFINE(test,
+                    (char *)"\r\n\"test\": Test or mock\r\n",
+                    FFI_CLI_TestCommand,
+                    SHELL_IGNORE_PARAMETER_COUNT);
 SHELL_COMMAND_DEFINE(list,
-                     (char *)"\r\n\"list\": List all registered users\r\n",
+                    (char *)"\r\n\"list\": List all registered users\r\n",
                      FFI_CLI_ListCommand,
                      SHELL_IGNORE_PARAMETER_COUNT);
 SHELL_COMMAND_DEFINE(add, (char *)"\r\n\"add username\": Add user\r\n"
@@ -187,6 +195,7 @@ extern VIZN_api_client_t VIZN_API_CLIENT(Shell);
 
 shell_status_t RegisterFFICmds(shell_handle_t shellContextHandle)
 {
+    SHELL_RegisterCommand(shellContextHandle, SHELL_COMMAND(test));
     SHELL_RegisterCommand(shellContextHandle, SHELL_COMMAND(list));
     SHELL_RegisterCommand(shellContextHandle, SHELL_COMMAND(add));
     SHELL_RegisterCommand(shellContextHandle, SHELL_COMMAND(del));
@@ -244,6 +253,41 @@ static shell_status_t UsbShell_QueueSendFromISR(shell_handle_t shellContextHandl
 
     return kStatus_SHELL_Success;
 }
+
+char g_test_argv[4][24]; /* The shell command parameters */
+int g_test_argc;                                                 /* The shell command number of paramters */
+void reset_test_args() {
+    g_test_argc = 0;
+    memset(g_test_argv[0], 0, 24);
+    memset(g_test_argv[1], 0, 24);
+    memset(g_test_argv[2], 0, 24);
+    memset(g_test_argv[3], 0, 24);
+}
+static shell_status_t FFI_CLI_TestCommand(shell_handle_t shellContextHandle, int32_t argc, char **argv)
+{
+    // TODO: 在sln_cli的命令执行中，如果是同步执行，绝对不允许出现pvPortMalloc，否则就会导致重启
+    SHELL_Printf(shellContextHandle, "Test\r\n");
+    if (argc > 4) {
+        SHELL_Printf(shellContextHandle, "The count of arguments should be less than 4\r\n");
+    } else {
+        reset_test_args();
+        g_test_argc = argc;
+        for (int i = 0; i < argc; i++)
+        {
+            if (strlen(argv[i]) < 24)
+            {
+                strcpy(g_test_argv[i], argv[i]);
+            }
+            else
+            {
+                SHELL_Printf(shellContextHandle, "Parameter '%s' overflow\r\n", argv[i]);
+                return kStatus_SHELL_Error;
+            }
+        }
+    }
+    return kStatus_SHELL_Success;
+}
+
 static uint32_t baseAddr = 14811136;
 static shell_status_t FFI_CLI_ListCommand(shell_handle_t shellContextHandle, int32_t argc, char **argv)
 {

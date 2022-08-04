@@ -44,6 +44,10 @@ typedef enum __shell_event
 
 } shell_event_t;
 
+extern char g_test_argv[4][24]; /* The shell command parameters */
+extern int g_test_argc;                                                 /* The shell command number of paramters */
+void reset_test_args();
+
 shell_status_t RegisterFFICmds(shell_handle_t shellContextHandle);
 void UsbShell_CmdProcess_Task(void *arg);
 

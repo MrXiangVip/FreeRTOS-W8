@@ -40,8 +40,8 @@ public:
     void atCmdResponse(int result, char *msgId, char *rspMsg, int priority = PRIORITY_HIGH);
 
     void loopSendMqttMsgs();
-//    int uploadRecordText(Record *record);
-//    int uploadRecordImage(Record *record);
+    int uploadRecordText(Record *record);
+    int uploadRecordImage(Record *record);
     int pushRecord(int uploadStatus, int cmdType, int maxCount = 20);
     void uploadRecords();
 
