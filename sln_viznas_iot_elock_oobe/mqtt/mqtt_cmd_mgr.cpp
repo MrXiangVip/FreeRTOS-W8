@@ -89,7 +89,18 @@ int MqttCmdMgr::timeSync(char *ts) {
 
 int MqttCmdMgr::uploadRecordText(Record *record) {
     LOGD("uploadRecordText record id %d\r\n", record->ID);
-    return 0;
+    char *msgId = MqttCmdMgr::getInstance()->genMsgId();
+    char pubMsg[MQTT_AT_CMD_LEN]={0};
+    char *pubTopic = MqttTopicMgr::getInstance()->getPubTopicActionRecord();
+    sprintf(pubMsg, "{\\\"id\\\":\\\"%s\\\"\\,\\\"p\\\":\\\"%s\\\"\\,\\\"t\\\":%d}", msgId, record->UUID, record->time_stamp);
+    LOGD("上传record pub_msg %s \r\n", pubMsg);
+    int result = MqttConnMgr::getInstance()->publishMQTT(pubTopic, pubMsg);
+    LOGD("do topic %s result %d\r\n", pubTopic, result);
+    if (result == 0) {
+        record->upload = RECORD_UPLOAD;
+        DBManager::getInstance()->updateRecordByID(record);
+    }
+    return result;
 }
 
 int MqttCmdMgr::uploadRecordImage(Record *record) {

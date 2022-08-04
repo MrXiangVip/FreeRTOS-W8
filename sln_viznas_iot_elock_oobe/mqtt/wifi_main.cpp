@@ -960,6 +960,8 @@ static void do_test(char *cmd, char *data1, char *data2) {
         record->upload = BOTH_UNUPLOAD;// 0代表没上传 1代表记录上传图片未上传 2代表均已
         LOGD("%s往数据库中插入本次注册记录 \r\n", "do_test");
         DBManager::getInstance()->addRecord(record);
+    } else if (strcmp(cmd, "listrecord") == 0) {
+        listRecords();
     }
 }
 
