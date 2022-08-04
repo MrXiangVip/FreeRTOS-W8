@@ -47,6 +47,7 @@
 #include "mqtt_dev_esp32.h"
 #include "mqtt_conn_mgr.h"
 #include "mqtt_cmd_mgr.h"
+#include "mqtt_topic_mgr.h"
 #include "sln_cli.h"
 
 /*******************************************************************************
@@ -941,10 +942,6 @@ static void mqtt_send_task(void *pvParameters)
 }
 
 static void do_test(char *cmd, char *data1, char *data2) {
-//    char *data = (char*)pvPortMalloc(24);
-//    strcpy(data, "hello");
-//    LOGD("test data is %s\r\n", data);
-//    vPortFree(data);
     if (strcmp(cmd, "addrecord") == 0) {
         Record *record = (Record *) pvPortMalloc(sizeof(Record));
         memset(record, 0, sizeof(Record));
@@ -962,6 +959,14 @@ static void do_test(char *cmd, char *data1, char *data2) {
         DBManager::getInstance()->addRecord(record);
     } else if (strcmp(cmd, "listrecord") == 0) {
         listRecords();
+    } else if (strcmp(cmd, "pubraw") == 0) {
+        char *pubTopic = MqttTopicMgr::getInstance()->getPubTopicActionRecord();
+        int result = MqttConnMgr::getInstance()->publishRawMQTT(pubTopic, data1, strlen(data1));
+    } else {
+        char *data = (char*)pvPortMalloc(24);
+        strcpy(data, "hello");
+        LOGD("test pvPortMalloc %s\r\n", data);
+        vPortFree(data);
     }
 }
 
