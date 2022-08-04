@@ -10,9 +10,15 @@ extern "C" {
 
 class MqttTopicMgr {
 private:
-    MqttTopicMgr() {};
-    char m_topic[MQTT_AT_TOPIC_LEN];
-    char* generateTopic(char *);
+    MqttTopicMgr();
+    char m_sub_cmd_request[MQTT_AT_TOPIC_LEN];
+    char m_sub_feature_request[MQTT_AT_TOPIC_LEN];
+    char m_sub_feature_download[MQTT_AT_TOPIC_LEN];
+    char m_pub_heart_beat[MQTT_AT_TOPIC_LEN];
+    char m_pub_cmd_response[MQTT_AT_TOPIC_LEN];
+    char m_pub_feature_upload[MQTT_AT_TOPIC_LEN];
+    char m_pub_action_record[MQTT_AT_TOPIC_LEN];
+    char m_pub_action_image[MQTT_AT_TOPIC_LEN];
 public:
     static MqttTopicMgr *getInstance() {
         static MqttTopicMgr m_instance;
