@@ -8,6 +8,7 @@
 #include "mqtt_cmd.h"
 
 #include "PriorityQueue.h"
+#include "DBManager.h"
 
 #define MSG_ID_LEN 20
 #define MSG_BT_MAC_LEN	10
@@ -27,6 +28,7 @@ private:
     int random_gen = 1;
 
     PriorityQueue m_mqtt_cmds;
+    int pushRecord(int uploadStatus, int cmdType);
 
 public:
     static MqttCmdMgr *getInstance() {
@@ -38,6 +40,9 @@ public:
     void atCmdResponse(int result, char *msgId, char *rspMsg, int priority = PRIORITY_HIGH);
 
     void loopSendMqttMsgs();
+//    int uploadRecordText(Record *record);
+//    int uploadRecordImage(Record *record);
+    int pushRecord(int uploadStatus, int cmdType, int maxCount = 20);
     void uploadRecords();
 
     int timeSync(char *ts);

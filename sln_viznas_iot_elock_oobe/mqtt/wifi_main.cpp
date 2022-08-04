@@ -933,44 +933,46 @@ static void mqtt_send_task(void *pvParameters)
     char const *logTag = "[UART8_WIFI]:mqtt_send_task-";
     LOGD("%s start...\r\n", logTag);
     MqttCmdMgr::getInstance()->loopSendMqttMsgs();
+    vTaskDelete(NULL);
 }
 
 static void uploaddata_task(void *pvParameters)
 {
     char const *logTag = "[UART8_WIFI]:uploaddata_task-";
     LOGD("%s start...\r\n", logTag);
-    bool mqtt_upload_records_run = false;
-
-    do {
-        vTaskDelay(pdMS_TO_TICKS(1000));
-
-        if((boot_mode == BOOT_MODE_RECOGNIZE) || (boot_mode == BOOT_MODE_MECHANICAL_LOCK)) {
-            if (g_has_more_download_data == 0 && g_has_more_upload_data == 1) {
-                if ((mqtt_init_done == 1) && (g_priority == 0) && (bPubOasisImage == false) && (pressure_test == 1)) {
-                    if (mqtt_upload_records_run == false) {
-                        LOGD("----------------- g_priority == 0\r\n");
-                        int ret = uploadRecords();
-                        LOGD("----------------- ret is %d\r\n", ret);
-                        if(ret != -2) {
-                            LOGD("----------------- success\r\n");
-                            mqtt_upload_records_run = true;
-                            g_has_more_upload_data = 0;
-                            break;
-                        }
-                    }
-                }else {
-                    //LOGD("mqtt_init_done is %d, g_priority is %d, bPubOasisImage is %d\r\n", mqtt_init_done, g_priority, bPubOasisImage);
-                }
-            }else {
-                //LOGD("g_has_more_download_data is %d, g_has_more_upload_data is %d\r\n", g_has_more_download_data, g_has_more_upload_data);
-            }
-        }else {
-            if(receive_boot_mode == 1) {
-                g_has_more_upload_data = 0;
-            }
-        }
-
-    } while (1);
+    MqttCmdMgr::getInstance()->uploadRecords();
+//    bool mqtt_upload_records_run = false;
+//
+//    do {
+//        vTaskDelay(pdMS_TO_TICKS(1000));
+//
+//        if((boot_mode == BOOT_MODE_RECOGNIZE) || (boot_mode == BOOT_MODE_MECHANICAL_LOCK)) {
+//            if (g_has_more_download_data == 0 && g_has_more_upload_data == 1) {
+//                if ((mqtt_init_done == 1) && (g_priority == 0) && (bPubOasisImage == false) && (pressure_test == 1)) {
+//                    if (mqtt_upload_records_run == false) {
+//                        LOGD("----------------- g_priority == 0\r\n");
+//                        int ret = uploadRecords();
+//                        LOGD("----------------- ret is %d\r\n", ret);
+//                        if(ret != -2) {
+//                            LOGD("----------------- success\r\n");
+//                            mqtt_upload_records_run = true;
+//                            g_has_more_upload_data = 0;
+//                            break;
+//                        }
+//                    }
+//                }else {
+//                    //LOGD("mqtt_init_done is %d, g_priority is %d, bPubOasisImage is %d\r\n", mqtt_init_done, g_priority, bPubOasisImage);
+//                }
+//            }else {
+//                //LOGD("g_has_more_download_data is %d, g_has_more_upload_data is %d\r\n", g_has_more_download_data, g_has_more_upload_data);
+//            }
+//        }else {
+//            if(receive_boot_mode == 1) {
+//                g_has_more_upload_data = 0;
+//            }
+//        }
+//
+//    } while (1);
     vTaskDelete(NULL);
     LOGD("\r\n%s end...\r\n", logTag);
 }

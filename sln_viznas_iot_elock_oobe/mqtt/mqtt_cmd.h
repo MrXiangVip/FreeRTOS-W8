@@ -7,6 +7,7 @@
 //extern "C" {
 //#endif
 
+// 返回命令是HIGH，心跳是LOW，记录上传是MEDIUM，保留HIGHEST/LOWEST扩展，默认HIGH
 typedef enum {
     PRIORITY_HIGHEST    = 0x01,
     PRIORITY_HIGH       = 0x02,
@@ -14,6 +15,13 @@ typedef enum {
     PRIORITY_LOW        = 0x04,
     PRIORITY_LOWEST     = 0x05,
 } AT_RSP_PRIORITY;
+
+// 命令类型，RAW是裸数据，直接上传，RECORD_TEXT是注册/开门记录，需要解析上传，RECORD_IMAGE是注册/开门记录带图片
+typedef enum {
+    CMD_TYPE_RAW            = 0x01,
+    CMD_TYPE_RECORD_TEXT    = 0x02,
+    CMD_TYPE_RECORD_IMAGE   = 0x03,
+};
 
 class MqttCmd {
 private:
