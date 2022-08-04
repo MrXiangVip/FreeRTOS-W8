@@ -138,7 +138,8 @@ int MqttManager::handleMqttMsgData(char *jsonMsg) {
         MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_NOT_SUPPORT, (idStr == NULL || strlen(idStr) == 0 ? MqttCmdMgr::getInstance()->genMsgId() : idStr), "Paramater Missing");
         return -1;
     }
-    if (strcmp("tc", typeStr) == 0) {
+    LOGD("MQTT MSG: id: %s, ct: %s, cd: %s\r\n", idStr, typeStr, get_short_str(dataStr));
+    if (strcmp("pt", typeStr) == 0) {
         result = handlePassThroughPayload(dataStr, idStr);
     } else if (strcmp("ts", typeStr) == 0) {
         result = MqttCmdMgr::getInstance()->timeSync(dataStr);
@@ -150,6 +151,10 @@ int MqttManager::handleMqttMsgData(char *jsonMsg) {
         result = DBManager::getInstance()->clearRecord();
         MqttCmdMgr::getInstance()->atCmdResponse(result, idStr, result == AT_RSP_SUCCESS ? (char*)"OK" : (char*)"Error");
     } else if (strcmp("uu", typeStr) == 0) {
+        // TODO:
+//        result = DBManager::getInstance()->updateRecord(dataStr);
+        result = AT_RSP_SUCCESS;
+        MqttCmdMgr::getInstance()->atCmdResponse(result, idStr, result == AT_RSP_SUCCESS ? (char*)"OK" : (char*)"Error");
     } else {
         MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_NOT_SUPPORT, idStr, "Command Type Invalid", PRIORITY_LOW);
         return -1;
