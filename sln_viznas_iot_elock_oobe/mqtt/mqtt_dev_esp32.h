@@ -91,7 +91,7 @@ public:
 
     void receiveMqtt();
 
-    int sendATCmd(char const *cmd, int cmd_timeout_usec = MQTT_AT_CMD_DEFAULT_TIMEOUT, int retry_times = MQTT_AT_CMD_DEFAULT_RETRY_TIME);
+    int sendATCmd(char const *cmd, int cmd_timeout_usec = MQTT_AT_CMD_DEFAULT_TIMEOUT, int retry_times = MQTT_AT_CMD_DEFAULT_RETRY_TIME, int lock = 1);
     int sendRawATCmd(char const *cmd, char *data, int data_len, int cmd_timeout_usec = MQTT_AT_CMD_DEFAULT_TIMEOUT, int retry_times = MQTT_AT_CMD_DEFAULT_RETRY_TIME);
 
     int initUart();

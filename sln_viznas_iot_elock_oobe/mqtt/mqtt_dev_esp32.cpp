@@ -147,8 +147,10 @@ void MqttDevEsp32::receiveMqtt() {
     // TODO: LPUART_RTOS_Deinit(&m_uart_handle_esp32);
 }
 
-int MqttDevEsp32::sendATCmd(char const *cmd, int cmd_timeout_usec, int retry_times) {
-    lockSendATCmd();
+int MqttDevEsp32::sendATCmd(char const *cmd, int cmd_timeout_usec, int retry_times, int lock) {
+    if (lock) {
+        lockSendATCmd();
+    }
 
     char at_cmd[MQTT_AT_LEN];
     memset(at_cmd, '\0', MQTT_AT_LEN);
@@ -184,7 +186,9 @@ int MqttDevEsp32::sendATCmd(char const *cmd, int cmd_timeout_usec, int retry_tim
 
     LOGD("<<<<<< run command %s timeout end\r\n\r\n", cmd);
     m_at_cmd_result = AT_CMD_RESULT_TIMEOUT;
-    unlockSendATCmd();
+    if (lock) {
+        unlockSendATCmd();
+    }
     return m_at_cmd_result;
 }
 
@@ -256,9 +260,9 @@ int MqttDevEsp32::sendRawATCmd(char const *cmd, char *data, int data_len, int cm
     int ret = 0;
     LOGD("start AT raw command %s data_len is %d\r\n", cmd, data_len);
 
-    ret = sendATCmd(cmd, retry_times, cmd_timeout_usec);
-
     lockSendATCmd();
+    // Attention: lock parameter should be set to 0 to avoid dead lock
+    ret = sendATCmd(cmd, cmd_timeout_usec, retry_times, 0);
 
     vTaskDelay(pdMS_TO_TICKS(2));
 
