@@ -49,8 +49,8 @@
 #include "mqtt_cmd_mgr.h"
 #include "mqtt_topic_mgr.h"
 #include "mqtt_test_mgr.h"
+#include "mqtt_feature_mgr.h"
 #include "sln_cli.h"
-
 
 #define MQTT_AT_LEN             128
 
@@ -83,13 +83,6 @@ DTC_BSS static StaticTask_t s_Uart8UploadDataTaskTCB;
 DTC_BSS static StackType_t TestTaskStack[TESTTASK_STACKSIZE];
 DTC_BSS static StaticTask_t s_TestTaskTCB;
 #endif
-
-extern bool bPubOasisImage;
-extern int boot_mode;
-extern int receive_boot_mode;
-bool bOasisRecordUpload = false;
-extern bool g_is_save_file;
-extern int pressure_test;
 
 void remove_mqtt_instruction_from_pool(char instruction_dest, char cmd_code) {
     int cmd_index = MqttInstruction::getCmdIndex(instruction_dest, cmd_code);
@@ -352,7 +345,8 @@ int doSendMsgToMQTT(char *mqtt_payload, int len) {
                 	LOGD("register/unlcok record is not NULL start upload record/image \r\n");
 #if REMOTE_FEATURE != 0
                     char *msgId = gen_msgId();
-					ret = doFeatureUpload(msgId, record.UUID);
+//					ret = doFeatureUpload(msgId, record.UUID);
+					ret = MqttFeatureMgr::getInstance()->uploadFeature(msgId, record.UUID);
 #endif
                     if( record.upload == BOTH_UNUPLOAD ){//有可能被当做历史记录先上传,先检测防止重复上传
                         ret = MqttCmdMgr::getInstance()->pushRecord(&record, CMD_TYPE_RECORD_TEXT, PRIORITY_HIGH, 1);

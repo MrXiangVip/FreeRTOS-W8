@@ -311,10 +311,10 @@ static void vReceiveOasisTask(void *pvParameters) {
                             DBManager::getInstance()->addRecord(record);
     //                        Oasis_SetOasisFileName(record->image_path);
                             REG_RESULT_FLG = 0; //和后台同步, 0 表示成功
-                            // TODO: zgx upload feature to server
-                            char *msgId = gen_msgId();
-                            LOGD("%s往数据库中插入本次注册记录 %s\r\n", logtag, record->UUID);
-                            doFeatureUpload(msgId, record->UUID);
+//                            // TODO: zgx upload feature to server
+//                            char *msgId = gen_msgId();
+//                            LOGD("%s往数据库中插入本次注册记录 %s\r\n", logtag, record->UUID);
+//                            doFeatureUpload(msgId, record->UUID);
 
                         }else if( faceInfo->enrolment_result == OASIS_REG_RESULT_DUP){
                             LOGD("重复注册 \r\n");

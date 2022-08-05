@@ -95,7 +95,6 @@ char username[17] = {0}; //用于存放传入NXP提供的人脸注册于识别�
 extern int battery_level;
 static bool saving_file = false;
 static bool saving_db = false;
-extern int g_is_shutdown;
 bool g_is_save_file = false;
 extern int g_command_executed;
 extern int mqtt_init_done;
@@ -1118,7 +1117,6 @@ int cmdCloseFaceBoardReqExt(bool save_file) {
         LOGD("%s ERROR  %d must <  %d \r\n",iTotalLen, sizeof(szBuffer) );
     }
 
-    g_is_shutdown = true;
     if (save_file) {
         save_files_before_pwd();
     } else {

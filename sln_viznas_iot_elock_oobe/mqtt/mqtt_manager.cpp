@@ -14,6 +14,7 @@
 #include "mqtt-mcu.h"
 #include "mqtt_topic_mgr.h"
 #include "mqtt_cmd_mgr.h"
+#include "mqtt_feature_mgr.h"
 #include "mqtt-remote-feature.h"
 #include "base64.h"
 #include "util.h"
@@ -59,7 +60,7 @@ int MqttManager::analyzeMqttRecvLine(char *msg) {
                     if (data[0] == '{' && data[data_len - 1] == '}') {
                         char msgId[MSG_ID_LEN];
                         memset(msgId, '\0', sizeof(msgId));
-                        int result = requestFeatureUpload(data, (char*)&msgId);
+                        int result = MqttFeatureMgr::getInstance()->requestFeature(data, (char*)&msgId);
                         return 0;
                     } else {
                         LOGE("fr data is not formatted with JSON\r\n");
@@ -75,7 +76,7 @@ int MqttManager::analyzeMqttRecvLine(char *msg) {
                     if (data[0] == '{' && data[data_len - 1] == '}') {
                         char msgId[MSG_ID_LEN];
                         memset(msgId, '\0', sizeof(msgId));
-                        int result = analyzeRemoteFeature(data, (char*)&msgId);
+                        int result = MqttFeatureMgr::getInstance()->downloadFeature(data, (char*)&msgId);
                         return 0;
                     } else {
                         LOGE("fd data is not formatted with pure JSON\r\n");
