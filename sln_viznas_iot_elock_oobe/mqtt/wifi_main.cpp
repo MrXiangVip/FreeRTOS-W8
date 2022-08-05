@@ -51,49 +51,14 @@
 #include "mqtt_test_mgr.h"
 #include "sln_cli.h"
 
-/*******************************************************************************
- * Definitions
- ******************************************************************************/
-#define DEMO_LPUART          LPUART8
-#define DEMO_LPUART_CLK_FREQ BOARD_DebugConsoleSrcFreq()
-#define DEMO_LPUART_IRQn     LPUART8_IRQn
-/* Task priorities. */
-#define uart8_task_PRIORITY (configMAX_PRIORITIES - 1)
-/*******************************************************************************
- * Prototypes
- ******************************************************************************/
-
-/*******************************************************************************
- * Code
- ******************************************************************************/
 
 #define MQTT_AT_LEN             128
-#define MQTT_AT_LONG_LEN        256
-#define MQTT_MAC_LEN            32
 
-#define WIFI_SUPPORT_BAUD921600        0
 int mqtt_init_done = 0;
-// 本次开机心跳序列
-static int g_heartbeat_index = 0;
-// 是否已经确认服务器在线
-static int g_is_online = 0;
-// 是否已经确认服务器没有更多数据需要下载，默认认为需要有更多数据需要下载
-static int g_has_more_download_data = 1;
-// 是否已经确认服务器没有更多数据需要上传，默认认为需要更多数据需要上传
-static int g_has_more_upload_data = 1;
-// 是否正在上传数据
-static int g_is_uploading_data = 0;
 // 命令是否已经执行完成
 int g_command_executed = 0;
-// 关机通知是否已经执行完成
-static int g_shutdown_notified = 0;
 // 当前pub执行优先级，0为最低优先级，9为最高优先级
 int g_priority = 0;
-// 是否是自动上传过程中	: 0 未上传/上传完成 1 上传中 2 上传中断
-static int g_is_auto_uploading = 0;
-
-int g_is_shutdown = 0;
-
 
 
 MqttInstructionPool *mqtt_instruction_pool = MqttInstructionPool::getInstance();
@@ -118,9 +83,6 @@ DTC_BSS static StaticTask_t s_Uart8UploadDataTaskTCB;
 DTC_BSS static StackType_t TestTaskStack[TESTTASK_STACKSIZE];
 DTC_BSS static StaticTask_t s_TestTaskTCB;
 #endif
-
-int uploadRecordImage(Record *record, bool online);
-int g_uploading_id = -1;
 
 extern bool bPubOasisImage;
 extern int boot_mode;
@@ -246,80 +208,9 @@ int doSendMsgToMQTT(char *mqtt_payload, int len) {
         mysplit(mqtt_payload_str, first, msg, (char *)":");
         LOGD("=================== msg 1 is %s\r\n", msg);
         if (msg != NULL && strncmp(msg, "heartbeat", 9) == 0) {
-            char *msgId = gen_msgId();
-            if (versionConfig.sys_ver != NULL && strlen(versionConfig.sys_ver) > 0) {
-                // sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"btmac\":\"%s\",\"wifi_rssi\":%s,\"battery\":%d,\"version\":\"%s\"}", msgId, btWifiConfig.wifi_mac, btWifiConfig.bt_mac, wifi_rssi, battery_level, versionConfig.sys_ver);
-                sprintf(pub_msg,
-                        "{\"msgId\":\"%s\",\"mac\":\"%s\",\"wifi_rssi\":%s,\"battery\":%d,\"index\":%d,\"version\":\"%s\"}",
-//                        msgId, btWifiConfig.bt_mac, wifi_rssi, battery_level, g_heartbeat_index++,
-                        msgId, btWifiConfig.bt_mac, 0, battery_level, g_heartbeat_index++,
-                        versionConfig.sys_ver);
-            } else {
-                // sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"btmac\":\"%s\",\"wifi_rssi\":%s,\"battery\":%d,\"version\":\"%s\"}", msgId, btWifiConfig.wifi_mac, btWifiConfig.bt_mac, wifi_rssi, battery_level, getFirmwareVersion());
-                sprintf(pub_msg,
-                        "{\"msgId\":\"%s\",\"mac\":\"%s\",\"wifi_rssi\":%s,\"battery\":%d,\"index\":%d,\"version\":\"%s\"}",
-//                        msgId, btWifiConfig.bt_mac, wifi_rssi, battery_level, g_heartbeat_index++,
-                        msgId, btWifiConfig.bt_mac, 0, battery_level, g_heartbeat_index++,
-                        getFirmwareVersion());
-            }
-            sprintf(pub_msg,
-                    "{\"msgId\":\"%s\"}",
-                    msgId);
-            freePointer(&msgId);
-            pub_topic = get_pub_topic_heart_beat();
-            int ret = quickPublishMQTTWithPriority(pub_topic, pub_msg, 1);
-            //freePointer(&pub_topic);
             return 0;
-        } else if (msg != NULL && strncmp(msg, "sf:nodata", 9) == 0) {
-            // 来源于pool，超时
-            // TODO: check if need to shutdown
-            g_has_more_download_data = 0;
-            LOGD("no more data to download from server by timeout");
-            return 0;
-        } else if (msg != NULL && strncmp(msg, "startota:", 9) == 0) {
-			mysplit(msg, first, pub_msg, ":");
-			char *pub_topic_ota_request = get_pub_topic_ota_request();
-			int ret = quickPublishMQTTWithPriority(pub_topic_ota_request, pub_msg, 1);
-			//freePointer(&pub_topic_ota_request);
-			return ret;
-		} else if (msg != NULL && strncmp(msg, "ota", 3) == 0) {
-			char *msgId = gen_msgId();
-			sprintf(pub_msg, "{\"msgId\":\"%s\",\"curr_ver\":\"%s\"}", msgId, versionConfig.oasis_ver);
-			freePointer(&msgId);
-			char *pub_topic_ota_request = get_pub_topic_ota_request();
-			int ret = quickPublishMQTTWithPriority(pub_topic_ota_request, pub_msg, 1);
-			//freePointer(&pub_topic_ota_request);
-			return ret;
 		} else if (msg != NULL && strncmp(msg, "disconnect", 9) == 0) {
             int ret = disconnectMQTT(MQTT_LINK_ID_DEFAULT);
-            g_is_online = 0;
-            return ret;
-        } else if (msg != NULL && strncmp(msg, "reconnect", 9) == 0) {
-            char lwtMsg[50];
-            // sprintf(lwtMsg, "{\"username\":\"%s\",\"state\":\"0\"}", btWifiConfig.wifi_mac);
-            sprintf(lwtMsg, "{\"username\":\"%s\",\"state\":\"0\"}", btWifiConfig.bt_mac);
-            char *pub_topic_last_will = get_pub_topic_last_will();
-            int ret = quickConnectMQTT(mqttConfig.client_id, mqttConfig.username, mqttConfig.password,
-                                       mqttConfig.server_ip, mqttConfig.server_port, pub_topic_last_will, lwtMsg);
-            //freePointer(&pub_topic_last_will);
-
-            notifyMqttConnected(ret);
-            if (ret < 0) {
-            	LOGD("--------- Failed to reconnect to MQTT\n");
-                return -1;
-            }
-            LOGD("--------- reconnect to mqtt done\n");
-            // 订阅Topic
-            char *sub_topic_cmd = get_sub_topic_cmd();
-            ret = quickSubscribeMQTT(sub_topic_cmd);
-            //freePointer(&sub_topic_cmd);
-            // 订阅失败需要通知MCU
-            if (ret < 0) {
-            	LOGD("--------- Failed to resubscribe topic\n");
-                notifyHeartBeat(CODE_FAILURE);
-                return -1;
-            }
-            LOGD("--------- resubscribe to mqtt done\r\n");
             return ret;
         } else if (msg != NULL && strncmp(msg, CMD_FEATURE_UP, strlen(CMD_FEATURE_UP)) == 0) {
             mysplit(msg, first, pub_msg, ":");
@@ -459,31 +350,17 @@ int doSendMsgToMQTT(char *mqtt_payload, int len) {
                 int ret = DBManager::getInstance()->getRecordByID(id, &record);
                 if (ret == 0) {
                 	LOGD("register/unlcok record is not NULL start upload record/image \r\n");
-                    g_uploading_id = record.ID;
-                    g_is_uploading_data = 1;
-					// 优先上传最新的记录
-					while (g_is_auto_uploading == 1) {
-						// 如果正在自动上传中，睡眠100ms继续等待
-						//usleep(100000);
-						vTaskDelay(pdMS_TO_TICKS(100));
-					}
-					int ret = 0;
 #if REMOTE_FEATURE != 0
                     char *msgId = gen_msgId();
 					ret = doFeatureUpload(msgId, record.UUID);
 #endif
                     if( record.upload == BOTH_UNUPLOAD ){//有可能被当做历史记录先上传,先检测防止重复上传
-//                        ret = uploadRecordImage(&record, true);
                         ret = MqttCmdMgr::getInstance()->pushRecord(&record, CMD_TYPE_RECORD_TEXT, PRIORITY_HIGH, 1);
                         ret = MqttCmdMgr::getInstance()->pushRecord(&record, CMD_TYPE_RECORD_IMAGE, PRIORITY_HIGH, 1);
                     }else{
                         LOGD("实时记录已经被上传  \r\n");
                     }
-                    LOGD("uploadRecordImage end\r\n");
-                    // notifyCommandExecuted(ret);
-                    g_is_uploading_data = 0;
                     g_command_executed = 1;
-                    // TODO:
                 } else {
                 	LOGD("register/unlcok record is NULL");
                 }
@@ -522,20 +399,8 @@ int doSendMsgToMQTT(char *mqtt_payload, int len) {
                 int ret = DBManager::getInstance()->getRecordByID(id, &record);
                 if (ret == 0) {
                 	LOGD("mechnical record is not NULL start upload record/image\r\n");
-                    g_uploading_id = record.ID;
-                    g_is_uploading_data = 1;
-					// 优先上传最新的记录
-					while (g_is_auto_uploading == 1) {
-						// 如果正在自动上传中，睡眠100ms继续等待
-						//usleep(100000);
-						vTaskDelay(pdMS_TO_TICKS(100));
-					}
-//                    int ret = uploadRecordImage(&record, true);
                     int ret = MqttCmdMgr::getInstance()->pushRecord(&record, CMD_TYPE_RECORD_TEXT, PRIORITY_HIGH, 1);
                     ret = MqttCmdMgr::getInstance()->pushRecord(&record, CMD_TYPE_RECORD_IMAGE, PRIORITY_HIGH, 1);
-                    LOGD("uploadRecordImage end\r\n");
-                    // notifyCommandExecuted(ret);
-                    g_is_uploading_data = 0;
                     g_command_executed = 1;
                     // TODO:
                 } else {
@@ -558,8 +423,6 @@ void testFeatureDownload(char *featureJson) {
     LOGD("testFeatureDownload ret %d\r\n", ret);
     return;
 }
-
-int MAX_COUNT = 35;
 
 static void mqtt_send_task(void *pvParameters)
 {
