@@ -134,31 +134,36 @@ int MqttCmdMgr::uploadRecordImage(Record *record) {
     return 0;
 }
 
-int MqttCmdMgr::pushRecord(int uploadStatus, int cmdType, int maxCount) {
+int MqttCmdMgr::pushRecord(Record *record, int cmdType, int priority, int force) {
+    int id = record->ID;
+    if (!force) {
+        for (int i = 0; i < m_uploading_records.size(); i++) {
+            if (m_uploading_records[i] == id) {
+                LOGD("pushRecrod find id %d\r\n", id);
+                return -1;
+            }
+        }
+    }
+    m_uploading_records.push_back(id);
+    char rid[12] = {0};
+    sprintf(rid, "%d", id);
+    MqttCmd *mqttCmd = new MqttCmd(priority, cmdType, rid, rid);
+    m_mqtt_cmds.Push(mqttCmd);
+    return 0;
+}
+
+int MqttCmdMgr::pushRecords(int uploadStatus, int cmdType, int maxCount) {
     list<Record*> records = DBManager::getInstance()->getAllUnuploadRecord();
     list <Record*>::iterator it;
     int count = 0;
-    LOGD("pushRecord uploadStatus %d cmdType %d size %d\r\n", uploadStatus, cmdType, records.size());
+    LOGD("pushRecords uploadStatus %d cmdType %d size %d\r\n", uploadStatus, cmdType, records.size());
     for ( it = records.begin( ); it != records.end( ); it++ ) {
         Record *record = (Record * ) * it;
         if (record->upload == uploadStatus) {
-            int id = record->ID;
-            bool find = false;
-            for (int i = 0; i < m_uploading_records.size(); i++) {
-                if (m_uploading_records[i] == id) {
-                    find = true;
-                    LOGD("pushRecord find id %d\r\n", id);
-                    break;
-                }
-            }
-            if (find) {
+            int result = pushRecord(record, cmdType);
+            if (result != 0) {
                 continue;
             }
-            m_uploading_records.push_back(id);
-            char rid[12] = {0};
-            sprintf(rid, "%d", id);
-            MqttCmd *mqttCmd = new MqttCmd(PRIORITY_LOW, cmdType, rid, rid);
-            m_mqtt_cmds.Push(mqttCmd);
             count++;
             if (count >= maxCount) {
                 break;
@@ -177,15 +182,15 @@ void MqttCmdMgr::uploadRecords() {
             continue;
         }
 
-        int recordCount = pushRecord(BOTH_UNUPLOAD, CMD_TYPE_RECORD_TEXT, 20);
+        int recordCount = pushRecords(BOTH_UNUPLOAD, CMD_TYPE_RECORD_TEXT, 20);
         if (recordCount > 0) {
-            vTaskDelay(pdMS_TO_TICKS(100*recordCount));
+            vTaskDelay(pdMS_TO_TICKS(20*recordCount));
             continue;
         }
 
-        recordCount = pushRecord(RECORD_UPLOAD, CMD_TYPE_RECORD_IMAGE, 10);
+        recordCount = pushRecords(RECORD_UPLOAD, CMD_TYPE_RECORD_IMAGE, 10);
         if (recordCount > 0) {
-            vTaskDelay(pdMS_TO_TICKS(1000*recordCount));
+            vTaskDelay(pdMS_TO_TICKS(150*recordCount));
             continue;
         }
 

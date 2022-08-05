@@ -44,7 +44,8 @@ public:
     void loopSendMqttMsgs();
     int uploadRecordText(Record *record);
     int uploadRecordImage(Record *record);
-    int pushRecord(int uploadStatus, int cmdType, int maxCount = 20);
+    int pushRecord(Record *record, int cmdType, int priority = PRIORITY_LOW, int force = 0);
+    int pushRecords(int uploadStatus, int cmdType, int maxCount = 20);
     void uploadRecords();
 
     int timeSync(char *ts);
