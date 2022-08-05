@@ -403,9 +403,6 @@ static shell_status_t FFI_CLI_ListCommand(shell_handle_t shellContextHandle, int
                 SHELL_Printf(shellContextHandle, "test cjson default\r\n");
                 char *featureJson = "{\"msgId\":\"0000000000577890216\",\"u\":\"0000000000000000\",\"s\":\"2f995a8e1f99a8d417c643cc86f78f6c\",\"l\":400,\"d\":\"AAAFBQUAAAAAAAAAAAAAABX1BPES+BsABfcF8Cj1FwcD9uHq/u8GDAXXBd/p6/Pl/Rje8vAF+fcVJA7v+tcO/e3+AQ///Aj48OjZ/RkB3P/8A+buCBATBvH++xTm6/0L7xjy9AHiA+sEDe/mBfoF/B/2Kvj35vz5CQfx8gvY/RQEIyLwGA4AEOAVDQEI6gEHAPb09g4EEwYD+AcDI/ASDAz56enx5BX599EH4ODZ3PEJCub19Qf47gMVA9z60g/66/zyAPXsCff27OPvGh/cBAgH8/MA+Q0C4QL0CPXY+hTvEOIA+d4EAgID+t4EAP0IEgAT8ADjBPEDGfz35t/8DhEtI/ARFxEI8x0B9P7dBwoC+PzvCfgM+w/5BP0l8g0GC/bq6PvdCQQG2RDf5fP07PYG6/rrDfj4DQsM6PzeBgjr9/AG8u319Pnx4/ALFNvuAxj55gb8EQjx9/UO9Nv6HewN8/v53Ab7+wYF3vr5AQUf/xr1DOUF6woF9fn/3v4JBjIj6h4VBP7pGfz78+YEDQ==\"}";
                 cJSON* root = cJSON_Parse(featureJson);
-            } else if (strcmp("record", argv[1]) == 0) {
-                SHELL_Printf(shellContextHandle, "list record default\r\n");
-                listRecords();
             } else {
                 vSetFakeCommandBuffer(argv[1]);
             }

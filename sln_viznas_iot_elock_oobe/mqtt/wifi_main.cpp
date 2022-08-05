@@ -48,6 +48,7 @@
 #include "mqtt_conn_mgr.h"
 #include "mqtt_cmd_mgr.h"
 #include "mqtt_topic_mgr.h"
+#include "mqtt_test_mgr.h"
 #include "sln_cli.h"
 
 /*******************************************************************************
@@ -558,22 +559,6 @@ void testFeatureDownload(char *featureJson) {
     return;
 }
 
-void listRecords() {
-    LOGD("List Records start\r\n");
-    list<Record*> records = DBManager::getInstance()->getAllUnuploadRecord();
-    LOGD("idx %8s %20s %6s %16s %10s %6s %32s \r\n", "id", "UUID", "action", "image", "timestamp", "upload", "data");
-    // 第一步，只上传未上传的注册记录以及图片，涉及到可能存在的重复上传问题: 注册优先
-    list <Record*>::iterator it;
-    //for (int i = 0; i < recordNum; i++) {
-    int i = 1;
-    for ( it = records.begin( ); it != records.end( ); it++ ) {
-        Record *record = (Record *) *it;
-        LOGD("%3d %8d %20s %06d %d %s %6d %s\r\n", i++, record->ID, record->UUID, record->action, record->time_stamp,
-             record->image_path, record->upload, record->data);
-    }
-}
-
-
 int MAX_COUNT = 35;
 
 static void mqtt_send_task(void *pvParameters)
@@ -582,39 +567,6 @@ static void mqtt_send_task(void *pvParameters)
     LOGD("%s start...\r\n", logTag);
     MqttCmdMgr::getInstance()->loopSendMqttMsgs();
     vTaskDelete(NULL);
-}
-
-static void do_test(int argc, char *cmd, char *data1, char *data2) {
-    if (strcmp(cmd, "addrecord") == 0) {
-        Record *record = (Record *) pvPortMalloc(sizeof(Record));
-        memset(record, 0, sizeof(Record));
-        strcpy(record->UUID, objUserExtend.UUID);
-        record->action = REGISTE;// 0 代表注册
-        record->time_stamp = ws_systime;//当前时间
-//        memset(image_path, 0, sizeof(image_path)); // 对注册成功的用户保存一张压缩过的jpeg图片
-//        snprintf(image_path, sizeof(image_path), "%x.jpg", record->time_stamp);
-//        memcpy(record->image_path, image_path, sizeof(image_path));//image_path
-        record->data[0]=0xFF;
-        record->data[1]=0xFF;
-
-        record->upload = BOTH_UNUPLOAD;// 0代表没上传 1代表记录上传图片未上传 2代表均已
-        LOGD("%s往数据库中插入本次注册记录 \r\n", "do_test");
-        DBManager::getInstance()->addRecord(record);
-    } else if (strcmp(cmd, "listrecord") == 0) {
-        listRecords();
-    } else if (strcmp(cmd, "pubraw") == 0) {
-        if (argc < 3 || data1 == NULL) {
-            LOGE("test pubraw [data]");
-            return;
-        }
-        char *pubTopic = MqttTopicMgr::getInstance()->getPubTopicActionRecord();
-        int result = MqttConnMgr::getInstance()->publishRawMQTT(pubTopic, data1, strlen(data1));
-    } else {
-        char *data = (char*)pvPortMalloc(24);
-        strcpy(data, "hello");
-        LOGD("test pvPortMalloc %s\r\n", data);
-        vPortFree(data);
-    }
 }
 
 static void test_task(void *pvParameters)
@@ -627,7 +579,7 @@ static void test_task(void *pvParameters)
             for (int i = 0; i < g_test_argc; i++) {
                 LOGD("test argv %d is %s\r\n", i, g_test_argv[i]);
             }
-            do_test(g_test_argc, g_test_argv[1], g_test_argv[2], g_test_argv[3]);
+            MqttTestMgr::getInstance()->doTest(g_test_argc, g_test_argv[1], g_test_argv[2], g_test_argv[3]);
             reset_test_args();
         }
     }
