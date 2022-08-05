@@ -90,8 +90,6 @@ static int g_shutdown_notified = 0;
 int g_priority = 0;
 // 是否是自动上传过程中	: 0 未上传/上传完成 1 上传中 2 上传中断
 static int g_is_auto_uploading = 0;
-// 心跳是否立即执行
-static int g_heart_beat_executed = 0;
 
 int g_is_shutdown = 0;
 
@@ -121,9 +119,6 @@ DTC_BSS static StaticTask_t s_TestTaskTCB;
 #endif
 
 int uploadRecordImage(Record *record, bool online);
-#if	FFD_SUPPORT != 0
-int uploadOasisFeature(Record *record, bool online);
-#endif
 int g_uploading_id = -1;
 
 extern bool bPubOasisImage;
@@ -154,6 +149,9 @@ static void mqtt_conn_task(void *pvParameters) {
     char const *logTag = "[UART8_WIFI]:mqtt_conn_task-";
     LOGD("%s start...\r\n", logTag);
     MqttConnMgr::getInstance()->keepConnectionAlive();
+    // record error to flash
+    // upload error to network
+    // notify MCU to reset system
     vTaskDelete(NULL);
 }
 
@@ -428,7 +426,6 @@ int doSendMsgToMQTT(char *mqtt_payload, int len) {
                 int ret = quickPublishMQTTWithPriority(pub_topic, pub_msg, 1);
                 // notifyCommandExecuted(ret);
                 g_command_executed = 1;
-                g_heart_beat_executed = 1;
                 //freePointer(&pub_topic);
                 return 0;
             } else if ((int) (char) (mqtt_payload[1]) == 0x15 && (int) (char) (mqtt_payload[2]) == 0x01) {
@@ -470,16 +467,14 @@ int doSendMsgToMQTT(char *mqtt_payload, int len) {
 						vTaskDelay(pdMS_TO_TICKS(100));
 					}
 					int ret = 0;
-#if	FFD_SUPPORT != 0
-					ret = uploadOasisFeature(&record, true);
-					vTaskDelay(pdMS_TO_TICKS(100));
-#endif
 #if REMOTE_FEATURE != 0
                     char *msgId = gen_msgId();
 					ret = doFeatureUpload(msgId, record.UUID);
 #endif
                     if( record.upload == BOTH_UNUPLOAD ){//有可能被当做历史记录先上传,先检测防止重复上传
-                        ret = uploadRecordImage(&record, true);
+//                        ret = uploadRecordImage(&record, true);
+                        ret = MqttCmdMgr::getInstance()->pushRecord(&record, CMD_TYPE_RECORD_TEXT, PRIORITY_HIGH, 1);
+                        ret = MqttCmdMgr::getInstance()->pushRecord(&record, CMD_TYPE_RECORD_IMAGE, PRIORITY_HIGH, 1);
                     }else{
                         LOGD("实时记录已经被上传  \r\n");
                     }
@@ -487,7 +482,6 @@ int doSendMsgToMQTT(char *mqtt_payload, int len) {
                     // notifyCommandExecuted(ret);
                     g_is_uploading_data = 0;
                     g_command_executed = 1;
-                    g_heart_beat_executed = 1;
                     // TODO:
                 } else {
                 	LOGD("register/unlcok record is NULL");
@@ -513,7 +507,6 @@ int doSendMsgToMQTT(char *mqtt_payload, int len) {
                     int ret = quickPublishMQTTWithPriority(pub_topic, pub_msg, 1);
                     // notifyCommandExecuted(ret);
                     g_command_executed = 1;
-                    g_heart_beat_executed = 1;
                     //freePointer(&pub_topic);
                     return ret;
                 } else {
@@ -536,12 +529,13 @@ int doSendMsgToMQTT(char *mqtt_payload, int len) {
 						//usleep(100000);
 						vTaskDelay(pdMS_TO_TICKS(100));
 					}
-                    int ret = uploadRecordImage(&record, true);
+//                    int ret = uploadRecordImage(&record, true);
+                    int ret = MqttCmdMgr::getInstance()->pushRecord(&record, CMD_TYPE_RECORD_TEXT, PRIORITY_HIGH, 1);
+                    ret = MqttCmdMgr::getInstance()->pushRecord(&record, CMD_TYPE_RECORD_IMAGE, PRIORITY_HIGH, 1);
                     LOGD("uploadRecordImage end\r\n");
                     // notifyCommandExecuted(ret);
                     g_is_uploading_data = 0;
                     g_command_executed = 1;
-                    g_heart_beat_executed = 1;
                     // TODO:
                 } else {
                 	LOGD("mechnical record is NULL");
@@ -564,170 +558,6 @@ void testFeatureDownload(char *featureJson) {
     return;
 }
 
-int uploadRecord(char *msgId, Record *record) {
-	char pub_msg[MQTT_AT_LONG_LEN]={0};
-    char *data = record->data;
-	int action = record->action;
-	int  type = 0;// 透传数据
-    char *pub_topic=NULL;
-    LOGD("action 0x%x \r\n", action);
-//	if( action_upload == 0x1000  ){// 注册
-	if( action == FACE_TEMPER  ){// 测温的记录
-        LOGD("识别测温记录 %d \r\n",record->ID);
-        sprintf(pub_msg, "{\"msgId\":\"%s\",\"userId\":\"%s\", \"type\":%d,\"time\":%d,\"data\":\"%s\"}", msgId,  record->UUID, type, record->time_stamp,  data /*record->status*/);
-        pub_topic = get_pub_topic_data_report();
-
-    }else{//识别
-        LOGD("注册或识别记录 %d \r\n", record->ID);
-        uint8_t power = record->data[0];
-        uint8_t power2 = record->data[1];
-        int status=0;
-        sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"userId\":\"%s\", \"type\":%d,\"time\":%d,\"batteryA\":%d,\"batteryB\":%d,\"result\":%d}", msgId, btWifiConfig.bt_mac, record->UUID, action, record->time_stamp, power, power2, status);
-        pub_topic = get_pub_topic_record_request();
-
-    }
-    LOGD("上传  record pub_msg %s \r\n", pub_msg);
-
-	while (g_priority != 0) {
-		//usleep(500000);	// 睡眠0.5s
-		vTaskDelay(pdMS_TO_TICKS(500));
-	}
-    //LOGD("%s pub_topic is %s, pub_msg is %s\r\n", __FUNCTION__, pub_topic, pub_msg);
-	int ret = quickPublishMQTT(pub_topic, pub_msg);
-	if (ret == 0) {
-
-
-        LOGD("记录上传成功 \r\n");
-	}else{
-	    LOGD("记录上传失败 \r\n");
-	}
-	// notifyCommandExecuted(ret);
-	//freePointer(&pub_topic);
-	return ret;
-}
-
-int uploadRecordImage(Record *record, bool online) {
-	LOGD("上传记录和图片 online is %d \r\n", online);
-	if(online) {
-            char *pub_topic = get_pub_topic_pic_report();
-            char *msgId = gen_msgId();
-            //LOGD("uploadRecordImage msgId is %s\r\n", msgId);
-            // 第一步：传记录
-            bOasisRecordUpload = false;
-            //int ret = pubOasisImage(pub_topic, msgId);
-            LOGD("第一步：传实时记录 \r\n");
-            int ret = uploadRecord(msgId, record);
-            if (ret == 0) {
-                if( record->action == FACE_TEMPER  ){// 如果是蓝牙测温 此时不需要传图片
-                    record->upload = BOTH_UPLOAD;
-                }else{// 如果是注册 或识别开锁 测试开始传图片
-                    record->upload =RECORD_UPLOAD;//
-                }
-//                DBManager::getInstance()->updateRecordByID(record);
-                LOGD("第一步：传实时记录成功 \r\n");
-            }else{
-                LOGD("第一步:传实时记录失败 \r\n");
-                freePointer(&pub_topic);
-                freePointer(&msgId);
-                return ret;
-            }
-            // 第二步：传图片
-            LOGD("record  upload %d \r\n", record->upload);
-//            if(((record->action_upload & 0x1000) != 0x1000) && ((record->action_upload & 0xFF00) != 0xB00)) {
-            if(   record->upload == RECORD_UPLOAD ) { //如果 记录上传了,图片没有上传 ,则上传图片
-                LOGD("第二步：传实时图片 %s \r\n", record->image_path );
-                ret = pubOasisImage(pub_topic, msgId);
-				if (ret == 0) {
-					// 第三步：再传记录
-                    LOGD("实时图片发送成功.第三步：再传实时记录 \r\n");
-					ret = uploadRecord(msgId, record);
-					if (ret == 0) {
-					    record->upload = BOTH_UPLOAD;
-                        LOGD("第三步：再传实时记录成功 \r\n");
-						bOasisRecordUpload = true;
-					}else{
-					    LOGD("第三步:再传记录失败 \r\n");
-					}
-				}else{
-				    LOGD("第二步:传实时图片失败 \r\n");
-				}
-            }
-            //LOGD("uploadRecordImage record->upload is %d\r\n", record->upload);
-//            LOGD("uploadRecordImage record->action_upload is 0x%X\r\n", record->action_upload);
-
-            DBManager::getInstance()->updateRecordByID(record);
-
-            freePointer(&pub_topic);
-            freePointer(&msgId);
-            return ret;
-    }else {
-
-        // 第一步：传记录
-        LOGD("第一步：传历史记录 \r\n");
-//        char *pub_topic = get_pub_topic_pic_report();
-        char *msgId = gen_msgId();
-        int ret = uploadRecord(msgId, record);
-        if (ret == 0) {
-            if( record->action == FACE_TEMPER  ){// 如果是蓝牙测温 此时不需要传图片
-                record->upload = BOTH_UPLOAD;
-            }else{// 如果是注册 或识别开锁 测试开始传图片
-                record->upload =RECORD_UPLOAD;//
-            }
-
-            LOGD("第一步:传历史记录成功 \r\n");
-        }else{
-            LOGD("第一步:传历史记录失败 \r\n");
-            freePointer(&msgId);
-            return ret;
-		}
-        char *filename = (char*)(record->image_path);
-        LOGD("上传历史记录的图片名 filename is %s\r\n", filename);
-        if (filename != NULL && strlen(filename) > 0) {
-            int fileSize = fatfs_getsize(filename);
-            LOGD("上传历史记录的图片 filesize is %d\r\n", fileSize);
-            if (fileSize == 0) {
-                // 图片不存在，如果历史记录已经上传，则可以删除该记录
-                if (record->upload == RECORD_UPLOAD) {
-                    record->upload = BOTH_UPLOAD;
-                }
-            } else if (fileSize >= 1000000) {
-                // 不允许存在大于1M的文件
-                fatfs_delete(filename);
-                record->upload = BOTH_UPLOAD;
-            } else {
-                char *pub_topic = get_pub_topic_pic_report();
-                if( record->upload == RECORD_UPLOAD ) { //如果是注册 需要传图片
-                    LOGD("第二步：传历史图片 %s \r\n", record->image_path );
-                    ret = pubImage(pub_topic, filename, msgId);
-                    if(ret == 0) {
-                        // 第三步：再传记录
-                        LOGD("第三步：再传历史记录 \r\n");
-                        ret = uploadRecord(msgId, record);
-                        if (ret == 0) {
-                            record->upload = BOTH_UPLOAD;
-                            if(g_is_shutdown == 0) {
-                                LOGD("%s delete start \r\n", __FUNCTION__);
-                                fatfs_delete(filename);
-                                LOGD("图片上传完成后,删除图片 \r\n");
-                            }
-                        }else{
-                            LOGD("第三步:再传历史记录失败 \r\n");
-                        }
-                    }else{
-                        LOGD("第二步:传历史图片失败 \r\n");
-                    }
-                }
-                DBManager::getInstance()->updateRecordByID(record);
-
-                freePointer(&pub_topic);
-            }
-        }
-        freePointer(&msgId);
-
-        return ret;
-	}
-}
-
 void listRecords() {
     LOGD("List Records start\r\n");
     list<Record*> records = DBManager::getInstance()->getAllUnuploadRecord();
@@ -743,193 +573,6 @@ void listRecords() {
     }
 }
 
-int uploadRecords() {
-    LOGD("上传历史记录 \r\n");
-	g_is_auto_uploading = 1;
-	if (g_is_uploading_data == 1) {
-		g_is_auto_uploading = 2;
-		return -2;
-	}
-
-	int fret = 0;
-	int continous_fail_count = 0;
-	int MAX_CONTINOUS_FAIL_COUNT = 5;
-	list<Record*> records = DBManager::getInstance()->getAllUnuploadRecord();
-    LOGD("第一步，先上传未上传的注册历史记录以及图片 %d \r\n", records.size() );
-	// 第一步，只上传未上传的注册记录以及图片，涉及到可能存在的重复上传问题: 注册优先
-    list <Record*>::iterator it;
-	//for (int i = 0; i < recordNum; i++) {
-    for ( it = records.begin( ); it != records.end( ); it++ ) {
-        Record* record = (Record*) *it;
-		//Record record = records[i];
-
-		if(g_is_shutdown == 0) {
-//		    if ((record->action_upload == 0) && (g_uploading_id != record->ID)) {
-            if (record->action == REGISTE && record->upload != BOTH_UPLOAD && g_uploading_id != record->ID) {
-                notifyKeepAlive();
-		        vTaskDelay(pdMS_TO_TICKS(20));
-
-		        int ret = uploadRecordImage(record, false);
-		        if (g_is_uploading_data == 1) {
-		            g_is_auto_uploading = 2;
-		            return -2;
-		        }
-		        if (ret != 0) {
-		            LOGD("register: upload record and image id %d fail with ret %d\r\n", record->ID, ret);
-		            if (fret == 0) {
-		                fret = ret;
-		            }
-                    continous_fail_count++;
-		            if (continous_fail_count >= MAX_CONTINOUS_FAIL_COUNT) {
-		                return -1;
-		            }
-		            //break;
-		        } else {
-		            LOGD("register: upload record and image id %d success\r\n", record->ID);
-                    continous_fail_count = 0;
-		        }
-		    }
-		}
-	}
-	records = DBManager::getInstance()->getAllUnuploadRecord();
-	LOGD("第二步,上传历史记录: upload records only %d\r\n", records.size());
-	// 第二步，只上传未上传的注册/开门记录，包括注册记录和开门记录: 记录次之
-	//for (int i = 0; i < recordNum; i++) {
-	for ( it = records.begin( ); it != records.end( ); it++ ) {
-		//Record record = records[i];
-
-		Record* record = (Record*) *it;
-		if(g_is_shutdown == 0) {
-//		    if ((record->action_upload & 0xFF) == 0) {
-            if (record->upload == BOTH_UNUPLOAD) {
-		        notifyKeepAlive();
-		        vTaskDelay(pdMS_TO_TICKS(20));
-
-		        int ret = uploadRecord(gen_msgId(), record);
-                if (ret == 0) {
-                    if( record->action == FACE_TEMPER  ){// 如果是蓝牙测温 此时不需要传图片
-                        record->upload = BOTH_UPLOAD;
-                    }else{// 如果是注册 或识别开锁 测试开始传图片
-                        record->upload =RECORD_UPLOAD;//
-                    }
-                    LOGD("传历史记录成功 \r\n");
-                }else{
-                    LOGD("传历史记录失败 \r\n");
-                }
-		        if (g_is_uploading_data == 1) {
-		            g_is_auto_uploading = 2;
-		            return -2;
-		        }
-		        if (ret != 0) {
-		            LOGD("register/opendoor: upload records id %d fail with ret %d\r\n", record->ID, ret);
-		            if (fret == 0) {
-		                fret = ret;
-		            }
-                    continous_fail_count++;
-                    if (continous_fail_count >= MAX_CONTINOUS_FAIL_COUNT) {
-                        return -1;
-                    }
-		            //break;
-		        } else {
-		            LOGD("register/opendoor: upload records id %d success\r\n", record->ID);
-                    continous_fail_count = 0;
-		        }
-		    }
-		}
-	}
-	records = DBManager::getInstance()->getAllUnuploadRecord();
-	LOGD("第三步,上传历史记录和图片: upload record and image both %d \r\n", records.size());
-	// 第三步，上传未上传的开门记录以及图片, 开门图片最后
-	//for (int i = 0; i < recordNum; i++) {
-	for ( it = records.begin( ); it != records.end( ); it++ ) {
-		//Record record = records[i];
-
-		Record* record = (Record*) *it;
-
-		if(g_is_shutdown == 0) {
-//		    if (((record->action_upload & 0xFF) == 0 || (record->action_upload & 0xFF) == 1) && g_uploading_id != record->ID) {
-            if ((record->upload == BOTH_UNUPLOAD || record->upload == RECORD_UPLOAD) && g_uploading_id != record->ID) {
-		        notifyKeepAlive();
-		        vTaskDelay(pdMS_TO_TICKS(20));
-
-		        int ret = uploadRecordImage(record, false);
-		        if (g_is_uploading_data == 1) {
-		            g_is_auto_uploading = 2;
-		            return -2;
-		        }
-		        if (ret != 0) {
-		            LOGD("opendoor: upload record and image id %d fail with ret %d\r\n", ret, record->ID);
-		            if (fret == 0) {
-		                fret = ret;
-		            }
-                    continous_fail_count++;
-                    if (continous_fail_count >= MAX_CONTINOUS_FAIL_COUNT) {
-                        return -1;
-                    }
-		            //break;
-		        } else {
-		            LOGD("opendoor: upload record and image id %d success\r\n", record->ID);
-                    continous_fail_count = 0;
-		        }
-		    }
-		}
-	}
-    g_is_auto_uploading = 0;
-	return fret;
-}
-
-#if	FFD_SUPPORT != 0
-int uploadOasisFeature(Record *record, bool online) {
-	LOGD("uploadOasisFeature online is %d \r\n", online);
-	char *pub_topic = get_ffu_topic_cmd();
-	char *msgId = gen_msgId();
-	//LOGD("uploadOasisFeature msgId is %s\r\n", msgId);
-	// 第一步：传记录
-	bOasisRecordUpload = false;
-	//int ret = pubOasisImage(pub_topic, msgId);
-	LOGD("第一步：传记录 \r\n");
-	int ret = uploadRecord(msgId, record);
-	if (ret == 0) {
-		//ret = uploadRecord(msgId, record);
-		//record->upload = 1;
-		if((record->action_upload & 0xFF00) != 0xB00) {
-			record->action_upload = (record->action_upload & 0xFF00) + 1;
-		}else {
-			record->action_upload = (record->action_upload & 0xFF00) + 2;
-			bOasisRecordUpload = true;
-		}
-	}else{
-		LOGD("第一步:传记录失败 \r\n");
-	}
-	// 第二步：传图片
-	if((record->action_upload & 0xFF00) != 0xB00) {
-		LOGD("第二步：传图片 %s \r\n", record->image_path );
-		ret = pubOasisFeature(pub_topic, msgId);
-		if (ret == 0) {
-			// 第三步：再传记录
-			LOGD("第三步：再传记录 \r\n");
-			ret = uploadRecord(msgId, record);
-			if (ret == 0) {
-				//record->upload = 2;
-				record->action_upload = (record->action_upload & 0xFF00) + 2;
-			}else{
-				LOGD("第三步:再传记录失败 \r\n");
-			}
-			bOasisRecordUpload = true;
-		}else{
-			LOGD("第二步:传图片失败 \r\n");
-		}
-	}
-	//LOGD("uploadRecordImage record->upload is %d\r\n", record->upload);
-	LOGD("uploadOasisFeature record->action_upload is 0x%X\r\n", record->action_upload);
-
-	DBManager::getInstance()->updateRecordByID(record);
-
-	freePointer(&pub_topic);
-	freePointer(&msgId);
-	return ret;
-}
-#endif
 
 int MAX_COUNT = 35;
 
@@ -941,7 +584,7 @@ static void mqtt_send_task(void *pvParameters)
     vTaskDelete(NULL);
 }
 
-static void do_test(char *cmd, char *data1, char *data2) {
+static void do_test(int argc, char *cmd, char *data1, char *data2) {
     if (strcmp(cmd, "addrecord") == 0) {
         Record *record = (Record *) pvPortMalloc(sizeof(Record));
         memset(record, 0, sizeof(Record));
@@ -960,6 +603,10 @@ static void do_test(char *cmd, char *data1, char *data2) {
     } else if (strcmp(cmd, "listrecord") == 0) {
         listRecords();
     } else if (strcmp(cmd, "pubraw") == 0) {
+        if (argc < 3 || data1 == NULL) {
+            LOGE("test pubraw [data]");
+            return;
+        }
         char *pubTopic = MqttTopicMgr::getInstance()->getPubTopicActionRecord();
         int result = MqttConnMgr::getInstance()->publishRawMQTT(pubTopic, data1, strlen(data1));
     } else {
@@ -970,8 +617,6 @@ static void do_test(char *cmd, char *data1, char *data2) {
     }
 }
 
-//extern char g_test_argv[4][24]; /* The shell command parameters */
-//extern int g_test_argc;                                                 /* The shell command number of paramters */
 static void test_task(void *pvParameters)
 {
     char const *logTag = "[UART8_WIFI]:mqtt_send_task-";
@@ -982,7 +627,7 @@ static void test_task(void *pvParameters)
             for (int i = 0; i < g_test_argc; i++) {
                 LOGD("test argv %d is %s\r\n", i, g_test_argv[i]);
             }
-            do_test(g_test_argv[1], g_test_argv[2], g_test_argv[3]);
+            do_test(g_test_argc, g_test_argv[1], g_test_argv[2], g_test_argv[3]);
             reset_test_args();
         }
     }
@@ -994,38 +639,6 @@ static void uploaddata_task(void *pvParameters)
     char const *logTag = "[UART8_WIFI]:uploaddata_task-";
     LOGD("%s start...\r\n", logTag);
     MqttCmdMgr::getInstance()->uploadRecords();
-//    bool mqtt_upload_records_run = false;
-//
-//    do {
-//        vTaskDelay(pdMS_TO_TICKS(1000));
-//
-//        if((boot_mode == BOOT_MODE_RECOGNIZE) || (boot_mode == BOOT_MODE_MECHANICAL_LOCK)) {
-//            if (g_has_more_download_data == 0 && g_has_more_upload_data == 1) {
-//                if ((mqtt_init_done == 1) && (g_priority == 0) && (bPubOasisImage == false) && (pressure_test == 1)) {
-//                    if (mqtt_upload_records_run == false) {
-//                        LOGD("----------------- g_priority == 0\r\n");
-//                        int ret = uploadRecords();
-//                        LOGD("----------------- ret is %d\r\n", ret);
-//                        if(ret != -2) {
-//                            LOGD("----------------- success\r\n");
-//                            mqtt_upload_records_run = true;
-//                            g_has_more_upload_data = 0;
-//                            break;
-//                        }
-//                    }
-//                }else {
-//                    //LOGD("mqtt_init_done is %d, g_priority is %d, bPubOasisImage is %d\r\n", mqtt_init_done, g_priority, bPubOasisImage);
-//                }
-//            }else {
-//                //LOGD("g_has_more_download_data is %d, g_has_more_upload_data is %d\r\n", g_has_more_download_data, g_has_more_upload_data);
-//            }
-//        }else {
-//            if(receive_boot_mode == 1) {
-//                g_has_more_upload_data = 0;
-//            }
-//        }
-//
-//    } while (1);
     vTaskDelete(NULL);
     LOGD("\r\n%s end...\r\n", logTag);
 }
