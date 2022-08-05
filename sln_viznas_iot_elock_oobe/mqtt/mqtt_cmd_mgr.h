@@ -9,6 +9,7 @@
 
 #include "PriorityQueue.h"
 #include "DBManager.h"
+#include <vector>
 
 #define MSG_ID_LEN 20
 #define MSG_BT_MAC_LEN	10
@@ -29,6 +30,7 @@ private:
 
     PriorityQueue m_mqtt_cmds;
     int pushRecord(int uploadStatus, int cmdType);
+    vector<int> m_uploading_records;
 
 public:
     static MqttCmdMgr *getInstance() {
