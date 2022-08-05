@@ -4,40 +4,26 @@
 #include "timers.h"
 #include <string.h>
 
-/* Freescale includes. */
-#include "fsl_device_registers.h"
-#include "fsl_debug_console.h"
-#include "board.h"
-
-#include "fsl_lpuart_freertos.h"
-#include "fsl_lpuart.h"
-
-#include "pin_mux.h"
-#include "clock_config.h"
 #include "fsl_log.h"
 #include "wifi_main.h"
 //#include "mqtt_config.h"
-#include "../mqtt/mqtt-common.h"
-#include "../mqtt/config.h"
-#include "../mqtt/mqtt_util.h"
-#include "../mqtt/mqtt-api.h"
-#include "../mqtt/mqtt-topic.h"
-#include "../mqtt/mqtt-ota.h"
-#include "../mqtt/mqtt-ff.h"
-#include "../mqtt/mqtt-remote-feature.h"
+#include "mqtt-common.h"
+#include "config.h"
+#include "mqtt_util.h"
+#include "mqtt-api.h"
+#include "mqtt-topic.h"
 
 #include "commondef.h"
 #include <ctype.h>
 #include <stdio.h>
 #include "MCU_UART5.h"
-#include "../wave/MCU_UART5_Layer.h"
+#include "MCU_UART5_Layer.h"
 #include "cJSON.h"
 #include "util.h"
 #include "util_crc16.h"
-#include "../mqtt/base64.h"
-#include "../mqtt/mqtt-instruction-pool.h"
-#include "../mqtt/mqtt-mcu.h"
-#include "../db/DBManager.h"
+#include "mqtt-instruction-pool.h"
+#include "mqtt-mcu.h"
+#include "DBManager.h"
 
 #include "UART_FAKER.h"
 #include "md5.h"
@@ -119,67 +105,6 @@ static void mqtt_recv_task(void *pvParameters)
     return;
 }
 
-// xshx TODO: 获取特征值
-int getFeatureData(char *uuid, char featureData[]) {
-    int featureLen = getOasisFeatureSize();
-    LOGD("--- get Feature Data size %d\r\n", featureLen);
-
-    float feature[400];
-    memset(feature, '\0', sizeof(feature));
-    int res = DB_GetFeature_ByName(uuid, feature);
-    LOGD("--- DB_GetFeature_ByName res %d\r\n", res);
-    uint8_t *feature_hex_str = (uint8_t *)pvPortMalloc(featureLen * 2 + 1);
-    feature_hex_str[featureLen * 2] = '\0';
-    Remote_convertInt2ascii(feature, featureLen, feature_hex_str);
-    LOGD("feature str %s \r\n",feature_hex_str);
-    vPortFree(feature_hex_str);
-
-//    char *featureP = (char*)feature;
-    memcpy(featureData, (char*)feature, featureLen);
-    return featureLen;
-//    uint8_t* feature_hex_str                       = (uint8_t *)pvPortMalloc(OASISLT_getFaceItemSize() * 2 + 1);
-//    feature_hex_str[OASISLT_getFaceItemSize() * 2] = '\0';
-//
-//    char featureData1[800];
-//    HexToStr(featureData1, (const unsigned char*)feature, 100);
-//    LOGD("--- featureData is %s\r\n", featureData1);
-
-//    strcpy(featureData, "123456");
-//    return strlen(featureData);
-}
-
-int getFeatureJson(char *msgId, char *uuid, char featureJson[]) {
-    char featureData[400];
-    memset(featureData, '\0', sizeof(featureData));
-    int featureSize = getFeatureData(uuid, featureData);
-    LOGD("--- featureData %s len is %d\r\n", featureData, featureSize);
-    char featureBase64[1000];
-    base64_encode(featureData, featureBase64, featureSize);
-    LOGD("--- featureBase64 %s len is %d\r\n", featureBase64, strlen(featureBase64));
-
-    // verify sign
-    unsigned char md5_value[MD5_SIZE];
-    unsigned char md5_str[MD5_STR_LEN + 1];
-    MD5_CTX md5;
-    MD5Init(&md5);
-    MD5Update(&md5, (unsigned char*)featureData, featureSize);
-    MD5Final(&md5, md5_value);
-    for(int i = 0; i < MD5_SIZE; i++)
-    {
-        snprintf((char*)md5_str + i*2, 2+1, "%02x", md5_value[i]);
-    }
-    md5_str[MD5_STR_LEN] = '\0'; // add end
-
-//    sprintf(featureJson,
-//            "{\"msgId\":\"%s\",\"u\":\"%s\",\"s\":%s,\"l\":%d,\"d\":\"%s\"}",
-//            msgId, uuid, md5_str, featureSize, featureBase64);
-    sprintf(featureJson,
-            "{\"msgId\":\"%s\",\"u\":\"%s\",\"s\":%s,\"l\":%d,\"d\":\"%s\"}",
-            msgId, uuid, md5_str, featureSize, featureBase64);
-    LOGD("--- featureJson %d %s\r\n", strlen(featureJson), featureJson);
-    return strlen(featureJson);
-}
-
 int SendMsgToMQTT(char *mqtt_payload, int len) {
     vSetFakeCommandBuffer(mqtt_payload);
     return 0;
@@ -206,30 +131,6 @@ int doSendMsgToMQTT(char *mqtt_payload, int len) {
             return 0;
 		} else if (msg != NULL && strncmp(msg, "disconnect", 9) == 0) {
             int ret = disconnectMQTT(MQTT_LINK_ID_DEFAULT);
-            return ret;
-        } else if (msg != NULL && strncmp(msg, CMD_FEATURE_UP, strlen(CMD_FEATURE_UP)) == 0) {
-            mysplit(msg, first, pub_msg, ":");
-            char msgId[64];
-            char uuid[32];
-            memset(msgId, '\0', sizeof(msgId));
-            memset(uuid, '\0', sizeof(uuid));
-            mysplit(pub_msg, msgId, uuid, ":");
-            LOGD("---- send face of %s with msgId %s\r\n", uuid, msgId);
-            char *pub_topic_feature_up = get_pub_topic_feature_upload();
-//            int ret = quickPublishMQTTWithPriority(pub_topic_feature_up, pub_msg, 1);
-            char *mymsg="123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890";
-            char featureJson[1200];
-            memset(featureJson, '\0', sizeof(featureJson));
-            int len = getFeatureJson(msgId, uuid, featureJson);
-            // xshx TODO: 获取特征值
-//            int featureLen = getFeatureByUUID(char *uuid, &featureData);
-            // TODO: base64
-            // TODO: do sign with md5
-            // TODO: set data with format {"msgId": msgId, "u": uuid, "s": sign, "d": base64}
-
-            int ret = quickPublishRawMQTT(pub_topic_feature_up, featureJson, strlen(featureJson));
-//            int ret = quickPublishMQTT(pub_topic_feature_up, "123456");
-            //freePointer(&pub_topic_ota_request);
             return ret;
         } else {
             LOGD("--------- start send message %s\r\n", msg);
@@ -277,25 +178,7 @@ int doSendMsgToMQTT(char *mqtt_payload, int len) {
             pub_topic = get_pub_topic_cmd_res();
             LOGD("-------- pub_topic is %s\n", pub_topic);
             LOGD("---- from MCU\n");
-			if ((int)(char)(mqtt_payload[1]) == 0x82 && (int)(char)(mqtt_payload[2]) == 0x01 &&(int)(char)(mqtt_payload[3]) == 0x01) {
-				//freePointer(&pub_topic);
-				pub_topic = get_pub_topic_heart_beat();
-				// 远程开锁模式心跳上报
-				LOGD("---- remote unlock door mode");
-				char *msgId = gen_msgId();
-				if (versionConfig.sys_ver!= NULL && strlen(versionConfig.sys_ver) > 0) {
-//					sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"wifi_rssi\":%s,\"battery\":%d,\"index\":%d,\"version\":\"%s\"}", msgId, btWifiConfig.bt_mac, wifi_rssi, battery_level, -1, versionConfig.sys_ver);
-                    sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"wifi_rssi\":%s,\"battery\":%d,\"index\":%d,\"version\":\"%s\"}", msgId, btWifiConfig.bt_mac, 0, battery_level, -1, versionConfig.sys_ver);
-				} else {
-//					sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"wifi_rssi\":%s,\"battery\":%d,\"index\":%d,\"version\":\"%s\"}", msgId, btWifiConfig.bt_mac, wifi_rssi, battery_level, -1, getFirmwareVersion());
-                    sprintf(pub_msg, "{\"msgId\":\"%s\",\"mac\":\"%s\",\"wifi_rssi\":%s,\"battery\":%d,\"index\":%d,\"version\":\"%s\"}", msgId, btWifiConfig.bt_mac, 0, battery_level, -1, getFirmwareVersion());
-				}
-				freePointer(&msgId);
-				pub_topic = get_pub_topic_heart_beat();
-				int ret = quickPublishMQTTWithPriority(pub_topic, pub_msg, 1);
-				//freePointer(&pub_topic);
-				return 0;
-			} else if ((int)(char)(mqtt_payload[1]) == 0x83 && (int)(char)(mqtt_payload[2]) == 0x01) {
+			if ((int)(char)(mqtt_payload[1]) == 0x83 && (int)(char)(mqtt_payload[2]) == 0x01) {
                 // 远程开锁指令反馈
                 // 远程开锁成功
                 if ((int) (char) (mqtt_payload[3]) == 0x00) {
@@ -408,16 +291,6 @@ int doSendMsgToMQTT(char *mqtt_payload, int len) {
         return -1;
     }
 
-}
-
-void testFeatureDownload(char *featureJson) {
-    char msgId[MQTT_AT_LEN];
-    memset(msgId, '\0', MQTT_AT_LEN);
-//    LOGD("testFeatureDownload %s\r\n", featureJson);
-    LOGD("testFeatureDownload %d\r\n", strlen(featureJson));
-    int ret = analyzeRemoteFeature(featureJson, (char*)&msgId);
-    LOGD("testFeatureDownload ret %d\r\n", ret);
-    return;
 }
 
 static void mqtt_send_task(void *pvParameters)
