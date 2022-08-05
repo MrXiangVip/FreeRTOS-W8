@@ -53,21 +53,21 @@ int MqttManager::analyzeMqttRecvLine(char *msg) {
         if (data != NULL) {
             if (strlen(data) >= data_len) {
                 LOGD("analyze topic %s data %s\r\n", topic, data);
-                // 请求上传feature
-                char *fr_topic = MqttTopicMgr::getInstance()->getSubTopicFeatureRequest();
-                if (strncmp(topic, fr_topic, strlen(fr_topic)) == 0) {
-                    LOGD("do feature upload request\r\n");
-                    if (data[0] == '{' && data[data_len - 1] == '}') {
-                        char msgId[MSG_ID_LEN];
-                        memset(msgId, '\0', sizeof(msgId));
-                        int result = MqttFeatureMgr::getInstance()->requestFeature(data, (char*)&msgId);
-                        return 0;
-                    } else {
-                        LOGE("fr data is not formatted with JSON\r\n");
-                        MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_ERROR, MqttCmdMgr::getInstance()->genMsgId(), get_short_str(data));
-                        return -1;
-                    }
-                }
+//                // 请求上传feature
+//                char *fr_topic = MqttTopicMgr::getInstance()->getSubTopicFeatureRequest();
+//                if (strncmp(topic, fr_topic, strlen(fr_topic)) == 0) {
+//                    LOGD("do feature upload request\r\n");
+//                    if (data[0] == '{' && data[data_len - 1] == '}') {
+//                        char msgId[MSG_ID_LEN];
+//                        memset(msgId, '\0', sizeof(msgId));
+//                        int result = MqttFeatureMgr::getInstance()->requestFeature(data, (char*)&msgId);
+//                        return 0;
+//                    } else {
+//                        LOGE("fr data is not formatted with JSON\r\n");
+//                        MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_ERROR, MqttCmdMgr::getInstance()->genMsgId(), get_short_str(data));
+//                        return -1;
+//                    }
+//                }
 
                 // 下载feature到设备
                 char *fd_topic = MqttTopicMgr::getInstance()->getSubTopicFeatureDownload();
@@ -151,14 +151,22 @@ int MqttManager::handleMqttMsgData(char *jsonMsg) {
     } else if (strcmp("da", typeStr) == 0) {
         result = DBManager::getInstance()->clearRecord();
         MqttCmdMgr::getInstance()->atCmdResponse(result, idStr, result == AT_RSP_SUCCESS ? (char*)"OK" : (char*)"Error");
-    } else if (strcmp("uu", typeStr) == 0) {
+    } else if (strcmp("ua", typeStr) == 0) {
         // TODO:
-//        result = DBManager::getInstance()->updateRecord(dataStr);
+//        result = DBManager::getInstance()->setUserAccess(dataStr);
         result = AT_RSP_SUCCESS;
         MqttCmdMgr::getInstance()->atCmdResponse(result, idStr, result == AT_RSP_SUCCESS ? (char*)"OK" : (char*)"Error");
+    } else if (strcmp("um", typeStr) == 0) {
+        // TODO:
+//        result = DBManager::getInstance()->setUserMode(dataStr);
+        result = AT_RSP_SUCCESS;
+        MqttCmdMgr::getInstance()->atCmdResponse(result, idStr, result == AT_RSP_SUCCESS ? (char*)"OK" : (char*)"Error");
+    } else if (strcmp("fr", typeStr) == 0) {
+        // Feature request
+        MqttCmdMgr::getInstance()->requestFeature(dataStr);
     } else {
         MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_NOT_SUPPORT, idStr, "Command Type Invalid", PRIORITY_LOW);
-        return -1;
+        result = -1;
     }
     if (mqtt != NULL) {
         cJSON_Delete(mqtt);

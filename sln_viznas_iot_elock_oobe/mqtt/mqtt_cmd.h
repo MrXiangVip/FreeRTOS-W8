@@ -21,6 +21,7 @@ typedef enum {
     CMD_TYPE_RAW            = 0x01,
     CMD_TYPE_RECORD_TEXT    = 0x02,
     CMD_TYPE_RECORD_IMAGE   = 0x03,
+    CMD_TYPE_FEATURE_UPLOAD = 0x04,
 };
 
 class MqttCmd {

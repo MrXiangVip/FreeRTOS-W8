@@ -60,6 +60,8 @@ int g_command_executed = 0;
 // 当前pub执行优先级，0为最低优先级，9为最高优先级
 int g_priority = 0;
 
+bool bOasisRecordUpload = false;
+
 
 MqttInstructionPool *mqtt_instruction_pool = MqttInstructionPool::getInstance();
 int battery_level = -1;
@@ -344,9 +346,9 @@ int doSendMsgToMQTT(char *mqtt_payload, int len) {
                 if (ret == 0) {
                 	LOGD("register/unlcok record is not NULL start upload record/image \r\n");
 #if REMOTE_FEATURE != 0
-                    char *msgId = gen_msgId();
+                    //char *msgId = gen_msgId();
 //					ret = doFeatureUpload(msgId, record.UUID);
-					ret = MqttFeatureMgr::getInstance()->uploadFeature(msgId, record.UUID);
+					ret = MqttFeatureMgr::getInstance()->uploadFeature(record.UUID);
 #endif
                     if( record.upload == BOTH_UNUPLOAD ){//有可能被当做历史记录先上传,先检测防止重复上传
                         ret = MqttCmdMgr::getInstance()->pushRecord(&record, CMD_TYPE_RECORD_TEXT, PRIORITY_HIGH, 1);

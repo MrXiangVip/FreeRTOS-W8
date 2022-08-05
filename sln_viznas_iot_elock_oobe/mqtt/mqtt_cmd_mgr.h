@@ -48,6 +48,8 @@ public:
     int pushRecords(int uploadStatus, int cmdType, int maxCount = 20);
     void uploadRecords();
 
+    void requestFeature(char *uuid);
+
     int timeSync(char *ts);
 };
 

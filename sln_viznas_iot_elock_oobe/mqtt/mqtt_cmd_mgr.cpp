@@ -9,6 +9,7 @@
 #include "MCU_UART5_Layer.h"
 #include "PriorityQueue.h"
 #include "mqtt-mcu.h"
+#include "mqtt_feature_mgr.h"
 
 char* MqttCmdMgr::genMsgId() {
     struct timeval tv;
@@ -53,7 +54,7 @@ void MqttCmdMgr::loopSendMqttMsgs() {
                 int result = MqttConnMgr::getInstance()->publishMQTT(mqttCmd.getTopic(), mqttCmd.getData());
                 LOGD("do topic %s result %d\r\n", mqttCmd.getTopic(), result);
             } else if (cmdType == CMD_TYPE_RECORD_TEXT || cmdType == CMD_TYPE_RECORD_IMAGE) {
-                char *recordId = mqttCmd.getTopic();
+                char *recordId = mqttCmd.getData();
                 int rid = atoi(recordId);
                 Record record;
                 int ret = DBManager::getInstance()->getRecordByID(rid, &record);
@@ -62,6 +63,8 @@ void MqttCmdMgr::loopSendMqttMsgs() {
                 } else {
                     uploadRecordImage(&record);
                 }
+            } else if (cmdType == CMD_TYPE_FEATURE_UPLOAD) {
+                int result = MqttFeatureMgr::getInstance()->uploadFeature(mqttCmd.getData());
             }
             mqttCmd.free();
         }
@@ -203,4 +206,9 @@ void MqttCmdMgr::uploadRecords() {
             timeoutCount = 1;
         }
     }
+}
+
+void MqttCmdMgr::requestFeature(char *uuid) {
+    MqttCmd *mqttCmd = new MqttCmd(PRIORITY_HIGH, CMD_TYPE_FEATURE_UPLOAD, uuid, uuid);
+    m_mqtt_cmds.Push(mqttCmd);
 }
