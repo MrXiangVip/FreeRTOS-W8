@@ -143,15 +143,18 @@ void MqttConnMgr::keepConnectionAlive() {
 }
 
 void MqttConnMgr::reconnectWifiAsync() {
-    setMqttConnState(WIFI_DISCONNECTED);
+    setMqttConnState(WIFI_DISCONNECTED, true);
 }
 
 void MqttConnMgr::reconnectMqttAsync() {
-    setMqttConnState(WIFI_CONNECTED);
+    setMqttConnState(WIFI_CONNECTED, true);
 }
 
-void MqttConnMgr::setMqttConnState(MQTT_CONN_STATE mqttConnState) {
-    m_mqtt_conn_state = mqttConnState;
+void MqttConnMgr::setMqttConnState(MQTT_CONN_STATE mqttConnState, bool force) {
+    LOGD("setMqttConnState %d force %d\r\n", mqttConnState, (int)force);
+    if (force || m_mqtt_conn_state < mqttConnState) {
+        m_mqtt_conn_state = mqttConnState;
+    }
 }
 
 MQTT_CONN_STATE MqttConnMgr::getMqttConnState() {

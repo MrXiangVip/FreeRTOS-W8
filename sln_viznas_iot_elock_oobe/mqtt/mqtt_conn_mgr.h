@@ -68,7 +68,7 @@ public:
     // Connection State
     void keepConnectionAlive();
 
-    void setMqttConnState(MQTT_CONN_STATE mqttConnState);
+    void setMqttConnState(MQTT_CONN_STATE mqttConnState, bool force = false);
     MQTT_CONN_STATE getMqttConnState();
     bool isWifiConnected();
     bool isMqttConnected();
