@@ -83,6 +83,7 @@ static void mqtt_conn_task(void *pvParameters) {
     char const *logTag = "[UART8_WIFI]:mqtt_conn_task-";
     LOGD("%s start...\r\n", logTag);
     MqttConnMgr::getInstance()->keepConnectionAlive();
+    // TODO:
     // record error to flash
     // upload error to network
     // notify MCU to reset system

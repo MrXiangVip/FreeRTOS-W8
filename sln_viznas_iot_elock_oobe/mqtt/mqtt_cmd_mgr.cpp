@@ -11,6 +11,7 @@
 #include "mqtt-mcu.h"
 #include "mqtt_feature_mgr.h"
 #include "mqtt_mcu_mgr.h"
+#include "fatfs_op.h"
 
 char* MqttCmdMgr::genMsgId() {
     static int random_gen = 1;
@@ -111,6 +112,8 @@ char *imageData = "/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEABALDA4MChAODQ4SERATGCgaGBYWG
 int MqttCmdMgr::uploadRecordImage(Record *record) {
     LOGD("uploadRecordImage record id %d\r\n", record->ID);
     char *msgId = MqttCmdMgr::getInstance()->genMsgId();
+    char *fileName = (char*)(record->image_path);
+    int fileSize = fatfs_getsize(fileName);
 //    char pubMsg[8000]={0};
     char *pubMsg = (char*)pvPortMalloc(10000);
     char *pubTopic = MqttTopicMgr::getInstance()->getPubTopicActionRecord();
