@@ -43,10 +43,8 @@
 // 当前pub执行优先级，0为最低优先级，9为最高优先级
 int g_priority = 0;
 
-bool bOasisRecordUpload = false;
+//bool bOasisRecordUpload = false;
 
-
-MqttInstructionPool *mqtt_instruction_pool = MqttInstructionPool::getInstance();
 int battery_level = -1;
 
 #if (configSUPPORT_STATIC_ALLOCATION == 1)
@@ -68,11 +66,6 @@ DTC_BSS static StaticTask_t s_Uart8UploadDataTaskTCB;
 DTC_BSS static StackType_t TestTaskStack[TESTTASK_STACKSIZE];
 DTC_BSS static StaticTask_t s_TestTaskTCB;
 #endif
-
-void remove_mqtt_instruction_from_pool(char instruction_dest, char cmd_code) {
-    int cmd_index = MqttInstruction::getCmdIndex(instruction_dest, cmd_code);
-    mqtt_instruction_pool->removeMqttInstruction(cmd_index);
-}
 
 int run_at_cmd(char const *cmd, int retry_times, int cmd_timeout_usec)
 {

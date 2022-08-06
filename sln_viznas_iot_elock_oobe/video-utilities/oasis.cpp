@@ -95,7 +95,7 @@ static OasisState s_CurOasisState = OASIS_STATE_FACE_REC_START;
 static uint8_t s_appType;
 static char oasis_filename[64] = {0};
 static int oasis_flag = 0;  //1:reg; 2:rec; 0:other
-extern bool bOasisRecordUpload;
+//extern bool bOasisRecordUpload;
 
 volatile int g_OASISLT_heap_debug;
 
@@ -148,7 +148,8 @@ void Oasis_SetOasisFileName(const char *filename)
 
 void Oasis_WriteJpeg()
 {
-    if(((oasis_flag == 1) || (oasis_flag == 2)) && (bOasisRecordUpload == false) ) {
+//    if(((oasis_flag == 1) || (oasis_flag == 2)) && (bOasisRecordUpload == false) ) {
+    if((oasis_flag == 1) || (oasis_flag == 2)) {
         if(  strlen(oasis_filename ) != 0 ){
             int ret = fatfs_write(oasis_filename, (char *) s_tmpBuffer4Jpeg, 0, s_dataSizeInJpeg);
             LOGD("[OASIS]:%s saved ret:%d\r\n", oasis_filename, ret);

@@ -51,12 +51,14 @@ int MqttMcuMgr::mcuToMqtt(char *mcuData, int len) {
     strcpy(msgId, MqttInstructionPool::getInstance()->getMsgId((char) (mcuData[0]), (char) (mcuData[1])));
     LOGD("out msgId is %s", msgId);
     if ((int) (char) (mcuData[0]) == 0x24) {
-        int cmd_index = MqttInstruction::getCmdIndex((char) (mcuData[0]), (char) (mcuData[1]));
-        MqttInstructionPool::getInstance()->removeMqttInstruction(cmd_index);
+//        int cmd_index = MqttInstruction::getCmdIndex((char) (mcuData[0]), (char) (mcuData[1]));
+//        MqttInstructionPool::getInstance()->removeMqttInstruction(cmd_index);
+        MqttInstructionPool::getInstance()->removeMqttInstruction((char) (mcuData[0]), (char) (mcuData[1]));
         sendMcuRspToMqtt(mcuData[3], msgId);
     } else if ((int) (char) (mcuData[0]) == 0x23) {
-        int cmd_index = MqttInstruction::getCmdIndex((char) (mcuData[0]), (char) (mcuData[1]));
-        MqttInstructionPool::getInstance()->removeMqttInstruction(cmd_index);
+//        int cmd_index = MqttInstruction::getCmdIndex((char) (mcuData[0]), (char) (mcuData[1]));
+//        MqttInstructionPool::getInstance()->removeMqttInstruction(cmd_index);
+        MqttInstructionPool::getInstance()->removeMqttInstruction((char) (mcuData[0]), (char) (mcuData[1]));
         if ((int)(char)(mcuData[1]) == 0x83 && (int)(char)(mcuData[2]) == 0x01) {
             // 远程开锁指令反馈
             // 远程开锁成功

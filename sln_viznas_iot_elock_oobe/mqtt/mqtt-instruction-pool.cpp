@@ -37,6 +37,11 @@ int MqttInstructionPool::insertOrUpdateMqttInstruction(MqttInstruction mqtt_inst
 	return 0;
 }
 
+int MqttInstructionPool::removeMqttInstruction(char instruction_dest, char cmd_code) {
+    int cmd_index = MqttInstruction::getCmdIndex(instruction_dest, cmd_code);
+    return removeMqttInstruction(cmd_index);
+}
+
 int MqttInstructionPool::removeMqttInstruction(int cmd_index) {
     map<int, MqttInstruction>::iterator key = m_mqtt_instructions.find(cmd_index);
     if(key!=m_mqtt_instructions.end()) {
