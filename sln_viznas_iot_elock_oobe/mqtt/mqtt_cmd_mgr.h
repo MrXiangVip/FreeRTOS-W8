@@ -32,6 +32,9 @@ private:
     int pushRecord(int uploadStatus, int cmdType);
     vector<int> m_uploading_records;
 
+    int uploadRecordText(Record *record);
+    int uploadRecordImage(Record *record);
+    int pushRecords(int uploadStatus, int cmdType, int maxCount = 20);
 public:
     static MqttCmdMgr *getInstance() {
         static MqttCmdMgr m_instance;
@@ -39,18 +42,21 @@ public:
     };
     char *genMsgId();
 
-    void atCmdResponse(int result, char *msgId, char *rspMsg, int priority = PRIORITY_HIGH);
-
+    /****** 远程指令处理 ******/
+    // 持续监控并向远程发送mqtt指令，核心任务
     void loopSendMqttMsgs();
-    int uploadRecordText(Record *record);
-    int uploadRecordImage(Record *record);
+
+    /****** 设备->后台指令处理 ******/
+    // 发送实时记录，比如注册记录/开门记录等
     int pushRecord(Record *record, int cmdType, int priority = PRIORITY_LOW, int force = 0);
-    int pushRecords(int uploadStatus, int cmdType, int maxCount = 20);
+    // 发送历史记录
     void uploadRecords();
 
-    void requestFeature(char *uuid);
+    // AT指令回复
+    void atCmdResponse(int result, char *msgId, char *rspMsg, int priority = PRIORITY_HIGH);
 
-    int timeSync(char *ts);
+    // 请求上传用户特征值
+    void requestFeature(char *uuid);
 };
 
 //#ifdef __cplusplus

@@ -10,6 +10,7 @@
 class MqttManager {
 private:
     MqttManager() {};
+    int timeSync(char *ts);
 public:
     static MqttManager *getInstance() {
         static MqttManager m_instance;

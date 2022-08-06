@@ -14,6 +14,7 @@
 #include "mqtt-mcu.h"
 #include "mqtt_topic_mgr.h"
 #include "mqtt_cmd_mgr.h"
+#include "mqtt_mcu_mgr.h"
 #include "mqtt_feature_mgr.h"
 #include "mqtt-remote-feature.h"
 #include "base64.h"
@@ -143,7 +144,7 @@ int MqttManager::handleMqttMsgData(char *jsonMsg) {
     if (strcmp("pt", typeStr) == 0) {
         result = handlePassThroughPayload(dataStr, idStr);
     } else if (strcmp("ts", typeStr) == 0) {
-        result = MqttCmdMgr::getInstance()->timeSync(dataStr);
+        result = timeSync(dataStr);
         MqttCmdMgr::getInstance()->atCmdResponse(result, idStr, result == AT_RSP_SUCCESS ? (char*)"OK" : (char*)"Error");
     } else if (strcmp("du", typeStr) == 0) {
         result = DBManager::getInstance()->deleteRecordByUUID(dataStr);
@@ -207,7 +208,7 @@ int MqttManager::handlePassThroughPayload(char *payload, char *idStr) {
             // 时间同步
             LOGD("--- timestamp is %s len is %d\n", tsStr, strlen(tsStr));
             if (tsStr != NULL && strlen(tsStr) > 0) {
-                int result = MqttCmdMgr::getInstance()->timeSync(tsStr);
+                int result = timeSync(tsStr);
                 MqttCmdMgr::getInstance()->atCmdResponse(result, idStr, "Error: Resource Busy");
                 return result;
             } else {
@@ -235,3 +236,21 @@ int MqttManager::handlePassThroughPayload(char *payload, char *idStr) {
         return AT_RSP_ERROR;
     }
 }
+
+int MqttManager::timeSync(char *ts) {
+    if (ts != NULL && strlen(ts) > 0) {
+        int currentSec = atoi(ts);
+        if (currentSec > 1618965299) {
+            LOGD("__network time sync networkTime is %d can setTimestamp\r\n", currentSec);
+            setTimestamp(currentSec);
+        } else {
+            LOGD("__network time sync networkTime is %d don't setTimestamp\r\n", currentSec);
+            return AT_RSP_ERROR;
+        }
+
+        int result = MqttMcuMgr::getInstance()->syncTimeToMCU(ts);
+        return result == 0 ? AT_RSP_SUCCESS : AT_RSP_ERROR;
+    }
+    return AT_RSP_ERROR;
+}
+
