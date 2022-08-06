@@ -67,7 +67,6 @@ public:
     };
     // Connection State
     void keepConnectionAlive();
-    void heartbeat();
 
     void setMqttConnState(MQTT_CONN_STATE mqttConnState);
     MQTT_CONN_STATE getMqttConnState();

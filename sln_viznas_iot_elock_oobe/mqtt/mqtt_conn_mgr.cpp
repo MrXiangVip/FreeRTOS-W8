@@ -111,46 +111,35 @@ void MqttConnMgr::keepConnectionAlive() {
         }
         if (isMqttConnected() && heart_beat_count++ % 6 == 0) {
             // TODO: insert into command queue
-            heartbeat();
+            MqttCmdMgr::getInstance()->heartBeat();
         }
         vTaskDelay(pdMS_TO_TICKS(10000));
 //        LOGD("keepConnectionAlive heart_beat_count %d mqtt_fail_count %d wifi_fail_count %d\r\n", heart_beat_count, mqtt_fail_count, wifi_fail_count);
 //        do heartbeat every 60s
-        if (mqtt_fail_count > 1) {
-            LOGD("keepConnectionAlive disconnectMQTT mqtt_fail_count %d wifi_fail_count %d\r\n", mqtt_fail_count, wifi_fail_count);
-            disconnectMQTT();
-        } else if (mqtt_fail_count > 5) {
-            LOGD("keepConnectionAlive setMqttConnState WIFI_DISCONNECTED mqtt_fail_count %d wifi_fail_count %d\r\n", mqtt_fail_count, wifi_fail_count);
-//            setMqttConnState(WIFI_DISCONNECTED);
-            reconnectWifiAsync();
-        } else if (mqtt_fail_count > 10 || wifi_fail_count > 2) {
+        if (mqtt_fail_count > 10 || wifi_fail_count > 2) {
             LOGD("keepConnectionAlive resetWifi mqtt_fail_count %d wifi_fail_count %d\r\n", mqtt_fail_count, wifi_fail_count);
             resetWifi();
+        } else if (mqtt_fail_count > 5) {
+            LOGD("keepConnectionAlive setMqttConnState WIFI_DISCONNECTED mqtt_fail_count %d wifi_fail_count %d\r\n",
+                 mqtt_fail_count, wifi_fail_count);
+//            setMqttConnState(WIFI_DISCONNECTED);
+            reconnectWifiAsync();
+        }else if (mqtt_fail_count > 1) {
+                LOGD("keepConnectionAlive disconnectMQTT mqtt_fail_count %d wifi_fail_count %d\r\n", mqtt_fail_count, wifi_fail_count);
+                disconnectMQTT();
         }
+//        if (mqtt_fail_count > 1) {
+//            LOGD("keepConnectionAlive disconnectMQTT mqtt_fail_count %d wifi_fail_count %d\r\n", mqtt_fail_count, wifi_fail_count);
+//            disconnectMQTT();
+//        } else if (mqtt_fail_count > 5) {
+//            LOGD("keepConnectionAlive setMqttConnState WIFI_DISCONNECTED mqtt_fail_count %d wifi_fail_count %d\r\n", mqtt_fail_count, wifi_fail_count);
+////            setMqttConnState(WIFI_DISCONNECTED);
+//            reconnectWifiAsync();
+//        } else if (mqtt_fail_count > 10 || wifi_fail_count > 2) {
+//            LOGD("keepConnectionAlive resetWifi mqtt_fail_count %d wifi_fail_count %d\r\n", mqtt_fail_count, wifi_fail_count);
+//            resetWifi();
+//        }
     } while(1 > 0);
-}
-
-void MqttConnMgr::heartbeat() {
-    static int heartbeatIdx = 1;
-    static int heartbeatFailCount = 0;
-    char pubMsg[MQTT_AT_CMD_LEN] = {0};
-    char *msgId = MqttCmdMgr::getInstance()->genMsgId();
-//    LOGD("heartbeat msgId %s\r\n", msgId);
-    sprintf(pubMsg,
-//            "{\"id\":\"%s\",\"ts\":%d,\"wr\":%d,\"idx\":%d,\"ver\":\"%s\"}",
-            "{\\\"id\\\":\\\"%s\\\"\\,\\\"ts\\\":%d\\,\\\"wr\\\":%d\\,\\\"idx\\\":%d\\,\\\"ver\\\":\\\"%s\\\"}",
-            msgId, ws_systime, m_wifi_rssi, heartbeatIdx++, "");
-    char *topic = MqttTopicMgr::getInstance()->getPubTopicHeartBeat();
-//    LOGD("do heartbeat topic %s %s\r\n", topic, pubMsg);
-    int result = 0;
-    result = publishMQTT(topic, pubMsg);
-//    LOGD("do heartbeat result %d\r\n", result);
-    if (result != 0) {
-        if (heartbeatFailCount++ > 2) {
-//            this->setMqttConnState(WIFI_CONNECTED);
-            reconnectMqttAsync();
-        }
-    }
 }
 
 void MqttConnMgr::reconnectWifiAsync() {

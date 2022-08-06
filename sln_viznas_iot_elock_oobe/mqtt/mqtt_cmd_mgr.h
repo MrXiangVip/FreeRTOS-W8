@@ -26,7 +26,8 @@ class MqttCmdMgr {
 private:
     MqttCmdMgr() {};
     char m_msg_id[MSG_ID_LEN + 1];
-    int random_gen = 1;
+    bool m_is_heart_beating = false;
+    int m_hb_fail_count = 0;
 
     PriorityQueue m_mqtt_cmds;
     int pushRecord(int uploadStatus, int cmdType);
@@ -35,6 +36,7 @@ private:
     int uploadRecordText(Record *record);
     int uploadRecordImage(Record *record);
     int pushRecords(int uploadStatus, int cmdType, int maxCount = 20);
+    void doHeartBeat();
 public:
     static MqttCmdMgr *getInstance() {
         static MqttCmdMgr m_instance;
@@ -57,6 +59,8 @@ public:
 
     // 请求上传用户特征值
     void requestFeature(char *uuid);
+    // 请求心跳
+    void heartBeat();
 };
 
 //#ifdef __cplusplus

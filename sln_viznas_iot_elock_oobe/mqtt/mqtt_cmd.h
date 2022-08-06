@@ -19,9 +19,10 @@ typedef enum {
 // 命令类型，RAW是裸数据，直接上传，RECORD_TEXT是注册/开门记录，需要解析上传，RECORD_IMAGE是注册/开门记录带图片
 typedef enum {
     CMD_TYPE_RAW            = 0x01,
-    CMD_TYPE_RECORD_TEXT    = 0x02,
-    CMD_TYPE_RECORD_IMAGE   = 0x03,
-    CMD_TYPE_FEATURE_UPLOAD = 0x04,
+    CMD_TYPE_HEART_BEAT     = 0x02,
+    CMD_TYPE_RECORD_TEXT    = 0x03,
+    CMD_TYPE_RECORD_IMAGE   = 0x04,
+    CMD_TYPE_FEATURE_UPLOAD = 0x05,
 };
 
 class MqttCmd {

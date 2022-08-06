@@ -13,6 +13,7 @@
 #include "mqtt_mcu_mgr.h"
 
 char* MqttCmdMgr::genMsgId() {
+    static int random_gen = 1;
     struct timeval tv;
     tv.tv_sec = ws_systime;
     tv.tv_usec = 0;
@@ -20,10 +21,10 @@ char* MqttCmdMgr::genMsgId() {
     char bt_mac_string[MSG_BT_MAC_LEN + 1];
     memset(bt_mac_string, '\0', sizeof(bt_mac_string));
     memcpy(bt_mac_string, btWifiConfig.bt_mac + 2, MSG_BT_MAC_LEN);
+    sprintf(m_msg_id, "%s%09d%d", bt_mac_string, a, random_gen);
     if (++random_gen >= 10) {
         random_gen = 1;
     }
-    sprintf(m_msg_id, "%s%09d%d", bt_mac_string, a, random_gen);
     return m_msg_id;
 }
 
@@ -54,6 +55,8 @@ void MqttCmdMgr::loopSendMqttMsgs() {
             if (cmdType == CMD_TYPE_RAW) {
                 int result = MqttConnMgr::getInstance()->publishMQTT(mqttCmd.getTopic(), mqttCmd.getData());
                 LOGD("do topic %s result %d\r\n", mqttCmd.getTopic(), result);
+            } else if (cmdType == CMD_TYPE_HEART_BEAT) {
+                doHeartBeat();
             } else if (cmdType == CMD_TYPE_RECORD_TEXT || cmdType == CMD_TYPE_RECORD_IMAGE) {
                 char *recordId = mqttCmd.getData();
                 int rid = atoi(recordId);
@@ -70,6 +73,7 @@ void MqttCmdMgr::loopSendMqttMsgs() {
             mqttCmd.free();
         }
         vTaskDelay(pdMS_TO_TICKS(50));
+        m_is_heart_beating = false;
 //        vTaskDelay(pdMS_TO_TICKS(25000));
     }
 }
@@ -195,5 +199,32 @@ void MqttCmdMgr::uploadRecords() {
 
 void MqttCmdMgr::requestFeature(char *uuid) {
     MqttCmd *mqttCmd = new MqttCmd(PRIORITY_HIGH, CMD_TYPE_FEATURE_UPLOAD, uuid, uuid);
+    m_mqtt_cmds.Push(mqttCmd);
+}
+
+void MqttCmdMgr::doHeartBeat() {
+    m_is_heart_beating = true;
+    static int heartbeatIdx = 1;
+    char pubMsg[MQTT_AT_CMD_LEN] = {0};
+    char *msgId = MqttCmdMgr::getInstance()->genMsgId();
+    sprintf(pubMsg,
+            "{\\\"id\\\":\\\"%s\\\"\\,\\\"ts\\\":%d\\,\\\"wr\\\":%d\\,\\\"idx\\\":%d\\,\\\"ver\\\":\\\"%s\\\"}",
+            msgId, ws_systime, MqttConnMgr::getInstance()->getWifiRSSI(), heartbeatIdx++, "");
+    char *topic = MqttTopicMgr::getInstance()->getPubTopicHeartBeat();
+    int result = MqttConnMgr::getInstance()->publishMQTT(topic, pubMsg);
+    if (result != 0) {
+        if (m_hb_fail_count++ > 2) {
+            MqttConnMgr::getInstance()->reconnectMqttAsync();
+        }
+    } else {
+        m_hb_fail_count = 0;
+    }
+}
+
+void MqttCmdMgr::heartBeat() {
+    if (m_is_heart_beating) {
+        return;
+    }
+    MqttCmd *mqttCmd = new MqttCmd(PRIORITY_LOWEST, CMD_TYPE_HEART_BEAT, "", "");
     m_mqtt_cmds.Push(mqttCmd);
 }
