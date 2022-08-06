@@ -44,7 +44,7 @@ int MqttConnMgr::initWifiConnection(const char* ssid, const char* password) {
     } else {
         LOGD("initConnection auto connect to WIFI done\r\n");
     }
-    notifyWifiConnected(0);
+//    notifyWifiConnected(0);
 
     return result;
 }
@@ -66,7 +66,7 @@ int MqttConnMgr::initMqttConnection(const char* clientId, const char* username, 
     char *fdTopic = MqttTopicMgr::getInstance()->getSubTopicFeatureDownload();
     result = subscribeMQTT(fdTopic);
 
-    notifyMqttConnected(result);
+//    notifyMqttConnected(result);
     setMqttConnState(MQTT_CONNECTED);
     return result;
 }
@@ -184,7 +184,7 @@ bool MqttConnMgr::isMqttConnected() {
 int MqttConnMgr::resetWifi() {
     int result = MqttDevEsp32::getInstance()->sendATCmd("AT+RST", 2, 1200);
     LOGD("resetWifi result %d\r\n", result);
-    notifyWifiInitialized(result);
+//    notifyWifiInitialized(result);
     return result;
 }
 
@@ -207,7 +207,7 @@ int MqttConnMgr::connectWifi(const char* ssid, const char* password) {
     sprintf(m_at_cmd, "AT+CWJAP=\"%s\",\"%s\"", ssid, password);
     int result = MqttDevEsp32::getInstance()->sendATCmd(m_at_cmd, 2, 10000);
     LOGD("connectWifi result %d\r\n", result);
-    notifyWifiConnected(result);
+//    notifyWifiConnected(result);
     // TODO: 此处仅仅是wifi配置了，但是是否获取到IP不确定，也许需要updateWifiRSSI?
     return result;
 }

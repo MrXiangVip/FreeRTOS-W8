@@ -10,6 +10,7 @@
 #include "PriorityQueue.h"
 #include "mqtt-mcu.h"
 #include "mqtt_feature_mgr.h"
+#include "mqtt_mcu_mgr.h"
 
 char* MqttCmdMgr::genMsgId() {
     struct timeval tv;
@@ -84,7 +85,7 @@ int MqttCmdMgr::timeSync(char *ts) {
             return AT_RSP_ERROR;
         }
 
-        int result = syncTimeToMCU(ts);
+        int result = MqttMcuMgr::getInstance()->syncTimeToMCU(ts);
         return result == 0 ? AT_RSP_SUCCESS : AT_RSP_ERROR;
     }
     return AT_RSP_ERROR;

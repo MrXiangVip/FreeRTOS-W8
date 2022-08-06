@@ -96,7 +96,6 @@ extern int battery_level;
 static bool saving_file = false;
 static bool saving_db = false;
 bool g_is_save_file = false;
-extern int g_command_executed;
 extern int mqtt_init_done;
 int boot_mode = BOOT_MODE_INVALID;  //0:短按;1：长按;2:蓝牙设置;3:蓝牙人脸注册;4:睡眠状态
 int receive_boot_mode = 0;
@@ -866,7 +865,6 @@ int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
         LOGD("开锁成功, 更新数据库状态.请求MQTT上传本次开门的记录 \r\n");
         cmdRequestMqttUpload(ID);
     } else {
-//    	g_command_executed = 1;
         LOGD("开锁失败,不更新数据库状态. 不上传记录,请求下电\r\n");
         cmdCloseFaceBoardReq();
 
@@ -1000,7 +998,6 @@ int cmdMechicalLockRsp(unsigned char nMessageLen, const unsigned char *pszMessag
         LOGD("机械开锁成功, 更新数据库状态.请求MQTT上传本次开门的记录 \r\n");
         cmdRequestMqttUpload(ID);
     } else {
-//    	g_command_executed = 1;
         cmdCloseFaceBoardReq();
         LOGD("开锁失败,不更新数据库状态. 不上传记录\r\n");
     }
@@ -1630,7 +1627,6 @@ int cmdRequestMqttUpload(int id) {
         vTaskDelay(pdMS_TO_TICKS(300));
         if (count++ > 50) {//如果超过15秒 还没有连接上则退出
             LOGD("WIFI 未连接  \r\n");
-            g_command_executed = 1;
             break;
         }
         //判断MQTT是否可用

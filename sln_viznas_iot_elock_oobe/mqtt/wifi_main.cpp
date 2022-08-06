@@ -41,8 +41,6 @@
 #define MQTT_AT_LEN             128
 
 int mqtt_init_done = 0;
-// 命令是否已经执行完成
-int g_command_executed = 0;
 // 当前pub执行优先级，0为最低优先级，9为最高优先级
 int g_priority = 0;
 
@@ -194,8 +192,6 @@ int doSendMsgToMQTT(char *mqtt_payload, int len) {
                             mqtt_msg_id, btWifiConfig.bt_mac, 1);
                 }
                 int ret = quickPublishMQTTWithPriority(pub_topic, pub_msg, 1);
-                // notifyCommandExecuted(ret);
-                g_command_executed = 1;
                 //freePointer(&pub_topic);
                 return 0;
             } else if ((int) (char) (mqtt_payload[1]) == 0x15 && (int) (char) (mqtt_payload[2]) == 0x01) {
@@ -239,7 +235,6 @@ int doSendMsgToMQTT(char *mqtt_payload, int len) {
                     }else{
                         LOGD("实时记录已经被上传  \r\n");
                     }
-                    g_command_executed = 1;
                 } else {
                 	LOGD("register/unlcok record is NULL");
                 }
@@ -262,8 +257,6 @@ int doSendMsgToMQTT(char *mqtt_payload, int len) {
                             gen_msgId(), btWifiConfig.bt_mac, uid, unlockType, unlockTime, batteryLevel, unlockStatus);
                     pub_topic = get_pub_topic_record_request();
                     int ret = quickPublishMQTTWithPriority(pub_topic, pub_msg, 1);
-                    // notifyCommandExecuted(ret);
-                    g_command_executed = 1;
                     //freePointer(&pub_topic);
                     return ret;
                 } else {
@@ -280,7 +273,6 @@ int doSendMsgToMQTT(char *mqtt_payload, int len) {
                 	LOGD("mechnical record is not NULL start upload record/image\r\n");
                     int ret = MqttCmdMgr::getInstance()->pushRecord(&record, CMD_TYPE_RECORD_TEXT, PRIORITY_HIGH, 1);
                     ret = MqttCmdMgr::getInstance()->pushRecord(&record, CMD_TYPE_RECORD_IMAGE, PRIORITY_HIGH, 1);
-                    g_command_executed = 1;
                     // TODO:
                 } else {
                 	LOGD("mechnical record is NULL");
