@@ -104,7 +104,8 @@ int start_ota() {
 	freePointer(&mid);
 	// NOTE: 此处必须异步操作
 	//MessageSend(1883, pub_msg, strlen(pub_msg));
-	SendMsgToMQTT(pub_msg, strlen(pub_msg));
+	// TODO:
+//	SendMsgToMQTT(pub_msg, strlen(pub_msg));
 	LOGD("start ota 2");
 	return 0;
 }

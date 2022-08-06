@@ -10,6 +10,7 @@
 #include "PriorityQueue.h"
 #include "DBManager.h"
 #include <vector>
+#include <stdio.h>
 
 #define MSG_ID_LEN 20
 #define MSG_BT_MAC_LEN	10
@@ -55,7 +56,7 @@ public:
     void uploadRecords();
 
     // AT指令回复
-    void atCmdResponse(int result, char *msgId, char *rspMsg, int priority = PRIORITY_HIGH);
+    void atCmdResponse(int result, char *msgId, char *rspMsg = NULL, int priority = PRIORITY_HIGH);
 
     // 请求上传用户特征值
     void requestFeature(char *uuid);

@@ -119,12 +119,12 @@ void MqttConnMgr::keepConnectionAlive() {
         if (mqtt_fail_count > 10 || wifi_fail_count > 2) {
             LOGD("keepConnectionAlive resetWifi mqtt_fail_count %d wifi_fail_count %d\r\n", mqtt_fail_count, wifi_fail_count);
             resetWifi();
-        } else if (mqtt_fail_count > 5) {
+        } else if (mqtt_fail_count > 6) {
             LOGD("keepConnectionAlive setMqttConnState WIFI_DISCONNECTED mqtt_fail_count %d wifi_fail_count %d\r\n",
                  mqtt_fail_count, wifi_fail_count);
 //            setMqttConnState(WIFI_DISCONNECTED);
             reconnectWifiAsync();
-        }else if (mqtt_fail_count > 1) {
+        }else if (mqtt_fail_count > 3) {
                 LOGD("keepConnectionAlive disconnectMQTT mqtt_fail_count %d wifi_fail_count %d\r\n", mqtt_fail_count, wifi_fail_count);
                 disconnectMQTT();
         }

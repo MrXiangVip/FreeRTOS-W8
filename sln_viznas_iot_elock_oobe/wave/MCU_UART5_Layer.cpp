@@ -46,6 +46,7 @@
 #include "display.h"
 #include "aw_wave_logo_v3.h"
 #include "MCU_UART5_Layer.h"
+#include "mqtt_mcu_mgr.h"
 
 /*******************************************************************************
  * Definitions
@@ -96,7 +97,6 @@ extern int battery_level;
 static bool saving_file = false;
 static bool saving_db = false;
 bool g_is_save_file = false;
-extern int mqtt_init_done;
 int boot_mode = BOOT_MODE_INVALID;  //0:短按;1：长按;2:蓝牙设置;3:蓝牙人脸注册;4:睡眠状态
 int receive_boot_mode = 0;
 bool oasis_task_start = false;
@@ -388,22 +388,8 @@ int cmdRemoteRequestRsp(unsigned char nHead, unsigned char CmdId, uint8_t ret) {
 
     LOGD("%s send to 0x%02x cmd 0x%02x \r\n", __FUNCTION__, nHead, CmdId);
 
-    int count = 0;
-    while (1) {
-        // 发送指令给 wifi 相关的mqtt 模块
-        //usleep(100000);//0.1秒
-        vTaskDelay(pdMS_TO_TICKS(100));
-        if (count++ > 150) {//如果超过15秒 还没有连接上则退出
-            LOGD("WIFI 未连接  \r\n");
-            break;
-        }
-        //判断MQTT是否可用
-        if (mqtt_init_done == 1) {// 1 代表MQTT连接成功
-            LOGD("WIFI 连接成功,请求mqtt发送msg  \r\n");
-            SendMsgToMQTT(szBuffer, iBufferSize + CRC16_LEN);
-            break;
-        }
-    }
+//    SendMsgToMQTT(szBuffer, iBufferSize + CRC16_LEN);
+    MqttMcuMgr::getInstance()->mcuToMqtt(szBuffer, iBufferSize + CRC16_LEN);
 
     return 0;
 }
@@ -1558,8 +1544,8 @@ int cmdCommRsp2MqttByHead(unsigned char nHead, unsigned char CmdId, uint8_t ret)
     memcpy((uint8_t *) pop, &cal_crc16, sizeof(cal_crc16));
 
     LOGD("%s send to 0x%02x cmd 0x%02x result %d\r\n", __FUNCTION__, nHead, CmdId, ret);
-    //���Ϳ�����Ӧ��wifi��ص�mqttģ��
-    SendMsgToMQTT(szBuffer, iBufferSize + CRC16_LEN);
+//    SendMsgToMQTT(szBuffer, iBufferSize + CRC16_LEN);
+    MqttMcuMgr::getInstance()->mcuToMqtt(szBuffer, iBufferSize + CRC16_LEN);
 
     return 0;
 }
@@ -1592,9 +1578,6 @@ int cmdWifiOrderTimeSyncRsp(unsigned char nMessageLen, const unsigned char *pszM
  * Op: 注册、开门
  * */
 int cmdRequestMqttUpload(int id) {
-#if !MQTT_SUPPORT
-	return 0;
-#endif
     LOGD("%s\r\n", __func__);
     char szBuffer[32] = {0};
     int iBufferSize;
@@ -1619,23 +1602,7 @@ int cmdRequestMqttUpload(int id) {
     unsigned short cal_crc16 = CRC16_X25((uint8_t *) szBuffer, MsgLen + sizeof(MESSAGE_HEAD));
     memcpy((uint8_t *) pop, &cal_crc16, sizeof(cal_crc16));
 
-    int count = 0;
-    while (1) {
-        // 发送指令给 wifi 相关的mqtt 模块
-
-        //usleep(100000);//0.1秒
-        vTaskDelay(pdMS_TO_TICKS(300));
-        if (count++ > 50) {//如果超过15秒 还没有连接上则退出
-            LOGD("WIFI 未连接  \r\n");
-            break;
-        }
-        //判断MQTT是否可用
-        if (mqtt_init_done == 1) {// 1 代表MQTT连接成功
-            LOGD("WIFI 连接成功,请求mqtt发送msg  \r\n");
-            SendMsgToMQTT(szBuffer, iBufferSize + CRC16_LEN);
-            break;
-        }
-    }
+    MqttMcuMgr::getInstance()->mcuToMqtt(szBuffer, iBufferSize + CRC16_LEN);
 
     return 0;
 }

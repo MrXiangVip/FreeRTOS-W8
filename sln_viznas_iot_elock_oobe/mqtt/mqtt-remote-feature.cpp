@@ -128,7 +128,8 @@ int analyzeRemoteFeature(char *jsonMsg, char *msgId) {
         // NOTE: 此处必须异步操作
         //MessageSend(1883, pub_msg, strlen(pub_msg));
         LOGD("----pub_msg is %d %s\r\n", strlen(pub_msg), pub_msg);
-        SendMsgToMQTT(pub_msg, strlen(pub_msg));
+        // TODO:
+//        SendMsgToMQTT(pub_msg, strlen(pub_msg));
 	}
 
 	if (mqtt != NULL) {

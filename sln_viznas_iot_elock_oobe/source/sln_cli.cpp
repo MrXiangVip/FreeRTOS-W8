@@ -372,14 +372,6 @@ static shell_status_t FFI_CLI_ListCommand(shell_handle_t shellContextHandle, int
             }
             free(data);
             return kStatus_SHELL_Success;
-        } else if (strncmp(argv[1], DEFAULT_HEADER, 2) == 0) {
-            SHELL_Printf(shellContextHandle, "start uart8 cmd\r\n");
-            char pub_msg[128];
-            memset(pub_msg, '\0', sizeof(pub_msg));
-            // fakeWifiCmd(argv[2]);
-            sprintf(pub_msg, "%s%s", DEFAULT_HEADER, argv[2]);
-            SendMsgToMQTT(pub_msg, strlen(pub_msg));
-            SHELL_Printf(shellContextHandle, "end uart8 cmd\r\n");
         } else if (strncmp("cj", argv[1], 2) == 0) {
             SHELL_Printf(shellContextHandle, "test cjson\r\n");
             cJSON* root = cJSON_Parse(argv[2]);

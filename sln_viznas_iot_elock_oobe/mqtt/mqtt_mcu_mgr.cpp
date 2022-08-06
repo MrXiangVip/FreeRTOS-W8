@@ -12,8 +12,76 @@
 #include "mqtt_feature_mgr.h"
 #include "util.h"
 #include "util_crc16.h"
+#include "mqtt_util.h"
+#include "mqtt_cmd_mgr.h"
+#include "DBManager.h"
+
+void MqttMcuMgr::sendMcuRspToMqtt(char res, char *msgId) {
+    int result = AT_RSP_SUCCESS;
+    if ((int)res != 0x00) {
+        result = AT_RSP_ERROR;
+    }
+    MqttCmdMgr::getInstance()->atCmdResponse(result, msgId);
+}
+
+void MqttMcuMgr::reportRealTimeRecord(int id) {
+    LOGD("请求MQTT 上传记录 start id %d \r\n", id);
+    Record record;
+    int ret = DBManager::getInstance()->getRecordByID(id, &record);
+    if (ret == 0) {
+        LOGD("register/unlcok record is not NULL start upload record/image \r\n");
+        if( record.upload == BOTH_UNUPLOAD ) {//有可能被当做历史记录先上传,先检测防止重复上传
+            ret = MqttCmdMgr::getInstance()->pushRecord(&record, CMD_TYPE_RECORD_TEXT, PRIORITY_HIGH, 1);
+            ret = MqttCmdMgr::getInstance()->pushRecord(&record, CMD_TYPE_RECORD_IMAGE, PRIORITY_HIGH, 1);
+        } else if (record.upload == RECORD_UPLOAD) {
+            ret = MqttCmdMgr::getInstance()->pushRecord(&record, CMD_TYPE_RECORD_IMAGE, PRIORITY_HIGH, 1);
+        }else{
+            LOGD("实时记录已经被上传  \r\n");
+        }
+    } else {
+        LOGD("开门记录未存在");
+        // TODO: 可以上报给后台
+    }
+}
 
 /**** MCU -> 106 ***/
+int MqttMcuMgr::mcuToMqtt(char *mcuData, int len) {
+    char msgId[MSG_ID_LEN];
+    memset(msgId, '\0', sizeof(msgId));
+    strcpy(msgId, MqttInstructionPool::getInstance()->getMsgId((char) (mcuData[0]), (char) (mcuData[1])));
+    LOGD("out msgId is %s", msgId);
+    if ((int) (char) (mcuData[0]) == 0x24) {
+        int cmd_index = MqttInstruction::getCmdIndex((char) (mcuData[0]), (char) (mcuData[1]));
+        MqttInstructionPool::getInstance()->removeMqttInstruction(cmd_index);
+        sendMcuRspToMqtt(mcuData[3], msgId);
+    } else if ((int) (char) (mcuData[0]) == 0x23) {
+        int cmd_index = MqttInstruction::getCmdIndex((char) (mcuData[0]), (char) (mcuData[1]));
+        MqttInstructionPool::getInstance()->removeMqttInstruction(cmd_index);
+        if ((int)(char)(mcuData[1]) == 0x83 && (int)(char)(mcuData[2]) == 0x01) {
+            // 远程开锁指令反馈
+            // 远程开锁成功
+            sendMcuRspToMqtt(mcuData[3], msgId);
+        } else if ((int) (char) (mcuData[1]) == 0x15 && (int) (char) (mcuData[2]) == 0x01) {
+            // 远程设置合同时间指令反馈
+            // 远程设置合同时间成功
+            sendMcuRspToMqtt(mcuData[3], msgId);
+        } else if ((int) (char) (mcuData[1]) == CMD_MQTT_UPLOAD) {
+            // 注册/开门记录
+            int id = (int) (mcuData[3]);
+            reportRealTimeRecord(id);
+        } else if ((int) (char) (mcuData[1]) == CMD_OPEN_LOCK_REC) {
+            // 开门记录上报指令
+            int id = (int) (mcuData[3]);
+            reportRealTimeRecord(id);
+        } else if ((int) (char) (mcuData[1]) == CMD_MECHANICAL_LOCK) {
+            // 机械开锁记录
+            int id = (int) (mcuData[3]);
+            reportRealTimeRecord(id);
+        } else {
+        }
+    }
+    return 0;
+}
 
 /**** 106 -> MCU ***/
 

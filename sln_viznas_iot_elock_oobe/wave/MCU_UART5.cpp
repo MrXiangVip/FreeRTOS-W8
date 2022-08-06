@@ -549,10 +549,6 @@ static void vReceiveFakeMessageTask( void *pvParameters){
         int ret = xQueueReceive( Uart5FromFakeUartMsgQueue, (void *) &message, portMAX_DELAY);
         if (ret == pdTRUE) {
             LOGD("%s  fake data: %s \r\n", logtag,  message.Data);
-            if (strncmp(message.Data, DEFAULT_HEADER, strlen(DEFAULT_HEADER)) == 0) {
-                doSendMsgToMQTT(message.Data, strlen(message.Data));
-                continue;
-            }
 //            1. 将message.Data 转成 16进制
             int msglen = strlen( message.Data )/2;
             StrToHex(recv_buffer, message.Data, msglen);

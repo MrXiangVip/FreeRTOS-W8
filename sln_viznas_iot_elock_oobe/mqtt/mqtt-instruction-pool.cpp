@@ -10,6 +10,7 @@
 //#include "log.h"
 #include "fsl_log.h"
 #include "wifi_main.h"
+#include "mqtt_cmd_mgr.h"
 
 int MqttInstructionPool::insertMqttInstruction(MqttInstruction mqtt_instruction) {
     int cmd_index = mqtt_instruction.getCmdIndex();
@@ -94,8 +95,7 @@ int MqttInstructionPool::tick() {
 #ifdef HOST4
 			LOGD("send pub_msg %s to 1883", pub_msg);
 #else
-            //MessageSend(1883, pub_msg, strlen(pub_msg));
-            SendMsgToMQTT(pub_msg, strlen(pub_msg));
+            MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_TIMEOUT, mqttInstruction.getMsgId());
 			LOGD("key %d timeout\n", mqttInstruction.getCmdIndex());
 #endif
             m_mqtt_instructions.erase(it++);

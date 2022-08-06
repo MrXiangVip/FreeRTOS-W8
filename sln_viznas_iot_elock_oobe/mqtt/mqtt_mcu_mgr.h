@@ -17,11 +17,16 @@ private:
 
     // 更新106状态，或者说通知MCU控制106，比如不下电，下电，重启
     int sendStatusToMCU(int biz, int ret);
+    void sendMcuRspToMqtt(char res, char *msgId);
 public:
     static MqttMcuMgr *getInstance() {
         static MqttMcuMgr m_instance;
         return &m_instance;
     };
+
+    int mcuToMqtt(char *mcuData, int len);
+    void reportRealTimeRecord(int id);
+
     int syncTimeToMCU(char *tsStr);
 
 // 保持不下电
