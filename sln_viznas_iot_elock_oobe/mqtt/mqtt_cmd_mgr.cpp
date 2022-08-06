@@ -204,6 +204,8 @@ void MqttCmdMgr::requestFeature(char *uuid) {
 
 void MqttCmdMgr::doHeartBeat() {
     m_is_heart_beating = true;
+    MqttConnMgr::getInstance()->updateWifiRSSI();
+
     static int heartbeatIdx = 1;
     char pubMsg[MQTT_AT_CMD_LEN] = {0};
     char *msgId = MqttCmdMgr::getInstance()->genMsgId();
