@@ -138,7 +138,7 @@ int MqttCmdMgr::uploadRecordImage(Record *record) {
     char *pubTopic = MqttTopicMgr::getInstance()->getPubTopicActionRecord();
     sprintf(pubMsg, "{\"id\":\"%s\",\"p\":\"%s\",\"t\":%d,\"i\":\"%s\"}", msgId, record->UUID, record->time_stamp, base64Buffer);
     LOGD("上传record pub_msg %d \r\n", strlen(pubMsg));
-    int result = MqttConnMgr::getInstance()->publishRawMQTT(pubTopic, pubMsg, strlen(pubMsg));
+    result = MqttConnMgr::getInstance()->publishRawMQTT(pubTopic, pubMsg, strlen(pubMsg));
     LOGD("do topic %s result %d\r\n", pubTopic, result);
     if (result == 0) {
         record->upload = BOTH_UPLOAD;
