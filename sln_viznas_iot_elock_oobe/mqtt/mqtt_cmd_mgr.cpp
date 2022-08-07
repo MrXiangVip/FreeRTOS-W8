@@ -12,6 +12,7 @@
 #include "mqtt_feature_mgr.h"
 #include "mqtt_mcu_mgr.h"
 #include "fatfs_op.h"
+#include "base64.h"
 
 char* MqttCmdMgr::genMsgId() {
     static int random_gen = 1;
@@ -113,11 +114,29 @@ int MqttCmdMgr::uploadRecordImage(Record *record) {
     LOGD("uploadRecordImage record id %d\r\n", record->ID);
     char *msgId = MqttCmdMgr::getInstance()->genMsgId();
     char *fileName = (char*)(record->image_path);
-    int fileSize = fatfs_getsize(fileName);
+    int imgFileSize = fatfs_getsize(fileName);
+    int imgBufferSize = (imgFileSize / 4 + 1) * 4;
+    char *imgBuffer = (char*)pvPortMalloc(imgBufferSize);
+    if (NULL == imgBuffer) {
+        LOGD("Failed to alloc buffer for image\r\n");
+        return -1;
+    }
+    int result = fatfs_read(fileName, imgBuffer, 0, imgFileSize);
+
+    int base64BufferSize = (imgFileSize / 3 + 1) * 4 + 1;
+    char *base64Buffer = (char*)pvPortMalloc(base64BufferSize);
+    if (NULL == base64Buffer) {
+        LOGD("Failed to alloc base64 buffer for image\r\n");
+        return -1;
+    }
+    base64_encode(imgBuffer, base64Buffer, imgFileSize);
+    int base64Len = strlen(base64Buffer);
+    LOGD("img size %d base64 size %d base64 len %d\r\n", imgFileSize, base64BufferSize, base64Len);
+
 //    char pubMsg[8000]={0};
-    char *pubMsg = (char*)pvPortMalloc(10000);
+    char *pubMsg = (char*)pvPortMalloc(base64BufferSize + 100);
     char *pubTopic = MqttTopicMgr::getInstance()->getPubTopicActionRecord();
-    sprintf(pubMsg, "{\"id\":\"%s\",\"p\":\"%s\",\"t\":%d,\"i\":\"%s\"}", msgId, record->UUID, record->time_stamp, imageData);
+    sprintf(pubMsg, "{\"id\":\"%s\",\"p\":\"%s\",\"t\":%d,\"i\":\"%s\"}", msgId, record->UUID, record->time_stamp, base64Buffer);
     LOGD("上传record pub_msg %d \r\n", strlen(pubMsg));
     int result = MqttConnMgr::getInstance()->publishRawMQTT(pubTopic, pubMsg, strlen(pubMsg));
     LOGD("do topic %s result %d\r\n", pubTopic, result);
@@ -125,7 +144,10 @@ int MqttCmdMgr::uploadRecordImage(Record *record) {
         record->upload = BOTH_UPLOAD;
         DBManager::getInstance()->updateRecordByID(record);
     }
+
     vPortFree(pubMsg);
+    vPortFree(base64Buffer);
+    vPortFree(imgBuffer);
     return 0;
 }
 
