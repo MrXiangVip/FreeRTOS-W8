@@ -814,12 +814,14 @@ int FeatureDB::reassign_feature()
         if (s_FeatureMap.magic[i] == FEATUREDATA_MAGIC_DELET)
         {
             s_FeatureMap.magic[i] = FEATUREDATA_MAGIC_UNUSE;
-            FeatureItem item_t;
-            memset(&item_t, FEATUREDATA_MAGIC_UNUSE, sizeof(item_t));
+//            FeatureItem item_t;
+            FeatureItem *item_t = (FeatureItem*)pvPortMalloc(sizeof(FeatureItem));
+            memset(item_t, FEATUREDATA_MAGIC_UNUSE, sizeof(FeatureItem));
 #if SDRAM_DB
             memset(&s_FeatureItem[i], FEATUREDATA_MAGIC_UNUSE, sizeof(item_t));
 #endif
-            Flash_FacerecFsUpdateItem(i, &item_t, true);
+            Flash_FacerecFsUpdateItem(i, item_t, true);
+            vPortFree(item_t);
             Flash_FacerecFsUpdateMapMagic(i, &s_FeatureMap, true);
         }
     }
@@ -1152,7 +1154,8 @@ int FeatureDB::get_ID_featurePointers(uint16_t* ids, void**featureP, int num)
 
 std::vector<uint16_t> FeatureDB::get_ids()
 {
-    FeatureItem item_t;
+//    FeatureItem item_t;
+    FeatureItem *item_t = (FeatureItem*)pvPortMalloc(sizeof(FeatureItem));
     std::vector<uint16_t> ids;
 
     for (int i = 0; i < FEATUREDATA_MAX_COUNT; i++)
@@ -1160,13 +1163,14 @@ std::vector<uint16_t> FeatureDB::get_ids()
         if (s_FeatureMap.magic[i] == FEATUREDATA_MAGIC_VALID)
         {
 #if SDRAM_DB
-            memcpy(&item_t, &s_FeatureItem[i], sizeof(item_t));
+            memcpy(item_t, &s_FeatureItem[i], sizeof(FeatureItem));
 #else
-            Flash_FacerecFsReadItemHeader(i,&item_t);
+            Flash_FacerecFsReadItemHeader(i,item_t);
 #endif
-            ids.push_back(item_t.id);
+            ids.push_back(item_t->id);
         }
     }
+    vPortFree(item_t);
     return ids;
 }
 

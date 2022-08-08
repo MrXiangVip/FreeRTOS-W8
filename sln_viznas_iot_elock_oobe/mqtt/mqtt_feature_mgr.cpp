@@ -54,7 +54,7 @@ int MqttFeatureMgr::saveFeature(char *uuid, char *payload_bin, int payload_bin_l
     // xshx TODO: save feature to uuid
 //            int featureLen = saveFeatureToUUID(char *uuid, &payload_bin);
     int ret = 0;
-//    ret = DB_AddFeature_WithName(uuid, (float*)payload_bin);
+    ret = DB_AddFeature_WithName(uuid, (float*)payload_bin);
     return ret;
 }
 
@@ -62,7 +62,6 @@ int MqttFeatureMgr::verifyFeature(char *uuid, unsigned char *payload, char *sign
     // decode base64
     int payload_len = strlen((const char*)payload);
 //    char payload_bin[UART_RX_BUF_LEN];
-    char *payload_bin = (char*)pvPortMalloc(UART_RX_BUF_LEN);
     //int payload_bin_len = base64_decode((const char*)payload, payload_bin);
     //LOGD("decode %s to %s payload_bin_len is %d ", payload, payload_bin, payload_bin_len);
 #if 0
@@ -72,11 +71,11 @@ int MqttFeatureMgr::verifyFeature(char *uuid, unsigned char *payload, char *sign
 #endif
     LOGD("\r\n");
     int payload_bin_len = (payload_len / 4 - 1) * 3 + 1;
+    char *payload_bin = (char*)pvPortMalloc(payload_bin_len);
     int ret = base64_decode((const char*)payload, payload_bin);
-    char payload_str[UART_RX_BUF_LEN + UART_RX_BUF_LEN];
-    HexToStr(payload_str, reinterpret_cast<unsigned char*>(&payload_bin), payload_bin_len);
-    LOGD("handleBase64FFD payload_bin<len:%d > ret is %d %s\r\n", payload_bin_len, ret, payload_str);
-
+//    char payload_str[UART_RX_BUF_LEN + UART_RX_BUF_LEN];
+//    HexToStr(payload_str, reinterpret_cast<unsigned char*>(&payload_bin), payload_bin_len);
+//    LOGD("handleBase64FFD payload_bin<len:%d > ret is %d %s\r\n", payload_bin_len, ret, payload_str);
 
     if (payload_bin_len != length) {
         if(ret != length) {
@@ -148,7 +147,7 @@ int MqttFeatureMgr::downloadFeature(char *data, char *msgId) {
     if (uuid != NULL && j_data != NULL) {
         dataStr = cJSON_GetStringValue(j_data);
         LOGD("---JSON j_data is %d %s\r\n", strlen(dataStr), dataStr);
-//        result = verifyFeature(uuid, (unsigned char*)dataStr, sign, length);
+        result = verifyFeature(uuid, (unsigned char*)dataStr, sign, length);
 
 //        char pub_msg[100];
 //        memset(pub_msg, '\0', 100);

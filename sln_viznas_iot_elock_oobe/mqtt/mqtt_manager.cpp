@@ -100,6 +100,7 @@ int MqttManager::analyzeMqttRecvLine(char *msg) {
                 }
 
                 LOGD("analyze topic %s is not supported\r\n", topic);
+                // TODO: may need to transfer " to \" for getShortData to send the MQTT msg
                 MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_NOT_SUPPORT, MqttCmdMgr::getInstance()->genMsgId(), get_short_str(data));
                 return -1;
             } else {
