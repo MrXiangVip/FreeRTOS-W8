@@ -33,6 +33,7 @@
 #include "greenlock_30x38.h"
 #include "redlock_30x38.h"
 #include "wifi_16x16.h"
+//#include "wave_wifi_16x16.h"
 #include "ble_16x16.h"
 
 // 20201114 wavezgx added for UI development
@@ -343,6 +344,7 @@ static void UIInfo_UpdateBottomInfoBar(uint16_t *pBufferAddr, QUIInfoMsg* infoMs
     draw_icon(pIcon, LOCK_SPACING / 2 + POS_NXPRED_RECT_X, 202+80, 30, 38, 0xfc00, pBufferAddr);
 }
 
+
 static void UIInfo_UpdateBottomInfoBarV2(uint16_t *pBufferAddr, QUIInfoMsg* infoMsg, uint8_t appType)
 {
     // show date and time in the topbar
@@ -456,6 +458,75 @@ static void UIInfo_UpdateBottomInfoBarV2(uint16_t *pBufferAddr, QUIInfoMsg* info
     }
 }
 
+static void UIInfo_UpdateBottomInfoBarV3(uint16_t *pBufferAddr, QUIInfoMsg* infoMsg, uint8_t appType)
+{
+        struct ws_tm current;
+        memset((void*)&current,0x00,sizeof(current));
+        ws_localtime(ws_systime + 8*60*60, &current);
+        char tick_time[32];
+        memset(tick_time, 0x0, 64);
+        sprintf(tick_time, "%04d-%02d-%02d", current.tm_year, current.tm_mon + 1, current.tm_mday);
+//        put_string(2, 0, idxstring, RGB565_WHITE, -1, OPENSANS8,
+//        		pBufferAddr, APP_AS_WIDTH);
+        draw_text(tick_time, 2, 0, RGB565_WHITE, -1, OPENSANS8,
+        		pBufferAddr);
+        sprintf(tick_time, "%02d:%02d:%02d", current.tm_hour, current.tm_min, current.tm_sec);
+//        put_string(102, 0, idxstring, RGB565_WHITE, -1, OPENSANS8,
+//        		pBufferAddr, APP_AS_WIDTH);
+        draw_text(tick_time, 102, 0, RGB565_WHITE, -1, OPENSANS8,
+        		pBufferAddr);
+
+        // 20201119 wszgx modified for battery level display
+        uint16_t *pIcon = NULL;
+        // >5:80-100 4:64-79 3: 48-63 2: 32-47 1: 16-31 0: 0-15
+        bat_level = (battery_level / 16);
+        //LOGD("PowerVal is %d bat_level is %d\r\n", stInitSyncInfo.PowerVal, bat_level);
+        if (bat_level == 0) {
+            pIcon = (uint16_t *)bat_disp1_v6;
+        }else if (bat_level == 1) {
+                pIcon = (uint16_t *)bat_disp1_v6;
+        } else if (bat_level == 2) {
+                pIcon = (uint16_t *)bat_disp2_v6;
+        } else if (bat_level == 3) {
+                pIcon = (uint16_t *)bat_disp3_v6;
+        } else if (bat_level == 4) {
+                pIcon = (uint16_t *)bat_disp4_v6;
+        } else {
+                pIcon = (uint16_t *)bat_disp5_v6;
+        }
+        draw_icon(pIcon, APP_AS_WIDTH - bat_disp1_v6_W - STATUS_BAR_GAP, 0, bat_disp1_v6_W, bat_disp1_v6_H, 0xE000, pBufferAddr);
+
+        // if the battery level is 0, show the low battery warning icon for about 5 seconds
+        if (bat_level == 0 && logindex <= 30) {
+            if ((logindex) % 6 < 3) {
+                uint16_t *pIcon2 = NULL;
+                pIcon2 = (uint16_t *)bat_low_img1_v3;
+                draw_icon(pIcon2, 120, 81, 76, 80, 0xE000, pBufferAddr);
+
+            } else {
+                uint16_t *pIcon2 = NULL;
+                pIcon2 = (uint16_t *)bat_low_img2_v3;
+                draw_icon(pIcon2, 120, 81, 76, 80, 0xE000, pBufferAddr);
+
+            }
+            uint16_t *pIcon3 = NULL;
+            pIcon3 = (uint16_t *)bat_low_text1_v3;
+            draw_icon(pIcon3, 220, 81, 76, 36, 0xE000, pBufferAddr);
+
+        }
+        //  draw wifi
+        if (SLN_Connection_WIFI_isConnected())
+        {
+//            pIcon = (uint16_t *)on_wifi16x16_data;
+            pIcon = (uint16_t *)wifi16x16_data;
+        }
+        else
+        {
+//            pIcon = (uint16_t *)off_wifi16x16_data;
+            pIcon = (uint16_t *)no_wifi16x16_data;
+        }
+        draw_icon(pIcon, APP_AS_WIDTH - STATUS_BAR_GAP - bat_disp1_v6_W - STATUS_BAR_GAP -WIFI_W , 0, WIFI_W, WIFI_H, 0xE000, pBufferAddr);
+}
 static void UIInfo_UpdateOasisState(uint16_t *pBufferAddr)
 {
     char tstring[64];
@@ -911,8 +982,9 @@ void UIInfo_Update(uint16_t *pBufferAddr, QUIInfoMsg* infoMsg, uint8_t p_Display
     if (p_DisplayInterfaceMode == DISPLAY_INTERFACE_INFOBAR)
     {
         //UIInfo_UpdateOasisState(pBufferAddr);
-        //UIInfo_UpdateBottomInfoBar(pBufferAddr, infoMsg, appType);
+//        UIInfo_UpdateBottomInfoBar(pBufferAddr, infoMsg, appType);
         UIInfo_UpdateBottomInfoBarV2(pBufferAddr, infoMsg, appType);
+//        UIInfo_UpdateBottomInfoBarV3( pBufferAddr, infoMsg, appType);
     }
 }
 

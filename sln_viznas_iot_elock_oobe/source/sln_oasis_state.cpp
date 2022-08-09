@@ -315,6 +315,9 @@ void Oasis_API_Enrolment(face_info_t face_info)
         if (face_info.enrolment_result == OASIS_REG_RESULT_OK)
         {
             // Do nothing.
+            // xshx mod stop registe
+            StopRegistrationProcess(kEvents_API_Layer_RegSuccess);
+
         }
         else if (face_info.enrolment_result == OASIS_REG_RESULT_DUP)
         {
