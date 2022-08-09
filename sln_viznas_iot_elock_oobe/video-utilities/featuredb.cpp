@@ -919,7 +919,8 @@ int FeatureDB::ren_name(const std::string oldname, const std::string newname)
 
 std::vector<std::string> FeatureDB::get_names()
 {
-    FeatureItem item_t;
+//    FeatureItem *item_t;
+    FeatureItem *item_t = (FeatureItem*)pvPortMalloc(sizeof(FeatureItem));
     std::vector<std::string> names;
 
     for (int i = 0; i < FEATUREDATA_MAX_COUNT; i++)
@@ -927,13 +928,14 @@ std::vector<std::string> FeatureDB::get_names()
         if (s_FeatureMap.magic[i] == FEATUREDATA_MAGIC_VALID)
         {
 #if SDRAM_DB
-            memcpy(&item_t, &s_FeatureItem[i], sizeof(item_t));
+            memcpy(item_t, &s_FeatureItem[i], sizeof(FeatureItem));
 #else
-            Flash_FacerecFsReadItemHeader(i,&item_t);
+            Flash_FacerecFsReadItemHeader(i,item_t);
 #endif
-            names.push_back(std::string(item_t.name));
+            names.push_back(std::string(item_t->name));
         }
     }
+    vPortFree(item_t);
     return names;
 }
 
@@ -1176,7 +1178,8 @@ std::vector<uint16_t> FeatureDB::get_ids()
 
 int FeatureDB::get_name(uint16_t id, std::string &name)
 {
-    FeatureItem item_t;
+//    FeatureItem item_t;
+    FeatureItem *item_t = (FeatureItem*)pvPortMalloc(sizeof(FeatureItem));
     int index = FEATUREDATA_MAX_COUNT;
 
     for (int i = 0; i < FEATUREDATA_MAX_COUNT; i++)
@@ -1184,18 +1187,19 @@ int FeatureDB::get_name(uint16_t id, std::string &name)
         if (s_FeatureMap.magic[i] == FEATUREDATA_MAGIC_VALID)
         {
 #if SDRAM_DB
-            memcpy(&item_t, &s_FeatureItem[i], sizeof(item_t));
+            memcpy(item_t, &s_FeatureItem[i], sizeof(FeatureItem));
 #else
-            Flash_FacerecFsReadItemHeader(i,&item_t);
+            Flash_FacerecFsReadItemHeader(i,item_t);
 #endif
-            if (id == item_t.id)
+            if (id == item_t->id)
             {
                 index = i;
-                name = std::string(item_t.name);
+                name = std::string(item_t->name);
                 break;
             }
         }
     }
+    vPortFree(item_t);
 
     if (index == FEATUREDATA_MAX_COUNT)
     {

@@ -12,9 +12,6 @@ private:
     MqttFeatureMgr() {};
     int saveFeature(char *uuid, char *payload_bin, int payload_bin_len);
     int verifyFeature(char *uuid, unsigned char *payload, char *sign, int length);
-
-    int getFeatureData(char *uuid, char featureData[]);
-    int getFeatureJson(char *msgId, char *uuid, char featureJson[]);
 public:
     static MqttFeatureMgr *getInstance() {
         static MqttFeatureMgr m_instance;
@@ -22,9 +19,9 @@ public:
     };
 
     // Feature Entry
-    int downloadFeature(char *data, char *msgId);
+    int downloadFeature(char *data);
     int uploadFeature(char *uuid);
-//    int requestFeature(char *data, char *msgId);
+    int requestFeature(char *data);
 };
 
 #endif //_MQTT_FEATURE_MGR_H_

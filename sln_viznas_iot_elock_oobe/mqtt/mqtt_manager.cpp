@@ -54,30 +54,26 @@ int MqttManager::analyzeMqttRecvLine(char *msg) {
         if (data != NULL) {
             if (strlen(data) >= data_len) {
                 LOGD("analyze topic %s data %s\r\n", topic, data);
-//                // 请求上传feature
-//                char *fr_topic = MqttTopicMgr::getInstance()->getSubTopicFeatureRequest();
-//                if (strncmp(topic, fr_topic, strlen(fr_topic)) == 0) {
-//                    LOGD("do feature upload request\r\n");
-//                    if (data[0] == '{' && data[data_len - 1] == '}') {
-//                        char msgId[MSG_ID_LEN];
-//                        memset(msgId, '\0', sizeof(msgId));
-//                        int result = MqttFeatureMgr::getInstance()->requestFeature(data, (char*)&msgId);
-//                        return 0;
-//                    } else {
-//                        LOGE("fr data is not formatted with JSON\r\n");
-//                        MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_ERROR, MqttCmdMgr::getInstance()->genMsgId(), get_short_str(data));
-//                        return -1;
-//                    }
-//                }
+                // 请求上传feature
+                char *fr_topic = MqttTopicMgr::getInstance()->getSubTopicFeatureRequest();
+                if (strncmp(topic, fr_topic, strlen(fr_topic)) == 0) {
+                    LOGD("do feature upload request\r\n");
+                    if (data[0] == '{' && data[data_len - 1] == '}') {
+                        int result = MqttFeatureMgr::getInstance()->requestFeature(data);
+                        return 0;
+                    } else {
+                        LOGE("fr data is not formatted with JSON\r\n");
+                        MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_ERROR, MqttCmdMgr::getInstance()->genMsgId(), get_short_str(data));
+                        return -1;
+                    }
+                }
 
                 // 下载feature到设备
                 char *fd_topic = MqttTopicMgr::getInstance()->getSubTopicFeatureDownload();
                 if (strncmp(topic, fd_topic, strlen(fd_topic)) == 0) {
                     LOGD("do feature download\r\n");
                     if (data[0] == '{' && data[data_len - 1] == '}') {
-                        char msgId[MSG_ID_LEN];
-                        memset(msgId, '\0', sizeof(msgId));
-                        int result = MqttFeatureMgr::getInstance()->downloadFeature(data, (char*)&msgId);
+                        int result = MqttFeatureMgr::getInstance()->downloadFeature(data);
                         return 0;
                     } else {
                         LOGE("fd data is not formatted with pure JSON\r\n");
