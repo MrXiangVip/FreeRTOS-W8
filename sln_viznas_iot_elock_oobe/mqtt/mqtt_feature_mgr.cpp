@@ -157,8 +157,7 @@ int MqttFeatureMgr::downloadFeature(char *data) {
     return result;
 }
 
-int MqttFeatureMgr::uploadFeature(char *uuid) {
-    char *msgId = MqttCmdMgr::getInstance()->genMsgId();
+int MqttFeatureMgr::uploadFeature(char *uuid, char *msgId) {
     char *pubTopic = MqttTopicMgr::getInstance()->getPubTopicFeatureUpload();
 
     // Step 0: get feature
@@ -199,7 +198,7 @@ int MqttFeatureMgr::uploadFeature(char *uuid) {
     char *featureJson = (char*)pvPortMalloc(base64Len + 100);
     sprintf(featureJson,
             "{\"id\":\"%s\",\"u\":\"%s\",\"s\":%s,\"l\":%d,\"d\":\"%s\"}",
-            msgId, uuid, md5_str, featureLen, featureBase64);
+            (msgId != NULL ? msgId : MqttCmdMgr::getInstance()->genMsgId()), uuid, md5_str, featureLen, featureBase64);
 
     int ret = MqttConnMgr::getInstance()->publishRawMQTT(pubTopic, featureJson, strlen(featureJson));
     vPortFree(feature);
@@ -228,7 +227,7 @@ int MqttFeatureMgr::requestFeature(char *jsonMsg) {
     if (uuid == NULL) {
         MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_ERROR, msg_idStr);
     } else {
-        uploadFeature(uuid);
+        uploadFeature(uuid, msg_idStr);
     }
 
     if (mqtt != NULL) {

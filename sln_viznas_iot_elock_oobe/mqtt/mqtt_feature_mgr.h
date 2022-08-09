@@ -20,7 +20,7 @@ public:
 
     // Feature Entry
     int downloadFeature(char *data);
-    int uploadFeature(char *uuid);
+    int uploadFeature(char *uuid, char *msgId = NULL);
     int requestFeature(char *data);
 };
 

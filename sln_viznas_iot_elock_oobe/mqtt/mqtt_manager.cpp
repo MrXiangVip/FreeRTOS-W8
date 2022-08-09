@@ -63,7 +63,7 @@ int MqttManager::analyzeMqttRecvLine(char *msg) {
                         return 0;
                     } else {
                         LOGE("fr data is not formatted with JSON\r\n");
-                        MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_ERROR, MqttCmdMgr::getInstance()->genMsgId(), get_short_str(data));
+                        MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_ERROR, NULL, get_short_str(data));
                         return -1;
                     }
                 }
@@ -77,7 +77,7 @@ int MqttManager::analyzeMqttRecvLine(char *msg) {
                         return 0;
                     } else {
                         LOGE("fd data is not formatted with pure JSON\r\n");
-                        MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_ERROR, MqttCmdMgr::getInstance()->genMsgId(), get_short_str(data));
+                        MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_ERROR, NULL, get_short_str(data));
                         return -1;
                     }
                 }
@@ -90,19 +90,19 @@ int MqttManager::analyzeMqttRecvLine(char *msg) {
                         return 0;
                     } else {
                         LOGE("cr data is not formatted with pure JSON\r\n");
-                        MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_ERROR, MqttCmdMgr::getInstance()->genMsgId(), get_short_str(data));
+                        MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_ERROR, NULL, get_short_str(data));
                         return -1;
                     }
                 }
 
                 LOGD("analyze topic %s is not supported\r\n", topic);
                 // TODO: may need to transfer " to \" for getShortData to send the MQTT msg
-                MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_NOT_SUPPORT, MqttCmdMgr::getInstance()->genMsgId(), get_short_str(data));
+                MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_NOT_SUPPORT, NULL, get_short_str(data));
                 return -1;
             } else {
                 LOGD("analyze topic %s supposed at data_len is %d is greater than strlen(data) is %d\r\n", topic, data_len, strlen(data));
                 char *msgId = MqttCmdMgr::getInstance()->genMsgId();
-                MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_ERROR, MqttCmdMgr::getInstance()->genMsgId(), get_short_str(data));
+                MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_ERROR, NULL, get_short_str(data));
                 return -1;
             }
         }
@@ -142,28 +142,28 @@ int MqttManager::handleMqttMsgData(char *jsonMsg) {
         result = handlePassThroughPayload(dataStr, idStr);
     } else if (strcmp("ts", typeStr) == 0) {
         result = timeSync(dataStr);
-        MqttCmdMgr::getInstance()->atCmdResponse(result, idStr, result == AT_RSP_SUCCESS ? (char*)"OK" : (char*)"Error");
+        MqttCmdMgr::getInstance()->atCmdResponse(result, idStr);
     } else if (strcmp("du", typeStr) == 0) {
         result = DBManager::getInstance()->deleteRecordByUUID(dataStr);
-        MqttCmdMgr::getInstance()->atCmdResponse(result, idStr, result == AT_RSP_SUCCESS ? (char*)"OK" : (char*)"Error");
+        MqttCmdMgr::getInstance()->atCmdResponse(result, idStr);
     } else if (strcmp("da", typeStr) == 0) {
         result = DBManager::getInstance()->clearRecord();
-        MqttCmdMgr::getInstance()->atCmdResponse(result, idStr, result == AT_RSP_SUCCESS ? (char*)"OK" : (char*)"Error");
+        MqttCmdMgr::getInstance()->atCmdResponse(result, idStr);
     } else if (strcmp("ua", typeStr) == 0) {
         // TODO:
 //        result = DBManager::getInstance()->setUserAccess(dataStr);
         result = AT_RSP_SUCCESS;
-        MqttCmdMgr::getInstance()->atCmdResponse(result, idStr, result == AT_RSP_SUCCESS ? (char*)"OK" : (char*)"Error");
+        MqttCmdMgr::getInstance()->atCmdResponse(result, idStr);
     } else if (strcmp("um", typeStr) == 0) {
         // TODO:
 //        result = DBManager::getInstance()->setUserMode(dataStr);
         result = AT_RSP_SUCCESS;
-        MqttCmdMgr::getInstance()->atCmdResponse(result, idStr, result == AT_RSP_SUCCESS ? (char*)"OK" : (char*)"Error");
+        MqttCmdMgr::getInstance()->atCmdResponse(result, idStr);
     } else if (strcmp("fr", typeStr) == 0) {
         // Feature request
         MqttCmdMgr::getInstance()->requestFeature(dataStr);
     } else {
-        MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_NOT_SUPPORT, idStr, "Command Type Invalid", PRIORITY_LOW);
+        MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_NOT_SUPPORT, idStr, "Command Type Invalid");
         result = -1;
     }
     if (mqtt != NULL) {

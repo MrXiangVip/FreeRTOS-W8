@@ -56,7 +56,7 @@ public:
     void uploadRecords();
 
     // AT指令回复
-    void atCmdResponse(int result, char *msgId, char *rspMsg = NULL, int priority = PRIORITY_HIGH);
+    void atCmdResponse(int result, char *msgId = NULL, char *rspMsg = NULL, int priority = PRIORITY_HIGH);
 
     // 请求上传用户特征值
     void requestFeature(char *uuid);

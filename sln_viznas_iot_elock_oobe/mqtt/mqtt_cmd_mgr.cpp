@@ -34,7 +34,7 @@ void MqttCmdMgr::atCmdResponse(int result, char *msgId, char *rspMsg, int priori
     char pubMsg[MQTT_AT_CMD_LEN] = {0};
     sprintf(pubMsg,
             "{\\\"id\\\":\\\"%s\\\"\\,\\\"res\\\":%d\\,\\\"msg\\\":\\\"%s\\\"}",
-            msgId, result, (rspMsg != NULL ? rspMsg : ((result == AT_RSP_SUCCESS) ? "OK" : "Error")));
+            (msgId != NULL ? msgId : genMsgId()), result, (rspMsg != NULL ? rspMsg : ((result == AT_RSP_SUCCESS) ? "OK" : "Error")));
     char *topic = MqttTopicMgr::getInstance()->getPubTopicCmdResponse();
     // TODO: 防止内存泄漏
     MqttCmd *mqttCmd = new MqttCmd(priority, CMD_TYPE_RAW, topic, pubMsg);
