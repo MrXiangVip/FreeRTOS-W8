@@ -33,7 +33,7 @@
 #include "greenlock_30x38.h"
 #include "redlock_30x38.h"
 #include "wifi_16x16.h"
-//#include "wave_wifi_16x16.h"
+#include "ic_wifi_16x16.h"
 #include "ble_16x16.h"
 
 // 20201114 wavezgx added for UI development
@@ -494,7 +494,7 @@ static void UIInfo_UpdateBottomInfoBarV3(uint16_t *pBufferAddr, QUIInfoMsg* info
         } else {
                 pIcon = (uint16_t *)bat_disp5_v6;
         }
-        draw_icon(pIcon, APP_AS_WIDTH - bat_disp1_v6_W - STATUS_BAR_GAP, 0, bat_disp1_v6_W, bat_disp1_v6_H, 0xE000, pBufferAddr);
+        draw_icon(pIcon, APP_AS_WIDTH - bat_disp1_v6_W - STATUS_BAR_GAP, 2, bat_disp1_v6_W, bat_disp1_v6_H, 0xE000, pBufferAddr);
 
         // if the battery level is 0, show the low battery warning icon for about 5 seconds
         if (bat_level == 0 && logindex <= 30) {
@@ -517,13 +517,13 @@ static void UIInfo_UpdateBottomInfoBarV3(uint16_t *pBufferAddr, QUIInfoMsg* info
         //  draw wifi
         if (SLN_Connection_WIFI_isConnected())
         {
-//            pIcon = (uint16_t *)on_wifi16x16_data;
-            pIcon = (uint16_t *)wifi16x16_data;
+            pIcon = (uint16_t *)ic_wifi16x16_on_data;
+//            pIcon = (uint16_t *)wifi16x16_data;
         }
         else
         {
-//            pIcon = (uint16_t *)off_wifi16x16_data;
-            pIcon = (uint16_t *)no_wifi16x16_data;
+            pIcon = (uint16_t *)ic_wifi16x16_off_data;
+//            pIcon = (uint16_t *)no_wifi16x16_data;
         }
         draw_icon(pIcon, APP_AS_WIDTH - STATUS_BAR_GAP - bat_disp1_v6_W - STATUS_BAR_GAP -WIFI_W , 0, WIFI_W, WIFI_H, 0xE000, pBufferAddr);
 }
@@ -983,8 +983,8 @@ void UIInfo_Update(uint16_t *pBufferAddr, QUIInfoMsg* infoMsg, uint8_t p_Display
     {
         //UIInfo_UpdateOasisState(pBufferAddr);
 //        UIInfo_UpdateBottomInfoBar(pBufferAddr, infoMsg, appType);
-        UIInfo_UpdateBottomInfoBarV2(pBufferAddr, infoMsg, appType);
-//        UIInfo_UpdateBottomInfoBarV3( pBufferAddr, infoMsg, appType);
+//        UIInfo_UpdateBottomInfoBarV2(pBufferAddr, infoMsg, appType);
+        UIInfo_UpdateBottomInfoBarV3( pBufferAddr, infoMsg, appType);
     }
 }
 
