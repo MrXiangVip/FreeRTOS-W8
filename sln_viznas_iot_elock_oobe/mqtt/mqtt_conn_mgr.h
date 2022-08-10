@@ -58,7 +58,7 @@ private:
 
     // MQTT
     // Connection State
-    int initWifiConnection(const char* ssid, const char* password);
+    int initWifiConnection(const char* ssid, const char* password, bool forceReconnect = false);
     int initMqttConnection(const char* clientId, const char* username, const char* password, const char* serverIp, const char* serverPort);
 public:
     static MqttConnMgr *getInstance() {

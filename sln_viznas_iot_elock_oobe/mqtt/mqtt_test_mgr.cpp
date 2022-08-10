@@ -42,6 +42,8 @@ MqttTestMgr::MqttTestMgr() {
     TEST_CMD_DEFINE(pubraw, 3, (char*)("test pubraw data"), &MqttTestMgr::pubRaw);
     TEST_CMD_DEFINE(setwifi, 4, (char*)("test setwifi ssid password"), &MqttTestMgr::setWifi);
     TEST_CMD_DEFINE(setmqtt, 4, (char*)("test setmqtt [id|port|id|username|password] data"), &MqttTestMgr::setMqtt);
+    TEST_CMD_DEFINE(reconn, 3, (char*)("test reconn [wifi|mqtt]"), &MqttTestMgr::reconn);
+    TEST_CMD_DEFINE(printconfig, 2, (char*)("test printconfig"), &MqttTestMgr::printConfig);
 
 #if 0
 //    MqttTest mqttTest((char*)("addrecord"), (char*)("help"), &testAddRecord);
@@ -65,7 +67,7 @@ void MqttTestMgr::doTest(int argc, char *cmd, char *data, char *extra) {
     for (std::vector<MqttTest>::iterator it = m_mqtt_tests.begin(); it != m_mqtt_tests.end(); it++)
     {
         if (strcmp(cmd, (*it).getCmd()) == 0) {
-            if ((*it).getArgc() != argc) {
+            if ((*it).getArgc() > argc) {
                 LOGE("%s USAGE:\r\n", cmd);
                 LOGE("\t\t%s\r\n", (*it).getUsage());
             } else {
@@ -74,7 +76,7 @@ void MqttTestMgr::doTest(int argc, char *cmd, char *data, char *extra) {
             return;
         }
     }
-    MqttTestMgr::help(NULL, NULL, 0, NULL, NULL);
+    MqttTestMgr::help();
 }
 
 void MqttTestMgr::setWifi(char *cmd, char *usage, int argc, char *data, char *extra) {
@@ -94,16 +96,29 @@ void MqttTestMgr::setMqtt(char *cmd, char *usage, int argc, char *data, char *ex
     } else if (strcmp("password", data) == 0) {
         strcpy(mqttConfig.password, extra);
     } else {
-        LOGE("%s USAGE:\r\n", cmd);
-        LOGE("\t\t%s\r\n", usage);
+        help(cmd);
+//        LOGE("%s USAGE:\r\n", cmd);
+//        LOGE("\t\t%s\r\n", usage);
     }
 }
 
 void MqttTestMgr::help(char *cmd, char *usage, int argc, char *data, char *extra) {
+    vector <MqttTest> mqttCmds = MqttTestMgr::getInstance()->getCmds();
+    // test / test help help / test help setwifi
+    if (cmd != NULL || (strcmp(cmd, "help") == 0 && argc == 3)) {
+        for (std::vector<MqttTest>::iterator it = mqttCmds.begin(); it != mqttCmds.end(); it++)
+        {
+            if (strcmp(cmd, (*it).getCmd()) == 0) {
+                LOGE("%s USAGE:\r\n", (*it).getCmd());
+                LOGE("\t\t%s\r\n", (*it).getUsage());
+                return;
+            }
+        }
+
+    }
+
     LOGD("Test Commands:\r\n");
-    vector<MqttTest> mqttCmds = MqttTestMgr::getInstance()->getCmds();
-    for (std::vector<MqttTest>::iterator it = mqttCmds.begin(); it != mqttCmds.end(); it++)
-    {
+    for (std::vector<MqttTest>::iterator it = mqttCmds.begin(); it != mqttCmds.end(); it++) {
         LOGD("\t%s\r\n", (*it).getCmd());
     }
     for (std::vector<MqttTest>::iterator it = mqttCmds.begin(); it != mqttCmds.end(); it++)
@@ -150,4 +165,18 @@ void MqttTestMgr::pubRaw(char *cmd, char *usage, int argc, char *data, char *ext
     char *pubTopic = MqttTopicMgr::getInstance()->getPubTopicActionRecord();
     int result = MqttConnMgr::getInstance()->publishRawMQTT(pubTopic, data, strlen(data));
     LOGD("do pubRaw result %d\r\n", result);
+}
+
+void MqttTestMgr::reconn(char *cmd, char *usage, int argc, char *data, char *extra) {
+    if (strcmp(data, "wifi") == 0) {
+        MqttConnMgr::getInstance()->reconnectWifiAsync();
+    } else if (strcmp(data, "mqtt") == 0) {
+        MqttConnMgr::getInstance()->reconnectMqttAsync();
+    } else {
+        help(cmd);
+    }
+}
+
+void MqttTestMgr::printConfig(char *cmd, char *usage, int argc, char *data, char *extra) {
+    print_project_config();
 }

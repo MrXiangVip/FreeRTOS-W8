@@ -17,14 +17,14 @@
 #include "mqtt_cmd_mgr.h"
 
 /**************** Connection State start********************/
-int MqttConnMgr::initWifiConnection(const char* ssid, const char* password) {
+int MqttConnMgr::initWifiConnection(const char* ssid, const char* password, bool forceReconnect) {
     MqttDevEsp32::getInstance()->setSysLog(1);
     MqttDevEsp32::getInstance()->setEcho(0);
     int result = MqttDevEsp32::getInstance()->setWifiMode(1);
 
     int wifi_count = 0;
     // 尽量3s以内判断wifi是否已自动连接，若已经自动连接，则无需处理下面的操作
-    while (!isWifiConnected() && wifi_count < 10) {
+    while (!isWifiConnected() && wifi_count < 10 && !forceReconnect) {
         updateWifiRSSI();
         LOGD("initConnection connect to wifi %d %d\r\n", MqttConnMgr::getInstance()->isWifiConnected(), MqttConnMgr::getInstance()->getMqttConnState());
         // 睡眠300ms
@@ -144,6 +144,7 @@ void MqttConnMgr::keepConnectionAlive() {
 
 void MqttConnMgr::reconnectWifiAsync() {
     setMqttConnState(WIFI_DISCONNECTED, true);
+    initWifiConnection(btWifiConfig.ssid, btWifiConfig.password, true);
 }
 
 void MqttConnMgr::reconnectMqttAsync() {

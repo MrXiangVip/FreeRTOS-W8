@@ -54,12 +54,14 @@ public:
     void doTest(int argc, char *cmd, char *data, char *extra);
     vector<MqttTest> getCmds() { return m_mqtt_tests; }
 
-    static void help(char *cmd, char *usage, int argc, char *data, char *extra);
+    static void help(char *cmd = NULL, char *usage = NULL, int argc = 0, char *data = NULL, char *extra = NULL);
     static void addRecord(char *cmd, char *usage, int argc, char *data, char *extra);
     static void listRecords(char *cmd, char *usage, int argc, char *data, char *extra);
     static void pubRaw(char *cmd, char *usage, int argc, char *data, char *extra);
     static void setWifi(char *cmd, char *usage, int argc, char *data, char *extra);
     static void setMqtt(char *cmd, char *usage, int argc, char *data, char *extra);
+    static void reconn(char *cmd, char *usage, int argc, char *data, char *extra);
+    static void printConfig(char *cmd, char *usage, int argc, char *data, char *extra);
 };
 
 #endif //_MQTT_TEST_MGR_H_
