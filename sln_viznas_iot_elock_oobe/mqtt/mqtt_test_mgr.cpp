@@ -44,6 +44,8 @@ MqttTestMgr::MqttTestMgr() {
     TEST_CMD_DEFINE(setmqtt, 4, (char*)("test setmqtt [id|port|id|username|password] data"), &MqttTestMgr::setMqtt);
     TEST_CMD_DEFINE(reconn, 3, (char*)("test reconn [wifi|mqtt]"), &MqttTestMgr::reconn);
     TEST_CMD_DEFINE(printconfig, 2, (char*)("test printconfig"), &MqttTestMgr::printConfig);
+    TEST_CMD_DEFINE(saveconfig, 2, (char*)("test saveconfig"), &MqttTestMgr::saveConfig);
+    TEST_CMD_DEFINE(switchconfig, 3, (char*)("test switchconfig [w8|r60]"), &MqttTestMgr::switchConfig);
 
 #if 0
 //    MqttTest mqttTest((char*)("addrecord"), (char*)("help"), &testAddRecord);
@@ -179,4 +181,30 @@ void MqttTestMgr::reconn(char *cmd, char *usage, int argc, char *data, char *ext
 
 void MqttTestMgr::printConfig(char *cmd, char *usage, int argc, char *data, char *extra) {
     print_project_config();
+}
+
+void MqttTestMgr::saveConfig(char *cmd, char *usage, int argc, char *data, char *extra) {
+    save_json_config_file();
+}
+
+void MqttTestMgr::switchConfig(char *cmd, char *usage, int argc, char *data, char *extra) {
+    if (strcmp(data, "w8") == 0) {
+        strcpy(btWifiConfig.ssid, "guest");
+        strcpy(btWifiConfig.password, "wave202205");
+        strcpy(mqttConfig.server_ip, "mqtt.wavewisdom.com");
+        strcpy(mqttConfig.server_port, "2883");
+        strcpy(mqttConfig.client_id, "F9BA971B147D");
+        strcpy(mqttConfig.username, "F9BA971B147D");
+        strcpy(mqttConfig.password, "dQEtim6M");
+    } else if (strcmp(data, "r60") == 0) {
+        strcpy(btWifiConfig.ssid, "wave-soft");
+        strcpy(btWifiConfig.password, "wave.123456");
+        strcpy(mqttConfig.server_ip, "10.0.14.90");
+        strcpy(mqttConfig.server_port, "1883");
+        strcpy(mqttConfig.client_id, "F9BA971B147D");
+        strcpy(mqttConfig.username, "F9BA971B147D");
+        strcpy(mqttConfig.password, "dQEtim6M");
+    } else {
+        help(cmd);
+    }
 }

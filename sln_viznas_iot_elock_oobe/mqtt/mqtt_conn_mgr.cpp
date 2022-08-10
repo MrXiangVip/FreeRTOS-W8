@@ -144,11 +144,13 @@ void MqttConnMgr::keepConnectionAlive() {
 
 void MqttConnMgr::reconnectWifiAsync() {
     setMqttConnState(WIFI_DISCONNECTED, true);
+    disconnectMQTT();
     initWifiConnection(btWifiConfig.ssid, btWifiConfig.password, true);
 }
 
 void MqttConnMgr::reconnectMqttAsync() {
     setMqttConnState(WIFI_CONNECTED, true);
+    disconnectMQTT();
 }
 
 void MqttConnMgr::setMqttConnState(MQTT_CONN_STATE mqttConnState, bool force) {

@@ -62,6 +62,8 @@ public:
     static void setMqtt(char *cmd, char *usage, int argc, char *data, char *extra);
     static void reconn(char *cmd, char *usage, int argc, char *data, char *extra);
     static void printConfig(char *cmd, char *usage, int argc, char *data, char *extra);
+    static void saveConfig(char *cmd, char *usage, int argc, char *data, char *extra);
+    static void switchConfig(char *cmd, char *usage, int argc, char *data, char *extra);
 };
 
 #endif //_MQTT_TEST_MGR_H_
