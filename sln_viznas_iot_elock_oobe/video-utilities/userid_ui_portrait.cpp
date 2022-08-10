@@ -518,14 +518,13 @@ static void UIInfo_UpdateBottomInfoBarV3(uint16_t *pBufferAddr, QUIInfoMsg* info
         if (SLN_Connection_WIFI_isConnected())
         {
             pIcon = (uint16_t *)ic_wifi16x16_on_data;
-//            pIcon = (uint16_t *)wifi16x16_data;
+            draw_icon(pIcon, APP_AS_WIDTH - STATUS_BAR_GAP - bat_disp1_v6_W - STATUS_BAR_GAP -WIFI_W , 0, WIFI_W, WIFI_H, 0xE000, pBufferAddr);
         }
-        else
-        {
-            pIcon = (uint16_t *)ic_wifi16x16_off_data;
-//            pIcon = (uint16_t *)no_wifi16x16_data;
-        }
-        draw_icon(pIcon, APP_AS_WIDTH - STATUS_BAR_GAP - bat_disp1_v6_W - STATUS_BAR_GAP -WIFI_W , 0, WIFI_W, WIFI_H, 0xE000, pBufferAddr);
+//        else
+//        {
+//            pIcon = (uint16_t *)ic_wifi16x16_off_data;
+//        }
+        return;
 }
 static void UIInfo_UpdateOasisState(uint16_t *pBufferAddr)
 {
