@@ -64,6 +64,7 @@
 // 20201114 wavezgx end
 #include "MCU_UART5.h"
 #include "aw_wstime.h"
+#include "mqtt_conn_mgr.h"
 
 #if SCREEN_PORTRAIT_MODE
 #include "welcomehome_240x131.h"
@@ -515,7 +516,7 @@ static void UIInfo_UpdateBottomInfoBarV3(uint16_t *pBufferAddr, QUIInfoMsg* info
 
         }
         //  draw wifi
-        if (SLN_Connection_WIFI_isConnected())
+        if (MqttConnMgr::getInstance()->isWifiConnected())
         {
             pIcon = (uint16_t *)ic_wifi16x16_on_data;
             draw_icon(pIcon, APP_AS_WIDTH - STATUS_BAR_GAP - bat_disp1_v6_W - STATUS_BAR_GAP -WIFI_W , 0, WIFI_W, WIFI_H, 0xE000, pBufferAddr);
