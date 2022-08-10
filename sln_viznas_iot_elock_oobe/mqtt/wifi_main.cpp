@@ -106,15 +106,16 @@ static void mqtt_send_task(void *pvParameters)
 
 static void test_task(void *pvParameters)
 {
-    char const *logTag = "[UART8_WIFI]:mqtt_send_task-";
+    char const *logTag = "[UART8_WIFI]:test_task-";
     LOGD("%s start...\r\n", logTag);
+    MqttTestMgr *mqttTestMgr = MqttTestMgr::getInstance();
     for (;;) {
         vTaskDelay(pdMS_TO_TICKS(1000));
-        if (g_test_argc > 1) {
-            for (int i = 0; i < g_test_argc; i++) {
-                LOGD("test argv %d is %s\r\n", i, g_test_argv[i]);
-            }
-            MqttTestMgr::getInstance()->doTest(g_test_argc, g_test_argv[1], g_test_argv[2], g_test_argv[3]);
+        if (g_test_argc > 0) {
+//            for (int i = 0; i < g_test_argc; i++) {
+//                LOGD("test argv %d is %s\r\n", i, g_test_argv[i]);
+//            }
+            mqttTestMgr->doTest(g_test_argc, g_test_argv[1], g_test_argv[2], g_test_argv[3]);
             reset_test_args();
         }
     }

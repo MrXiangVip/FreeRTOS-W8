@@ -21,36 +21,100 @@
 #include "MCU_UART5.h"
 #include "MCU_UART5_Layer.h"
 #include "DBManager.h"
+#include "config.h"
 
 #define TEST_ADD_RECORD     "addrecord"
 #define TEST_LIST_RECORD    "listrecord"
-#define TEST_PUB_RAW        "pub_raw"
+#define TEST_PUB_RAW        "pubraw"
+#define TEST_SET_WIFI       "setwifi"
+#define TEST_SET_MQTT       "setmqtt"
+
+#define TEST_CMD_DEFINE(cmd, argc, usage, callback) { MqttTest mqttTest_##cmd((#cmd), (argc), (usage), (callback)); m_mqtt_tests.push_back(mqttTest_##cmd); }
+
+//void testAddRecord(char *cmd, char *usage, int argc, char *data, char *extra) {
+//    LOGE("%s\r\n", usage);
+//}
+
+MqttTestMgr::MqttTestMgr() {
+    TEST_CMD_DEFINE(help, 2, (char*)("test help"), &MqttTestMgr::help);
+    TEST_CMD_DEFINE(addrecord, 4, (char*)("test addrecord UUID [0 REG|1 UNLOCK]"), &MqttTestMgr::addRecord);
+    TEST_CMD_DEFINE(listrecords, 2, (char*)("test listrecords"), &MqttTestMgr::listRecords);
+    TEST_CMD_DEFINE(pubraw, 3, (char*)("test pubraw data"), &MqttTestMgr::pubRaw);
+    TEST_CMD_DEFINE(setwifi, 4, (char*)("test setwifi ssid password"), &MqttTestMgr::setWifi);
+    TEST_CMD_DEFINE(setmqtt, 4, (char*)("test setmqtt [id|port|id|username|password] data"), &MqttTestMgr::setMqtt);
+
+#if 0
+//    MqttTest mqttTest((char*)("addrecord"), (char*)("help"), &testAddRecord);
+//    m_mqtt_tests.push_back(mqttTest);
+//    LOGD("size is %d\r\n", m_mqtt_tests.size());
+//
+//    MqttTest mqttTest2((char*)("addrecord"), (char*)("help"), &MqttTestMgr::addRecord);
+//    m_mqtt_tests.push_back(mqttTest2);
+//    LOGD("size is %d\r\n", m_mqtt_tests.size());
+
+//    MqttTest *mqttTest = new MqttTest((char*)("addrecord"), (char*)("help"), testAddRecord);
+
+//    MqttTest *mqttTest = new MqttTest();
+//    mqttTest->setCmd((char*)"addrecord");
+//    mqttTest->setHelp((char*)"addrecord");
+//    mqttTest->setHandler(testAddRecord);
+#endif
+}
 
 void MqttTestMgr::doTest(int argc, char *cmd, char *data, char *extra) {
-    if (strcmp(cmd, TEST_ADD_RECORD) == 0) {
-        addRecord(argc, data, extra);
-    } else if (strcmp(cmd, TEST_LIST_RECORD) == 0) {
-        listRecords();
-    } else if (strcmp(cmd, TEST_PUB_RAW) == 0) {
-        pubRaw(argc, data);
+    for (std::vector<MqttTest>::iterator it = m_mqtt_tests.begin(); it != m_mqtt_tests.end(); it++)
+    {
+        if (strcmp(cmd, (*it).getCmd()) == 0) {
+            if ((*it).getArgc() != argc) {
+                LOGE("%s USAGE:\r\n", cmd);
+                LOGE("\t\t%s\r\n", (*it).getUsage());
+            } else {
+                (*it).getHandler()((*it).getCmd(), (*it).getUsage(), argc, data, extra);
+            }
+            return;
+        }
+    }
+    MqttTestMgr::help(NULL, NULL, 0, NULL, NULL);
+}
+
+void MqttTestMgr::setWifi(char *cmd, char *usage, int argc, char *data, char *extra) {
+    strcpy(btWifiConfig.ssid, data);
+    strcpy(btWifiConfig.password, extra);
+}
+
+void MqttTestMgr::setMqtt(char *cmd, char *usage, int argc, char *data, char *extra) {
+    if (strcmp("ip", data) == 0) {
+        strcpy(mqttConfig.server_ip, extra);
+    } else if (strcmp("port", data) == 0) {
+        strcpy(mqttConfig.server_port, extra);
+    } else if (strcmp("id", data) == 0) {
+        strcpy(mqttConfig.client_id, extra);
+    } else if (strcmp("username", data) == 0) {
+        strcpy(mqttConfig.username, extra);
+    } else if (strcmp("password", data) == 0) {
+        strcpy(mqttConfig.password, extra);
     } else {
-        testIdle();
+        LOGE("%s USAGE:\r\n", cmd);
+        LOGE("\t\t%s\r\n", usage);
     }
 }
 
-void MqttTestMgr::testIdle() {
-    char *data = (char*)pvPortMalloc(24);
-    strcpy(data, "hello");
-    LOGD("test idle pvPortMalloc %s\r\n", data);
-    vPortFree(data);
+void MqttTestMgr::help(char *cmd, char *usage, int argc, char *data, char *extra) {
+    LOGD("Test Commands:\r\n");
+    vector<MqttTest> mqttCmds = MqttTestMgr::getInstance()->getCmds();
+    for (std::vector<MqttTest>::iterator it = mqttCmds.begin(); it != mqttCmds.end(); it++)
+    {
+        LOGD("\t%s\r\n", (*it).getCmd());
+    }
+    for (std::vector<MqttTest>::iterator it = mqttCmds.begin(); it != mqttCmds.end(); it++)
+    {
+        LOGE("%s USAGE:\r\n", (*it).getCmd());
+        LOGE("\t\t%s\r\n", (*it).getUsage());
+    }
 }
 
 // add a user register/recognize record
-void MqttTestMgr::addRecord(int argc, char *data, char *extra) {
-    if (argc != 4) {
-        LOGE("test addrecord UUID [0 REG|1 UNLOCK]\r\n");
-        return;
-    }
+void MqttTestMgr::addRecord(char *cmd, char *usage, int argc, char *data, char *extra) {
     Record *record = (Record *) pvPortMalloc(sizeof(Record));
     memset(record, 0, sizeof(Record));
     strcpy(record->UUID, data);
@@ -67,7 +131,7 @@ void MqttTestMgr::addRecord(int argc, char *data, char *extra) {
     DBManager::getInstance()->addRecord(record);
 }
 
-void MqttTestMgr::listRecords() {
+void MqttTestMgr::listRecords(char *cmd, char *usage, int argc, char *data, char *extra) {
     LOGD("List Records start\r\n");
     list<Record*> records = DBManager::getInstance()->getAllUnuploadRecord();
     LOGD("idx %8s %20s %6s %16s %10s %6s %32s \r\n", "id", "UUID", "action", "image", "timestamp", "upload", "data");
@@ -82,11 +146,7 @@ void MqttTestMgr::listRecords() {
     }
 }
 
-void MqttTestMgr::pubRaw(int argc, char *data) {
-    if (argc < 3 || data == NULL) {
-        LOGE("test pubraw [data]\r\n");
-        return;
-    }
+void MqttTestMgr::pubRaw(char *cmd, char *usage, int argc, char *data, char *extra) {
     char *pubTopic = MqttTopicMgr::getInstance()->getPubTopicActionRecord();
     int result = MqttConnMgr::getInstance()->publishRawMQTT(pubTopic, data, strlen(data));
     LOGD("do pubRaw result %d\r\n", result);
