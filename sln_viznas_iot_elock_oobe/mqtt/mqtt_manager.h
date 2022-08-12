@@ -10,7 +10,6 @@
 class MqttManager {
 private:
     MqttManager() {};
-    int timeSync(char *ts);
 public:
     static MqttManager *getInstance() {
         static MqttManager m_instance;
@@ -23,6 +22,7 @@ public:
     int handleMqttMsgData(char *jsonMsg);
     // 透传指令解析
     int handlePassThroughPayload(char *payload, char *idStr);
+    int timeSync(char *ts);
 };
 
 #endif //_MQTT_MANAGER_H_

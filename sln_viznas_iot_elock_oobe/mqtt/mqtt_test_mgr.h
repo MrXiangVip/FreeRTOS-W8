@@ -54,13 +54,24 @@ public:
     void doTest(int argc, char *cmd, char *data, char *extra);
     vector<MqttTest> getCmds() { return m_mqtt_tests; }
 
+    // utils
     static void help(char *cmd = NULL, char *usage = NULL, int argc = 0, char *data = NULL, char *extra = NULL);
+    static void getTime(char *cmd, char *usage, int argc, char *data, char *extra);
+    static void setTime(char *cmd, char *usage, int argc, char *data, char *extra);
+
+    // records
     static void addRecord(char *cmd, char *usage, int argc, char *data, char *extra);
     static void listRecords(char *cmd, char *usage, int argc, char *data, char *extra);
+
+    // mqtt
     static void pubRaw(char *cmd, char *usage, int argc, char *data, char *extra);
+
+    // connectivity
     static void setWifi(char *cmd, char *usage, int argc, char *data, char *extra);
     static void setMqtt(char *cmd, char *usage, int argc, char *data, char *extra);
     static void reconn(char *cmd, char *usage, int argc, char *data, char *extra);
+
+    // config
     static void printConfig(char *cmd, char *usage, int argc, char *data, char *extra);
     static void saveConfig(char *cmd, char *usage, int argc, char *data, char *extra);
     static void switchConfig(char *cmd, char *usage, int argc, char *data, char *extra);

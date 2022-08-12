@@ -239,14 +239,17 @@ int MqttManager::timeSync(char *ts) {
         int currentSec = atoi(ts);
         if (currentSec > 1618965299) {
             LOGD("__network time sync networkTime is %d can setTimestamp\r\n", currentSec);
-            setTimestamp(currentSec);
+            int result = MqttMcuMgr::getInstance()->syncTimeToMCU(ts);
+            if (result == 0) {
+                setTimestamp(currentSec);
+                ws_systime = currentSec;
+                return AT_RSP_SUCCESS;
+            }
+            return AT_RSP_ERROR;
         } else {
             LOGD("__network time sync networkTime is %d don't setTimestamp\r\n", currentSec);
             return AT_RSP_ERROR;
         }
-
-        int result = MqttMcuMgr::getInstance()->syncTimeToMCU(ts);
-        return result == 0 ? AT_RSP_SUCCESS : AT_RSP_ERROR;
     }
     return AT_RSP_ERROR;
 }

@@ -15,6 +15,7 @@
 #include "mqtt_topic_mgr.h"
 #include "mqtt_cmd_mgr.h"
 #include "mqtt_conn_mgr.h"
+#include "mqtt_manager.h"
 #include "mqtt-remote-feature.h"
 #include "base64.h"
 #include "util.h"
@@ -36,13 +37,24 @@
 //}
 
 MqttTestMgr::MqttTestMgr() {
+    // utils
     TEST_CMD_DEFINE(help, 2, (char*)("test help"), &MqttTestMgr::help);
+    TEST_CMD_DEFINE(gettime, 2, (char*)("test gettime"), &MqttTestMgr::getTime);
+    TEST_CMD_DEFINE(settime, 3, (char*)("test settime timestamp"), &MqttTestMgr::setTime);
+
+    // records
     TEST_CMD_DEFINE(addrecord, 4, (char*)("test addrecord UUID [0 REG|1 UNLOCK]"), &MqttTestMgr::addRecord);
     TEST_CMD_DEFINE(listrecords, 2, (char*)("test listrecords"), &MqttTestMgr::listRecords);
+
+    // mqtt
     TEST_CMD_DEFINE(pubraw, 3, (char*)("test pubraw data"), &MqttTestMgr::pubRaw);
+
+    // connectivity
     TEST_CMD_DEFINE(setwifi, 4, (char*)("test setwifi ssid password"), &MqttTestMgr::setWifi);
     TEST_CMD_DEFINE(setmqtt, 4, (char*)("test setmqtt [id|port|id|username|password] data"), &MqttTestMgr::setMqtt);
     TEST_CMD_DEFINE(reconn, 3, (char*)("test reconn [wifi|mqtt]"), &MqttTestMgr::reconn);
+
+    // config
     TEST_CMD_DEFINE(printconfig, 2, (char*)("test printconfig"), &MqttTestMgr::printConfig);
     TEST_CMD_DEFINE(saveconfig, 2, (char*)("test saveconfig"), &MqttTestMgr::saveConfig);
     TEST_CMD_DEFINE(switchconfig, 3, (char*)("test switchconfig [w8|r60]"), &MqttTestMgr::switchConfig);
@@ -128,6 +140,25 @@ void MqttTestMgr::help(char *cmd, char *usage, int argc, char *data, char *extra
         LOGE("%s USAGE:\r\n", (*it).getCmd());
         LOGE("\t\t%s\r\n", (*it).getUsage());
     }
+}
+
+void MqttTestMgr::getTime(char *cmd, char *usage, int argc, char *data, char *extra) {
+    struct ws_tm current;
+    memset((void*)&current,0x00,sizeof(current));
+    ws_localtime(ws_systime + 8*60*60, &current);
+    char timeStr[32];
+    memset(timeStr, 0, sizeof(timeStr));
+    sprintf(timeStr, "%d(%04d-%02d-%02d %02d:%02d:%02d)", ws_systime, current.tm_year, current.tm_mon + 1, current.tm_mday, current.tm_hour, current.tm_min, current.tm_sec);
+//    LOGD("%d(%04d-%02d-%02d %02d:%02d:%02d)", ws_systime, current.tm_year, current.tm_mon + 1, current.tm_mday, current.tm_hour, current.tm_min, current.tm_sec);
+    LOGD("%s\r\n", timeStr);
+}
+
+void MqttTestMgr::setTime(char *cmd, char *usage, int argc, char *data, char *extra) {
+    LOGD("before setTime\r\n");
+    getTime(cmd, usage, argc, data, extra);
+    int result = MqttManager::getInstance()->timeSync(data);
+    LOGD("after setTime %s result %d\r\n", data, result);
+    getTime(cmd, usage, argc, data, extra);
 }
 
 // add a user register/recognize record

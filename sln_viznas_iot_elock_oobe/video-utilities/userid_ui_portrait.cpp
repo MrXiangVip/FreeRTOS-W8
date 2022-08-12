@@ -354,7 +354,7 @@ static void UIInfo_UpdateBottomInfoBarV2(uint16_t *pBufferAddr, QUIInfoMsg* info
         memset((void*)&current,0x00,sizeof(current));
         ws_localtime(ws_systime + 8*60*60, &current);
         char idxstring[32];
-        memset(idxstring, 0x0, 64);
+        memset(idxstring, 0x0, sizeof(idxstring));
         sprintf(idxstring, "%04d-%02d-%02d", current.tm_year, current.tm_mon + 1, current.tm_mday);
         put_string(2, 0, idxstring, RGB565_WHITE, -1, OPENSANS8,
         		pBufferAddr, APP_AS_WIDTH);
@@ -465,7 +465,7 @@ static void UIInfo_UpdateBottomInfoBarV3(uint16_t *pBufferAddr, QUIInfoMsg* info
         memset((void*)&current,0x00,sizeof(current));
         ws_localtime(ws_systime + 8*60*60, &current);
         char tick_time[32];
-        memset(tick_time, 0x0, 64);
+        memset(tick_time, 0x0, sizeof(tick_time));
         sprintf(tick_time, "%04d-%02d-%02d", current.tm_year, current.tm_mon + 1, current.tm_mday);
 //        put_string(2, 0, idxstring, RGB565_WHITE, -1, OPENSANS8,
 //        		pBufferAddr, APP_AS_WIDTH);
