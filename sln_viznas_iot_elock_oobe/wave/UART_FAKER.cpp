@@ -42,6 +42,11 @@ MCU_STATUS   mcuStatus=MCU_READY;//默认休眠模式
 
 //#ifdef W8
 char Init_CMD[]="23010B150909020B334E01330001DE78";                         //
+char Get_BLE_INFO[] ="23160790e2617f13ca2cbe31  ";                            // 16 获取蓝牙模块信息 (蓝牙版本号)
+char Set_MQTT_URL[] ="23170f31302e302e31342e39303a31383833b7d0";           // 设置MQTT server登录URL
+char Set_WIFI_SSID[] ="230f09776176652d736f66742632";                       // 设置wifi SSID
+char Set_WIFI_PWD[] ="23100b776176652e313233343536128d";                    // 设置WIFI 密码
+char Set_MQTT_NAME_PWD[] ="23110e61646d696e7075626c6963303a310c4e";         // 设置MQTT 用户名 和密码
 char Regist_CMD[]="2305089E51973FCD6365A1EEAD";                             //  8字节UUID
 char Delete_CMD[]="2309089E51973FCD6365A15B74";                             //
 char Clear_CMD[] ="230B003BCE";                                             //
@@ -50,6 +55,11 @@ char OpenDoor_CMD[] ="23030003430201004C";                                  //
 
 char* CMD_LIST[] = {
         Init_CMD,
+        Get_BLE_INFO,
+        Set_MQTT_URL,
+        Set_WIFI_SSID,
+        Set_WIFI_PWD,
+        Set_MQTT_NAME_PWD,
         Regist_CMD,
         Delete_CMD,
         Clear_CMD,

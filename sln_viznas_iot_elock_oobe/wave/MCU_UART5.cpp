@@ -309,7 +309,9 @@ static void vReceiveOasisTask(void *pvParameters) {
     //                        record->action_upload = 0;	//代表注册且未上传
                             LOGD("%s往数据库中插入本次注册记录 \r\n", logtag);
                             DBManager::getInstance()->addRecord(record);
-    //                        Oasis_SetOasisFileName(record->image_path);
+//
+                            Oasis_SetOasisFileName(record->image_path);
+                            Oasis_WriteJpeg();
                             REG_RESULT_FLG = 0; //和后台同步, 0 表示成功
 //                            // TODO: zgx upload feature to server
 //                            char *msgId = gen_msgId();

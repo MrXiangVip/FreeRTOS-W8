@@ -28,40 +28,13 @@ typedef enum {
     RECORD_MGMT_NOSPACE = -0x05,
 
 } RECORD_LOCK_STATUS;
-static SemaphoreHandle_t s_Record_Lock = NULL;
-static int Record_Lock()
-{
-    if (NULL == s_Record_Lock)
-    {
-        return RECORD_MGMT_ENOLOCK;
-    }
 
-    if (pdTRUE != xSemaphoreTake(s_Record_Lock, portMAX_DELAY))
-    {
-        return RECORD_MGMT_ERETRY;
-    }
-
-    return RECORD_MGMT_OK;
-}
-
-static void Record_UnLock()
-{
-    xSemaphoreGive(s_Record_Lock);
-}
 
 
 UserExtendManager::UserExtendManager() {
     // Create a database lock semaphore
     userExtend_FS_Head = USER_EXTEND_FS_ADDR;
 
-    if (NULL == s_Record_Lock)
-    {
-        s_Record_Lock = xSemaphoreCreateMutex();
-        if (NULL == s_Record_Lock)
-        {
-            LOGE("[ERROR]:Create DB lock semaphore\r\n");
-        }
-    }
     LOGD("%s Init UserExtendManager \r\n",logtag);
 }
 

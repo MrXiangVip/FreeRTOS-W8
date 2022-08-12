@@ -473,13 +473,13 @@ int cmdSysInitOKSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessa
     }
 
     boot_mode = StrGetUInt8(pszMessage + i);
-    if (boot_mode > BOOT_MODE_MECHANICAL_LOCK) {
-//        boot_mode = BOOT_MODE_INVALID;
+    if (boot_mode != BOOT_MODE_INVALID) {
+//      长供电版本 模式都设置为识别
         boot_mode = BOOT_MODE_RECOGNIZE;
     }
     LOGD("boot_mode: %d\r\n", boot_mode);
 //    receive_boot_mode = 1;
-    if ((boot_mode == BOOT_MODE_RECOGNIZE) || (boot_mode == BOOT_MODE_REGIST)) {
+    if ( boot_mode == BOOT_MODE_RECOGNIZE ) {
         if (oasis_task_start == false) {
             oasis_task_start = true;
             OpenLcdBackground();
@@ -573,7 +573,7 @@ int cmdReqResumeFactoryProc(unsigned char nMessageLen, const unsigned char *pszM
     SetSysToFactory();
     /*关机 */
 
-    cmdCloseFaceBoardReqExt(false);
+    cmdCloseFaceBoardReq();
     return 0;
 }
 
@@ -845,7 +845,7 @@ int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
         DBManager::getInstance()->addRecord(record);
 
         Oasis_SetOasisFileName(record->image_path);
-        //Oasis_WriteJpeg();
+        Oasis_WriteJpeg();
 
         int ID = DBManager::getInstance()->getLastRecordID();
         LOGD("开锁成功, 更新数据库状态.请求MQTT上传本次开门的记录 \r\n");
@@ -1067,7 +1067,6 @@ int save_files_before_pwd() {
         saving_db = true;
         DBManager::getInstance()->flushRecordList();
     }
-    Oasis_WriteJpeg();
     g_is_save_file = false;
     LOGD("保存config, db, jpg 文件结束 \r\n");
 
@@ -1120,7 +1119,11 @@ int cmdCloseFaceBoardReqExt(bool save_file) {
 
 //主控发送: 关机请求
 int cmdCloseFaceBoardReq() {
+#if 0
     return cmdCloseFaceBoardReqExt(true);
+#endif
+    LOGD("不下电版本 此处不下电\r\n");
+    return 0;
 }
 //主控返回响应指令: 手机APP请求注册激活响应
 int cmdReqActiveByPhoneRsp(uint8_t ret) {
@@ -1359,7 +1362,7 @@ int cmdDeleteUserReqProcByHead(unsigned char nHead, unsigned char nMessageLen, c
 //串口接收消息处理
 // 主控接收指令: WIFI SSID 设置请求
 int cmdWifiSSIDProc(unsigned char nMessageLen, const unsigned char *pszMessage) {
-    LOGD("接收指令: WIFI SSID 设置 \r\n");
+    LOGD("接收指令:设置 WIFI SSID  \r\n");
 
     uint8_t ret = FAILED;
     char wifi_ssid[WIFI_SSID_LEN_MAX + 1] = {0};
@@ -1385,7 +1388,7 @@ int cmdWifiSSIDProc(unsigned char nMessageLen, const unsigned char *pszMessage) 
 
 // 主控接收指令: WIFI 密码 设置请求
 int cmdWifiPwdProc(unsigned char nMessageLen, const unsigned char *pszMessage) {
-    LOGD("接收指令: WIFI 密码 设置 \r\n");
+    LOGD("接收指令:设置 WIFI 密码  \r\n");
 
     uint8_t ret = FAILED;
     char wifi_pwd[WIFI_PWD_LEN_MAX + 1] = {0};
@@ -1490,6 +1493,7 @@ int cmdBTInfoRptProc(unsigned char nMessageLen, const unsigned char *pszMessage)
 
 // 主控接收指令: 设置wifi的MQTT server 登录URL(可能是IP+PORT, 可能是域名+PORT)
 int cmdMqttSvrURLProc(unsigned char nMessageLen, const unsigned char *pszMessage) {
+    LOGD("设置MQTT URL \r\n");
     uint8_t ret = FAILED;
     char MqttSvr_Url[MQTT_SVR_URL_LEN_MAX + 1] = {0};
 

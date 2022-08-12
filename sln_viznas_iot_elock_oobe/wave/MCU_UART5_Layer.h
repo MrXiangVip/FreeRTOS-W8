@@ -69,12 +69,12 @@ extern "C" {
 #define CMD_FACE_RECOGNIZE				0x0E		// MCU主动请求人脸识别
 #define CMD_WIFI_SSID					0x0F		// 设置wifi的SSID
 #define CMD_WIFI_PWD					0x10		// 设置wifi的PWD
-#define CMD_WIFI_MQTT					0x11		// 设置MQTT参数
+#define CMD_WIFI_MQTT					0x11		// 设置MQTT参数( MQTT 用户名和密码)
 #define CMD_WIFI_CONN_STATUS			0x12		// 上报wifi连接状态
 #define CMD_DEV_DEBUG					0x13		// 上报设备故障状态
 #define CMD_OPEN_LOCK_REC				0x14		// 上报开门记录
 #define CMD_ORDER_TIME_SYNC				0x15		// 远程订单时间同步
-#define CMD_BT_INFO						0x16		// 上报蓝牙模块信息
+#define CMD_BT_INFO						0x16		// 上报蓝牙模块信息   (蓝牙版本号)
 #define CMD_WIFI_MQTTSER_URL			0x17		// 设置wifi的MQTT server登录URL（可能是IP+Port，可能是域名+Port）
 #define CMD_GETNETWORK_OPTVER			0x18		// 主控获取MCU中flash存储的网络参数设置版本号
 #define CMD_SETNETWORK_OPTVER			0x19		// 设置网络参数版本号,每次设置后都自加1，存入flash
