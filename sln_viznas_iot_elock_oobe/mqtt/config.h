@@ -96,6 +96,7 @@ extern "C"  {
     int update_sys_info(char *version);
 	int update_NetworkOptVer_info(char *file, char *version) ;//???????????????ð汾??
     int save_json_config_file();
+    bool clear_json_config_file();//clear config
 
 #ifdef __cplusplus
 }

@@ -522,7 +522,10 @@ void SetSysToFactory() {
     clear_status = VIZN_DelUser(NULL);
     LOGD("Clear Users status is %d\r\n", clear_status);
 
+//  清除配置文件
+    clear_json_config_file();
     //DB_Save(0);
+    return;
 }
 
 //主控返回响应指令: 请求恢复出厂设置响应
@@ -645,26 +648,7 @@ int cmdUserRegReqProc(unsigned char nMessageLen, const unsigned char *pszMessage
     HexToStr(objUserExtend.UUID, objUserExtend.HexUID, sizeof(objUserExtend.HexUID)  );
     LOGD("%s UUID<len:%d>:%s.\r\n",logtag, sizeof(objUserExtend.UUID), objUserExtend.UUID);
 
-//    unsigned  int uStartTime = StrGetUInt32(pos);
-//    pos+=4;
-//    len+=4;
-//    LOGD("StartTime %d\r\n", uStartTime);
-//    unsigned  int uEndTime =StrGetUInt32( pos );
-//    pos+=4;
-//    len+=4;
-//    LOGD("EndTime %d\r\n", uEndTime);
 
-
-//    char cDeviceIds[48]={0};//最大48个柜子
-//    HexToStr(cDeviceIds, pos, nMessageLen-len);
-//    printf("cDeviceIds %s\n", cDeviceIds);
-
-//    objUserExtend.uStartTime = uStartTime;
-//    objUserExtend.uEndTime =uEndTime;
-//    objUserExtend.lCreateTime =ws_systime;//记录下用户创建的时间
-//    memcpy( objUserExtend.cDeviceId, cDeviceIds, sizeof(cDeviceIds));
-
-//    memcpy( username, objUserExtend.UUID, sizeof(username));
 //2.发起注册
     vizn_api_status_t status;
     status = VIZN_AddUser(NULL, objUserExtend.UUID);

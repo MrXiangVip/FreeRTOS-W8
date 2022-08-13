@@ -179,7 +179,7 @@ int update_need_reconnect(char *need_reconnect) {
 
 
 int update_wifi_ssid(char *ssid) {
-	//LOGD("%s\n", __FUNCTION__);
+//	LOGD("%s\n", __FUNCTION__);
 	
 	update_section_key(CONFIG_KEY_SSID, ssid);
     save_json_config_file();
@@ -389,4 +389,15 @@ int save_json_config_file() {
     return 0;
 }
 
+bool clear_json_config_file(){
+    LOGD("清除 config 文件 %d \r\n");
+    int status = SLN_Erase_Sector( CONFIG_FS_ADDR );
+    if( status !=0 ){
+        LOGD("erase flash failed %d \r\n", status);
+        return  false;
+    }else{
+        LOGD("config 擦除成功 \r\n" );
+    }
+    return true;
+}
 

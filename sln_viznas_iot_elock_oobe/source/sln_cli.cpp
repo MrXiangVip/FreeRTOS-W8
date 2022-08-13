@@ -301,7 +301,7 @@ static shell_status_t FFI_CLI_ListCommand(shell_handle_t shellContextHandle, int
     return UsbShell_QueueSendFromISR(shellContextHandle, argc, argv, SHELL_EV_FFI_CLI_LIST);
 #else
     // TODO: 在sln_cli的命令执行中，如果是同步执行，绝对不允许出现pvPortMalloc，否则就会导致重启
-    SHELL_Printf(shellContextHandle, "list [0:init , 1: get ble, 2: set mqtt url, 3:set wifi ssid , 4:set wifi pwd, 5:set mqtt name pwd, 6:registe a user, 7:delete a user ,8:clear users, 9:open door , else ]\r\n");
+    SHELL_Printf(shellContextHandle, "list [0:init , 1: get ble, 2: set mqtt url, 3:set wifi ssid , 4:set wifi pwd, 5:set mqtt name pwd, 6:registe a user, 7:delete a user ,8:clear all, 9:open door , else ]\r\n");
     if( argc > 2 ){
         SHELL_Printf(shellContextHandle, "input command : list [s BASE|e SECTOR_OFFSET|r SECTOR_OFFSET LENGTH|w SECTOR_OFFSET ADDR_OFFSET STRDATA]\r\n");
         if (strlen(argv[1]) == 1 && argv[1][0] == 's') {
