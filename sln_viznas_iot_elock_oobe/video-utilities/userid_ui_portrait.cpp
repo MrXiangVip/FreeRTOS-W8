@@ -35,7 +35,7 @@
 #include "wifi_16x16.h"
 #include "ic_wifi_16x16.h"
 #include "ble_16x16.h"
-
+#include "ic_rec_unkown_240x320.h"
 // 20201114 wavezgx added for UI development
 #include "fsl_log.h"
 
@@ -495,7 +495,7 @@ static void UIInfo_UpdateBottomInfoBarV3(uint16_t *pBufferAddr, QUIInfoMsg* info
         } else {
                 pIcon = (uint16_t *)bat_disp5_v6;
         }
-        draw_icon(pIcon, APP_AS_WIDTH - bat_disp1_v6_W - STATUS_BAR_GAP, 2, bat_disp1_v6_W, bat_disp1_v6_H, 0xE000, pBufferAddr);
+        draw_icon(pIcon, APP_AS_WIDTH - bat_disp1_v6_W - STATUS_BAR_GAP, 2, bat_disp1_v6_W, bat_disp1_v6_H, 0xFFFF, pBufferAddr);
 
         // if the battery level is 0, show the low battery warning icon for about 5 seconds
         if (bat_level == 0 && logindex <= 30) {
@@ -519,7 +519,7 @@ static void UIInfo_UpdateBottomInfoBarV3(uint16_t *pBufferAddr, QUIInfoMsg* info
         if (MqttConnMgr::getInstance()->isWifiConnected())
         {
             pIcon = (uint16_t *)ic_wifi16x16_on_data;
-            draw_icon(pIcon, APP_AS_WIDTH - STATUS_BAR_GAP - bat_disp1_v6_W - STATUS_BAR_GAP -WIFI_W , 0, WIFI_W, WIFI_H, 0xE000, pBufferAddr);
+            draw_icon(pIcon, APP_AS_WIDTH - STATUS_BAR_GAP - bat_disp1_v6_W - STATUS_BAR_GAP -WIFI_W , 0, WIFI_W, WIFI_H, 0xFFFF, pBufferAddr);
         }
 //        else
 //        {
@@ -704,17 +704,10 @@ static void UIInfo_UpdateFaceInfo2(uint16_t *pBufferAddr, QUIInfoMsg* infoMsg)
         break;
         case 1 << kEvents_API_Layer_RecSuccess:
         {
-#if	0
             uint16_t *pIcon = NULL;
             pIcon = (uint16_t *)welcome_v4;
-            for (int i = 0; i < 320; i++)
-            {
-            	for (int j = 0; j < 240; j++)
-            	{
-            		*(pBufferAddr + i*APP_AS_WIDTH + j) = *pIcon++;
-            	}
-            }
-#endif
+
+            draw_icon(pIcon, 0, 0, APP_AS_WIDTH, APP_AS_HEIGHT,0xFFFF, pBufferAddr);
         }
         break;
 
@@ -724,6 +717,14 @@ static void UIInfo_UpdateFaceInfo2(uint16_t *pBufferAddr, QUIInfoMsg* infoMsg)
         	sprintf(tstring, "Recognition Timeout");
             draw_text(tstring, CAMERA_SURFACE_SHIFT + 10, 10, 0x0, RGB565_RED, OPENSANS16, pBufferAddr);
 #endif
+        }
+        break;
+        case 1 << kEvents_API_Layer_RecUnkown:
+        {
+            uint16_t *pIcon = NULL;
+            pIcon = (uint16_t *)ic_rec_unkown;
+            draw_icon(pIcon, 0, 0, APP_AS_WIDTH, APP_AS_HEIGHT,0xFFFF, pBufferAddr);
+
         }
         break;
         case 1 << kEvents_API_Layer_RegNoMemory:
@@ -785,7 +786,8 @@ static void UIInfo_DrawFocusRectV2(uint16_t* pAsBufferAddr, QUIInfoMsg* infoMsg)
     			}
     		}
     	}
-    } else if((Oasis_GetState()== OASIS_STATE_FACE_REC_START) || (Oasis_GetState()== OASIS_STATE_FACE_REC_STOP)) {
+//    } else if((Oasis_GetState()== OASIS_STATE_FACE_REC_START) || (Oasis_GetState()== OASIS_STATE_FACE_REC_STOP)) {
+    } else if( Oasis_GetState() == OASIS_STATE_FACE_REC_START ) {
     	uint16_t *pIcon = NULL;
     	int img_idx = (logindex) % 4;
     	if (img_idx == 0) {

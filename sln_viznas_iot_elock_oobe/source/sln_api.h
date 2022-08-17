@@ -33,6 +33,7 @@ typedef enum _vizn_events
     kEvents_API_Layer_RecSuccess,
     kEvents_API_Layer_RecCanceled,
     kEvents_API_Layer_RecFailed,
+    kEvents_API_Layer_RecUnkown,//陌生人
     kEvents_API_Layer_RegNoMemory
 } vizn_events_t;
 
@@ -150,7 +151,8 @@ typedef struct _face_info
     unsigned face_id;
     uint8_t enrolment_mode;
     uint8_t enrolment_result;
-    int evt;//xshx add 20220608   用来表示当前的动作类型
+    uint8_t recognize_result;//xshx add 20220816 识别的结果
+    uint8_t evt;//xshx add 20220608   用来表示当前的动作类型
 } face_info_t;
 
 typedef struct _VIZN_api_client

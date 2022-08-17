@@ -189,15 +189,17 @@ void StopRecognitionProcess(uint8_t event)
         return;
     }
 
-    if (event == kEvents_API_Layer_RecSuccess)
+    if (event == kEvents_API_Layer_RecSuccess )
     {
 #if VOICE_PROMPT
         Audio_Play_Samples(AUDIO_HOME_WELCOME);
 #endif
         StartLockProcess(true);
     }
-    else if (event == kEvents_API_Layer_RecFailed)
+    else if (event == kEvents_API_Layer_RecFailed )
     {
+        StartLockProcess(true);
+    }else if( event == kEvents_API_Layer_RecUnkown ){
         StartLockProcess(true);
     }
 }
@@ -289,10 +291,14 @@ void Oasis_API_Recognize(face_info_t face_info)
         {
             StopRecognitionProcess(kEvents_API_Layer_RecSuccess);
         }
+
     }
     else
     {
         // recognised failed
+        if( face_info.recognize_result == OASIS_REC_RESULT_UNKNOWN_FACE ){
+            StopRecognitionProcess( kEvents_API_Layer_RecUnkown);//XSHX ADD
+        }
     }
 }
 
@@ -325,6 +331,8 @@ void Oasis_API_Enrolment(face_info_t face_info)
 //            StopRegistrationProcess(kEvents_API_Layer_RegSuccess);
         }
     }
+
+
 }
 
 void Oasis_TimerCallback(uint8_t id_timer)
@@ -372,14 +380,17 @@ void Oasis_TimerCallback(uint8_t id_timer)
         break;
         case TIMER_DET_NO_FACE:
         {
-            StopRecognitionProcess(kEvents_API_Layer_RecFailed);
+//            此处超时不提示失败
+//            StopRecognitionProcess(kEvents_API_Layer_RecFailed);
             if (Cfg_AppDataGetLowPowerMode() == LOW_POWER_MODE_ON)
                 LPM_SendControlStatus(LPM_DetNoFaceTimeout, 0);
         }
         break;
         case TIMER_REC_NO_FACE:
         {
-            StopRecognitionProcess(kEvents_API_Layer_RecFailed);
+//            此处超时不提示失败
+
+//            StopRecognitionProcess(kEvents_API_Layer_RecFailed);
             if (Cfg_AppDataGetLowPowerMode() == LOW_POWER_MODE_ON)
                 LPM_SendControlStatus(LPM_RecNoFaceTimeout, 0);
         }

@@ -263,16 +263,19 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
     //UsbShell_Printf("[OASIS]:evt:%d\r\n",evt);
     face_info.evt = evt;//动作类型
     timeState = (struct TimeStat *)user_data;
+//    LOGD("[EVT]: %d !\r\n", evt);
     switch (evt)
     {
         case OASISLT_EVT_DET_START:
         {
+//            LOGD("[OASIS]:0.开始检测人脸!\r\n");
             timeState->det_start = Time_Now();
         }
         break;
 
         case OASISLT_EVT_DET_COMPLETE:
         {
+//            LOGD("[OASIS]:1.人脸检测!\r\n");
             timeState->det_comp = Time_Now();
             gui_info.dt  = timeState->det_start - timeState->det_comp;
             if (para->faceBoxIR == NULL && para->faceBoxRGB == NULL)
@@ -321,7 +324,7 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
         case OASISLT_EVT_QUALITY_CHK_COMPLETE:
         {
             //UsbShell_Printf("[OASIS]:quality chk res:%d\r\n", para->qualityResult);
-//            LOGD("[OASIS]:quality chk res:%d\r\n", para->qualityResult);
+//            LOGD("[OASIS]:3.质量检测!\r\n");
 
             gui_info.irLive  = para->reserved[5];
             gui_info.front   = para->reserved[1];
@@ -342,7 +345,7 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
             if (para->qualityResult == OASIS_QUALITY_RESULT_FACE_OK)
             {
                 //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]:ok!\r\n");
-                LOGD("[EVT]:ok!\r\n");
+                LOGD("[EVT]:face quality ok!\r\n");
             }
             else if (OASIS_QUALITY_RESULT_FACE_SIDE_FACE == para->qualityResult)
             {
@@ -372,6 +375,8 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
                   || para->qualityResult == OASIS_QUALITY_RESULT_FAIL_BRIGHTNESS_OVEREXPOSURE) {
                 //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]: Face Brightness unfit!\r\n");
                 LOGD("[EVT]: Face Brightness unfit!\r\n");
+            }else{
+//                LOGD("[EVT]: face failed! invalid\r\n");
             }
         }
         break;
@@ -407,6 +412,7 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
         break;
         case OASISLT_EVT_REC_COMPLETE:
         {
+//            LOGD("[OASIS]:5.识别完成!\r\n");
             int diff;
             unsigned id                     = para->faceID;
             OASISLTRecognizeRes_t recResult = para->recResult;
@@ -449,8 +455,7 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
                 face_info.recognize = false;
             }
 
-            VIZN_RecognizeEvent(gApiHandle, face_info);
-
+//            VIZN_RecognizeEvent(gApiHandle, face_info);
             //save face into jpeg
             //void util_crop(unsigned char* src, int srcw, int srch, unsigned char* dst, int dstw, int dsth, int top, int left, int elemsize);
 //            if ((para->faceBoxRGB != NULL) && (recResult == OASIS_REC_RESULT_KNOWN_FACE))
@@ -515,12 +520,24 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
             	int ret = fatfs_write(fn, (char *)s_tmpBuffer4Jpeg, 0, s_dataSizeInJpeg);
             	UsbShell_Printf("[OASIS]:%s saved ret:%d\r\n",fn,ret);
 #endif
+            }else if(recResult == OASIS_REC_RESULT_UNKNOWN_FACE){
+                LOGD("[OASIS]:陌生人脸!\r\n");
+            }else{
+                if( (ws_systime %10) ==0 ){
+                    LOGD("[OASIS]:  无人脸!\r\n");
+                }
             }
+//          xshx add
+            face_info.recognize_result = recResult;//保存识别结果
+            VIZN_RecognizeEvent(gApiHandle, face_info);
+
         }
         break;
 
         case OASISLT_EVT_REG_START:
         {
+            LOGD("[OASIS]:开始注册 !\r\n");
+
         }
         break;
 
@@ -531,7 +548,7 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
             unsigned id              = para->faceID;
             OASISLTRegisterRes_t res = para->regResult;
             //UsbShell_Printf("[OASIS]:registration complete:%d\r\n", res);
-            LOGD("[OASIS]:registration complete:%d \r\n", res);
+            LOGD("[OASIS]:注册完成 :%d \r\n", res);
             face_info.enrolment_result = res;
             memset(gui_info.name, 0x0, sizeof(gui_info.name));
             if ((res == OASIS_REG_RESULT_OK) || (res == OASIS_REG_RESULT_DUP))
@@ -616,27 +633,8 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
     {
         gui_info.similar = para->reserved[0];
         Oasis_SendFaceInfoMsg(gui_info);
-        if (evt == OASISLT_EVT_REC_COMPLETE || evt == OASISLT_EVT_REG_COMPLETE)
-        {
-            //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]:sim:[%d]\r\n", para->reserved[0]);
-            //LOGD("[EVT]:sim:[%d]\r\n", para->reserved[0]);
-            //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]:FF[%d][%d]\r\n", para->reserved[1], para->reserved[2]);
-            //LOGD("[EVT]:FF[%d][%d]\r\n", para->reserved[1], para->reserved[2]);
-            //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]:Blur[%d][%d]\r\n", para->reserved[3], para->reserved[4]);
-            //LOGD("[EVT]:Blur[%d][%d]\r\n", para->reserved[3], para->reserved[4]);
-            //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[EVT]:Liveness[%d][%d]\r\n", para->reserved[5], para->reserved[6]);
-            //LOGD("[EVT]:Liveness[%d][%d]\r\n", para->reserved[5], para->reserved[6]);
-//            LOGD("[EVT]:sim:[%d] FF[%d][%d] Blur[%d][%d] Liveness[%d][%d]\r\n", para->reserved[0], para->reserved[1], para->reserved[2],
-//            		para->reserved[3], para->reserved[4], para->reserved[5], para->reserved[6]);
-            ;
 
-        }
 		if(evt == OASISLT_EVT_REC_COMPLETE) {
-#ifdef TEST_ANY_FACE_REC
-		    if (para->reserved[5] != 1 || para->reserved[6] < 80) {
-		        return;
-		    }
-#endif
 //		    Uart5_GetFaceRecResult((uint8_t)face_info.recognize, gui_info.name);
             Uart5_GetFaceInfo( &face_info );
 		}else if(evt == OASISLT_EVT_REG_COMPLETE) {
@@ -644,6 +642,7 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
             Uart5_GetFaceInfo( &face_info );
 		}
     }
+    return;
 }
 
 static int GetRegisteredFacesHandler(uint16_t *face_ids, void **faces, uint32_t *size, void* user_data)
@@ -651,14 +650,14 @@ static int GetRegisteredFacesHandler(uint16_t *face_ids, void **faces, uint32_t 
     /*caller ask for the total records numbers*/
     if (*size == 0)
     {
-        LOGD("GetRegisteredFacesHandler return 0\r\n");
         DB_Count((int*)size);
+        LOGD("人脸库 return %d\r\n", *size);
         return 0;
     }
 
     DB_GetID_FeaturePointers(face_ids,faces,*size);
     //UsbShell_Printf("GetRegisteredFacesHandler size is %d\r\n", *size);
-    LOGD("GetRegisteredFacesHandler size is %d\r\n", *size);
+    LOGD("人脸库 size is %d\r\n", *size);
 
     return 0;
 }
@@ -731,6 +730,7 @@ static void Oasis_PWMControl(uint8_t led, uint8_t curPWM, uint8_t direction)
     //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[LED:%d][curPWM:%d]\r\n", led, curPWM);
     LOGD("[LED:%d][curPWM:%d][pwm:%d]\r\n", led, curPWM, pwm);
     Camera_QMsgSetPWM(led, pwm);
+    return;
 }
 
 //For GC0308, we can combine maunal exposure and pwm to adjust rgb face brightness.

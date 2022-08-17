@@ -339,7 +339,7 @@ static void vReceiveOasisTask(void *pvParameters) {
                     break;
                 case OASISLT_EVT_REC_COMPLETE:
                     if( boot_mode == BOOT_MODE_RECOGNIZE ) {
-                        if (faceInfo->recognize && boot_mode == BOOT_MODE_RECOGNIZE) {//
+                        if (faceInfo->recognize_result == OASIS_REC_RESULT_KNOWN_FACE) {// 识别匹配成功
                             LOGD("识别成功 \r\n");
                             char name[64] = {0};
                             memset(&objUserExtend, 0, sizeof(UserExtendType));
@@ -366,13 +366,17 @@ static void vReceiveOasisTask(void *pvParameters) {
 //                            }
                             strcpy(objUserExtend.UUID, name);
                             StrToHex( objUserExtend.HexUID, objUserExtend.UUID, sizeof(objUserExtend.HexUID));//将uuid 转成16进制 hexuid
+                            // 发送开门请求
                             cmdOpenDoorReq(&objUserExtend);
                             recognize_times = 0;
 
-                        } else {
+                        } else if(faceInfo->recognize_result == OASIS_REC_RESULT_UNKNOWN_FACE){
+                            LOGD("陌生人 \r\n");
+                            recognize_times = 0;
+                        }
+                        else{// 识别40次 重新计数
                             recognize_times++;
-//                            LOGD("User face recognize failed %d times\r\n", recognize_times);
-                            if (recognize_times > 40) {
+                            if (recognize_times > 40 ) {
                                 LOGD("User face recognize timeout \r\n");
                                 recognize_times = 0;
                                 CloseLcdBackground();
