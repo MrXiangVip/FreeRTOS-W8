@@ -143,6 +143,13 @@ int MqttCmdMgr::uploadRecordImage(Record *record) {
     if (result == 0) {
         record->upload = BOTH_UPLOAD;
         DBManager::getInstance()->updateRecordByID(record);
+        for (int i = 0; i < m_uploading_records.size(); i++) {
+            if (m_uploading_records[i] == record->ID) {
+                m_uploading_records.erase(m_uploading_records.begin() + i);
+                LOGD("uploadRecordImage erase id %d uploading_records size %d\r\n", record->ID, m_uploading_records.size());
+                break;
+            }
+        }
     }
 
     vPortFree(pubMsg);
@@ -162,6 +169,7 @@ int MqttCmdMgr::pushRecord(Record *record, int cmdType, int priority, int force)
         }
     }
     m_uploading_records.push_back(id);
+    LOGD("pushRecord id %d cmdType %d priority %d force %d\r\n", id, cmdType, priority, force);
     char rid[12] = {0};
     sprintf(rid, "%d", id);
     MqttCmd *mqttCmd = new MqttCmd(priority, cmdType, rid, rid);
@@ -178,15 +186,16 @@ int MqttCmdMgr::pushRecords(int uploadStatus, int cmdType, int maxCount) {
         Record *record = (Record * ) * it;
         if (record->upload == uploadStatus) {
             int result = pushRecord(record, cmdType);
+            count++;
             if (result != 0) {
                 continue;
             }
-            count++;
             if (count >= maxCount) {
                 break;
             }
         }
     }
+    LOGD("pushRecords uploadStatus %d cmdType %d count %d\r\n", uploadStatus, cmdType, count);
     return count;
 }
 
@@ -201,7 +210,7 @@ void MqttCmdMgr::uploadRecords() {
 
         int recordCount = pushRecords(BOTH_UNUPLOAD, CMD_TYPE_RECORD_TEXT, 20);
         if (recordCount > 0) {
-            vTaskDelay(pdMS_TO_TICKS(20*recordCount));
+            vTaskDelay(pdMS_TO_TICKS(50*recordCount));
             continue;
         }
 
