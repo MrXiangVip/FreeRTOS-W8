@@ -25,6 +25,8 @@ public:
         return &m_instance;
     };
 
+    void reloadTopic();
+
     /*** 订阅TOPIC ***/
     // 后台命令
     char *getSubTopicCmdRequest();

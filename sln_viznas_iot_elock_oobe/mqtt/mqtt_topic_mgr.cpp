@@ -11,6 +11,10 @@
 #include <ctype.h>
 
 MqttTopicMgr::MqttTopicMgr() {
+    reloadTopic();
+}
+
+void MqttTopicMgr::reloadTopic() {
     memset(m_sub_cmd_request, 0, MQTT_AT_TOPIC_LEN);
     memset(m_sub_feature_request, 0, MQTT_AT_TOPIC_LEN);
     memset(m_sub_feature_download, 0, MQTT_AT_TOPIC_LEN);

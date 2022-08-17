@@ -182,6 +182,7 @@ int update_wifi_ssid(char *ssid) {
 //	LOGD("%s\n", __FUNCTION__);
 	
 	update_section_key(CONFIG_KEY_SSID, ssid);
+	strcpy(btWifiConfig.ssid, ssid);
     save_json_config_file();
 
 	return 0;
@@ -191,9 +192,50 @@ int update_wifi_pwd(char *password) {
 	//LOGD("%s\n", __FUNCTION__);
 	
 	update_section_key(CONFIG_KEY_WIFI_PWD, password);
+    strcpy(btWifiConfig.password, password);
     save_json_config_file();
 
 	return 0;
+}
+
+int update_mqtt_username(char *username) {
+    update_section_key(CONFIG_KEY_MQTT_USER, username);
+    memcpy(mqttConfig.username, username, strlen(username));
+
+    save_json_config_file();
+    return 0;
+}
+
+int update_mqtt_password(char *password) {
+    update_section_key(CONFIG_KEY_MQTT_PASSWORD, password);
+    memcpy(mqttConfig.password, password, strlen(password));
+
+    save_json_config_file();
+    return 0;
+}
+int update_mqtt_ip(char *ip) {
+//    update_section_key(CONFIG_KEY_MQTT_SERVER_IP, ip);
+//    strcpy(mqttConfig.server_ip, ip);
+//    save_json_config_file();
+    char serverUrl[60] = {0};
+    sprintf("%s:%s", ip, mqttConfig.server_port);
+    update_MqttSvr_opt(serverUrl);
+
+    return 0;
+}
+int update_mqtt_port(char *port) {
+    char serverUrl[60] = {0};
+    sprintf("%s:%s", mqttConfig.server_ip, port);
+    update_MqttSvr_opt(serverUrl);
+//    update_section_key(CONFIG_KEY_MQTT_SERVER_PORT, port);
+//    strcpy(mqttConfig.server_port, port);
+//
+//    save_json_config_file();
+    return 0;
+}
+int update_mqtt_id(char *id) {
+    strcpy(mqttConfig.client_id, id);
+    return 0;
 }
 
 int update_mqtt_opt(char *username, char *password)

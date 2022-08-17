@@ -94,21 +94,29 @@ void MqttTestMgr::doTest(int argc, char *cmd, char *data, char *extra) {
 }
 
 void MqttTestMgr::setWifi(char *cmd, char *usage, int argc, char *data, char *extra) {
-    strcpy(btWifiConfig.ssid, data);
-    strcpy(btWifiConfig.password, extra);
+//    strcpy(btWifiConfig.ssid, data);
+    update_wifi_ssid(data);
+//    strcpy(btWifiConfig.password, extra);
+    update_wifi_pwd(extra);
 }
 
 void MqttTestMgr::setMqtt(char *cmd, char *usage, int argc, char *data, char *extra) {
     if (strcmp("ip", data) == 0) {
-        strcpy(mqttConfig.server_ip, extra);
+        update_mqtt_ip(extra);
+//        strcpy(mqttConfig.server_ip, extra);
     } else if (strcmp("port", data) == 0) {
-        strcpy(mqttConfig.server_port, extra);
+        update_mqtt_port(extra);
+//        strcpy(mqttConfig.server_port, extra);
     } else if (strcmp("id", data) == 0) {
-        strcpy(mqttConfig.client_id, extra);
+        update_mqtt_id(extra);
+//        strcpy(mqttConfig.client_id, extra);
     } else if (strcmp("username", data) == 0) {
-        strcpy(mqttConfig.username, extra);
+        update_mqtt_username(extra);
+        MqttTopicMgr::getInstance()->reloadTopic();
+//        strcpy(mqttConfig.username, extra);
     } else if (strcmp("password", data) == 0) {
-        strcpy(mqttConfig.password, extra);
+        update_mqtt_password(extra);
+//        strcpy(mqttConfig.password, extra);
     } else {
         help(cmd);
 //        LOGE("%s USAGE:\r\n", cmd);

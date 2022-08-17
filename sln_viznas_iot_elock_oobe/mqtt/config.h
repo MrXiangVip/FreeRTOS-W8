@@ -88,7 +88,12 @@ extern "C"  {
 	int update_need_reconnect(char *need_reconnect) ;
 	int update_wifi_ssid(char *ssid) ;
 	int update_wifi_pwd(char *password) ;
-	int update_mqtt_opt(char *username, char *password) ;
+	int update_mqtt_username(char *username);
+	int update_mqtt_password(char *password);
+    int update_mqtt_ip(char *ip);
+    int update_mqtt_port(char *port);
+    int update_mqtt_id(char *id);
+    int update_mqtt_opt(char *username, char *password);
 	int update_bt_info(char *version, char *mac) ;
 	int update_MqttSvr_opt(char *MqttSvrUrl) ;
 	int update_mcu_info(char *version) ;
