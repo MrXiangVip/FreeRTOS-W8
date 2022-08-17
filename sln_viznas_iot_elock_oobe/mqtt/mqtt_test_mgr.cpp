@@ -15,6 +15,7 @@
 #include "mqtt_topic_mgr.h"
 #include "mqtt_cmd_mgr.h"
 #include "mqtt_conn_mgr.h"
+#include "mqtt_feature_mgr.h"
 #include "mqtt_manager.h"
 #include "mqtt-remote-feature.h"
 #include "base64.h"
@@ -23,12 +24,6 @@
 #include "MCU_UART5_Layer.h"
 #include "DBManager.h"
 #include "config.h"
-
-#define TEST_ADD_RECORD     "addrecord"
-#define TEST_LIST_RECORD    "listrecord"
-#define TEST_PUB_RAW        "pubraw"
-#define TEST_SET_WIFI       "setwifi"
-#define TEST_SET_MQTT       "setmqtt"
 
 #define TEST_CMD_DEFINE(cmd, argc, usage, callback) { MqttTest mqttTest_##cmd((#cmd), (argc), (usage), (callback)); m_mqtt_tests.push_back(mqttTest_##cmd); }
 
@@ -48,6 +43,7 @@ MqttTestMgr::MqttTestMgr() {
 
     // mqtt
     TEST_CMD_DEFINE(pubraw, 3, (char*)("test pubraw data"), &MqttTestMgr::pubRaw);
+    TEST_CMD_DEFINE(upload, 3, (char*)("test upload uuid"), &MqttTestMgr::uploadFeature);
 
     // connectivity
     TEST_CMD_DEFINE(setwifi, 4, (char*)("test setwifi ssid password"), &MqttTestMgr::setWifi);
@@ -206,6 +202,11 @@ void MqttTestMgr::pubRaw(char *cmd, char *usage, int argc, char *data, char *ext
     char *pubTopic = MqttTopicMgr::getInstance()->getPubTopicActionRecord();
     int result = MqttConnMgr::getInstance()->publishRawMQTT(pubTopic, data, strlen(data));
     LOGD("do pubRaw result %d\r\n", result);
+}
+
+void MqttTestMgr::uploadFeature(char *cmd, char *usage, int argc, char *data, char *extra) {
+    int result = MqttFeatureMgr::getInstance()->uploadFeature(data);
+    LOGD("do uploadFeature result %d\r\n", result);
 }
 
 void MqttTestMgr::reconn(char *cmd, char *usage, int argc, char *data, char *extra) {
