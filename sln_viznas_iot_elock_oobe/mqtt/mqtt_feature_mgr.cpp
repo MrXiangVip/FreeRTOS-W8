@@ -227,7 +227,8 @@ int MqttFeatureMgr::requestFeature(char *jsonMsg) {
     if (uuid == NULL) {
         MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_ERROR, msg_idStr);
     } else {
-        uploadFeature(uuid, msg_idStr);
+//        uploadFeature(uuid, msg_idStr);
+        MqttCmdMgr::getInstance()->requestFeature(uuid);
     }
 
     if (mqtt != NULL) {
