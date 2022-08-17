@@ -236,7 +236,7 @@ void MqttCmdMgr::doHeartBeat() {
     char *msgId = MqttCmdMgr::getInstance()->genMsgId();
     sprintf(pubMsg,
             "{\\\"id\\\":\\\"%s\\\"\\,\\\"ts\\\":%d\\,\\\"wr\\\":%d\\,\\\"idx\\\":%d\\,\\\"ver\\\":\\\"%s\\\"}",
-            msgId, ws_systime, MqttConnMgr::getInstance()->getWifiRSSI(), heartbeatIdx++, "");
+            msgId, ws_systime, MqttConnMgr::getInstance()->getWifiRSSI(), heartbeatIdx++, versionConfig.sys_ver);
     char *topic = MqttTopicMgr::getInstance()->getPubTopicHeartBeat();
     int result = MqttConnMgr::getInstance()->publishMQTT(topic, pubMsg);
     if (result != 0) {
