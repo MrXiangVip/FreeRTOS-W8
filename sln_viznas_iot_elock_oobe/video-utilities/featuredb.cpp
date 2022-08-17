@@ -1098,25 +1098,27 @@ int FeatureDB::update_feature(uint16_t id, const std::string name, float *featur
 int FeatureDB::get_feature(uint16_t id, float *feature)
 {
     int index = FEATUREDATA_MAX_COUNT;
-    FeatureItem item_t;
+//    FeatureItem item_t;
+    FeatureItem *item_t = (FeatureItem*)pvPortMalloc(sizeof(FeatureItem));
 
     for (int i = 0; i < FEATUREDATA_MAX_COUNT; i++)
     {
         if (s_FeatureMap.magic[i] == FEATUREDATA_MAGIC_VALID)
         {
 #if SDRAM_DB
-            memcpy(&item_t, &s_FeatureItem[i], sizeof(item_t));
+            memcpy(item_t, &s_FeatureItem[i], sizeof(FeatureItem));
 #else
-            Flash_FacerecFsReadItem(i,&item_t);
+            Flash_FacerecFsReadItem(i,item_t);
 #endif
-            if (id == item_t.id)
+            if (id == item_t->id)
             {
                 index = i;
-                memcpy(feature, item_t.feature,OASISLT_getFaceItemSize());
+                memcpy(feature, item_t->feature,OASISLT_getFaceItemSize());
                 break;
             }
         }
     }
+    vPortFree(item_t);
 
     if (index == FEATUREDATA_MAX_COUNT)
     {
