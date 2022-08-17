@@ -195,9 +195,9 @@ int MqttFeatureMgr::uploadFeature(char *uuid, char *msgId) {
     md5_str[MD5_STR_LEN] = '\0'; // add end
 
     // Step 3: set data with format {"msgId": msgId, "u": uuid, "s": sign, "d": base64}
-    char *featureJson = (char*)pvPortMalloc(base64Len + 100);
+    char *featureJson = (char*)pvPortMalloc(base64Len + 150);
     sprintf(featureJson,
-            "{\"id\":\"%s\",\"u\":\"%s\",\"s\":%s,\"l\":%d,\"d\":\"%s\"}",
+            "{\"id\":\"%s\",\"u\":\"%s\",\"s\":\"%s\",\"l\":%d,\"d\":\"%s\"}",
             (msgId != NULL ? msgId : MqttCmdMgr::getInstance()->genMsgId()), uuid, md5_str, featureLen, featureBase64);
 
     int ret = MqttConnMgr::getInstance()->publishRawMQTT(pubTopic, featureJson, strlen(featureJson));
