@@ -313,19 +313,20 @@ static void vReceiveOasisTask(void *pvParameters) {
                             Oasis_SetOasisFileName(record->image_path);
                             Oasis_WriteJpeg();
                             REG_RESULT_FLG = 0; //和后台同步, 0 表示成功
-//                            // TODO: zgx upload feature to server
-//                            char *msgId = gen_msgId();
-//                            LOGD("%s往数据库中插入本次注册记录 %s\r\n", logtag, record->UUID);
-//                            doFeatureUpload(msgId, record->UUID);
-
+                            cmdRegResultNotifyReq( &objUserExtend, REG_RESULT_FLG);
+//                           请求上传记录
+                            LOGD("注册成功,请求MQTT上传本次用户注册记录 \n");
+                            int ID = DBManager::getInstance()->getLastRecordID();
+                            cmdRequestMqttUpload(ID);
                         }else if( faceInfo->enrolment_result == OASIS_REG_RESULT_DUP){
                             LOGD("重复注册 \r\n");
                             REG_RESULT_FLG = 9;// 和后台同步, 9 表示重复注册
+                            cmdRegResultNotifyReq( &objUserExtend, REG_RESULT_FLG);
                         }else{
                             LOGD("注册失败 \r\n");
                             REG_RESULT_FLG = 1; //和后台同步, 1 表示失败
+                            cmdRegResultNotifyReq( &objUserExtend, REG_RESULT_FLG);
                         }
-                        cmdRegResultNotifyReq( &objUserExtend, REG_RESULT_FLG);
                         if( xSemaphoreTake( workCountSemaphore,0 ) ==pdTRUE ){
                             LOGD("xSemaphoreTake ok! \r\n");
                         }else{
