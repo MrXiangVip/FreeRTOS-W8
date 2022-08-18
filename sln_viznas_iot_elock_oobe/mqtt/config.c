@@ -218,14 +218,14 @@ int update_mqtt_ip(char *ip) {
 //    strcpy(mqttConfig.server_ip, ip);
 //    save_json_config_file();
     char serverUrl[60] = {0};
-    sprintf("%s:%s", ip, mqttConfig.server_port);
+    sprintf(serverUrl, "%s:%s", ip, mqttConfig.server_port);
     update_MqttSvr_opt(serverUrl);
 
     return 0;
 }
 int update_mqtt_port(char *port) {
     char serverUrl[60] = {0};
-    sprintf("%s:%s", mqttConfig.server_ip, port);
+    sprintf(serverUrl, "%s:%s", mqttConfig.server_ip, port);
     update_MqttSvr_opt(serverUrl);
 //    update_section_key(CONFIG_KEY_MQTT_SERVER_PORT, port);
 //    strcpy(mqttConfig.server_port, port);

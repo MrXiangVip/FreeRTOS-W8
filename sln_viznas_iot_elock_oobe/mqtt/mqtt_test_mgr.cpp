@@ -95,24 +95,30 @@ void MqttTestMgr::setWifi(char *cmd, char *usage, int argc, char *data, char *ex
     update_wifi_ssid(data);
 //    strcpy(btWifiConfig.password, extra);
     update_wifi_pwd(extra);
+//    reconn(NULL, NULL, 3, "wifi");
 }
 
 void MqttTestMgr::setMqtt(char *cmd, char *usage, int argc, char *data, char *extra) {
     if (strcmp("ip", data) == 0) {
         update_mqtt_ip(extra);
+//        reconn(NULL, NULL, 3, "mqtt");
 //        strcpy(mqttConfig.server_ip, extra);
     } else if (strcmp("port", data) == 0) {
         update_mqtt_port(extra);
+//        reconn(NULL, NULL, 3, "mqtt");
 //        strcpy(mqttConfig.server_port, extra);
     } else if (strcmp("id", data) == 0) {
         update_mqtt_id(extra);
+//        reconn(NULL, NULL, 3, "mqtt");
 //        strcpy(mqttConfig.client_id, extra);
     } else if (strcmp("username", data) == 0) {
         update_mqtt_username(extra);
         MqttTopicMgr::getInstance()->reloadTopic();
+//        reconn(NULL, NULL, 3, "mqtt");
 //        strcpy(mqttConfig.username, extra);
     } else if (strcmp("password", data) == 0) {
         update_mqtt_password(extra);
+//        reconn(NULL, NULL, 3, "mqtt");
 //        strcpy(mqttConfig.password, extra);
     } else {
         help(cmd);
@@ -257,21 +263,37 @@ void MqttTestMgr::saveConfig(char *cmd, char *usage, int argc, char *data, char 
 
 void MqttTestMgr::switchConfig(char *cmd, char *usage, int argc, char *data, char *extra) {
     if (strcmp(data, "w8") == 0) {
-        strcpy(btWifiConfig.ssid, "guest");
-        strcpy(btWifiConfig.password, "wave202205");
-        strcpy(mqttConfig.server_ip, "mqtt.wavewisdom.com");
-        strcpy(mqttConfig.server_port, "2883");
-        strcpy(mqttConfig.client_id, "F9BA971B147D");
-        strcpy(mqttConfig.username, "F9BA971B147D");
-        strcpy(mqttConfig.password, "dQEtim6M");
+        setWifi(NULL, NULL, 4, "guest", "wave202205");
+//        strcpy(btWifiConfig.ssid, "guest");
+//        strcpy(btWifiConfig.password, "wave202205");
+
+        setMqtt(NULL, NULL, 4, "ip", "mqtt.wavewisdom.com");
+        setMqtt(NULL, NULL, 4, "port", "2883");
+        setMqtt(NULL, NULL, 4, "id", "F9BA971B147D");
+        setMqtt(NULL, NULL, 4, "username", "F9BA971B147D");
+        setMqtt(NULL, NULL, 4, "password", "dQEtim6M");
+//        reconn(NULL, NULL, 3, "wifi");
+//        strcpy(mqttConfig.server_ip, "mqtt.wavewisdom.com");
+//        strcpy(mqttConfig.server_port, "2883");
+//        strcpy(mqttConfig.client_id, "F9BA971B147D");
+//        strcpy(mqttConfig.username, "F9BA971B147D");
+//        strcpy(mqttConfig.password, "dQEtim6M");
     } else if (strcmp(data, "r60") == 0) {
-        strcpy(btWifiConfig.ssid, "wave-soft");
-        strcpy(btWifiConfig.password, "wave.123456");
-        strcpy(mqttConfig.server_ip, "10.0.14.90");
-        strcpy(mqttConfig.server_port, "1883");
-        strcpy(mqttConfig.client_id, "F9BA971B147D");
-        strcpy(mqttConfig.username, "F9BA971B147D");
-        strcpy(mqttConfig.password, "dQEtim6M");
+        setWifi(NULL, NULL, 4, "wave-soft", "wave.123456");
+//        strcpy(btWifiConfig.ssid, "wave-soft");
+//        strcpy(btWifiConfig.password, "wave.123456");
+
+        setMqtt(NULL, NULL, 4, "ip", "10.0.14.90");
+        setMqtt(NULL, NULL, 4, "port", "1883");
+        setMqtt(NULL, NULL, 4, "id", "F9BA971B147D");
+        setMqtt(NULL, NULL, 4, "username", "F9BA971B147D");
+        setMqtt(NULL, NULL, 4, "password", "dQEtim6M");
+//        reconn(NULL, NULL, 3, "wifi");
+//        strcpy(mqttConfig.server_ip, "10.0.14.90");
+//        strcpy(mqttConfig.server_port, "1883");
+//        strcpy(mqttConfig.client_id, "F9BA971B147D");
+//        strcpy(mqttConfig.username, "F9BA971B147D");
+//        strcpy(mqttConfig.password, "dQEtim6M");
     } else {
         help(cmd);
     }

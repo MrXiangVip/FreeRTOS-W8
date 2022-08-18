@@ -56,27 +56,27 @@ public:
 
     // utils
     static void help(char *cmd = NULL, char *usage = NULL, int argc = 0, char *data = NULL, char *extra = NULL);
-    static void getTime(char *cmd, char *usage, int argc, char *data, char *extra);
-    static void setTime(char *cmd, char *usage, int argc, char *data, char *extra);
+    static void getTime(char *cmd, char *usage, int argc, char *data = NULL, char *extra = NULL);
+    static void setTime(char *cmd, char *usage, int argc, char *data, char *extra = NULL);
 
     // records
-    static void addRecord(char *cmd, char *usage, int argc, char *data, char *extra);
-    static void listRecords(char *cmd, char *usage, int argc, char *data, char *extra);
+    static void addRecord(char *cmd, char *usage, int argc, char *data = NULL, char *extra = NULL);
+    static void listRecords(char *cmd, char *usage, int argc, char *data = NULL, char *extra = NULL);
 
     // mqtt
-    static void pubRaw(char *cmd, char *usage, int argc, char *data, char *extra);
-    static void uploadFeature(char *cmd, char *usage, int argc, char *data, char *extra);
-    static void pubImage(char *cmd, char *usage, int argc, char *data, char *extra);
+    static void pubRaw(char *cmd, char *usage, int argc, char *data, char *extra = NULL);
+    static void uploadFeature(char *cmd, char *usage, int argc, char *data = NULL, char *extra = NULL);
+    static void pubImage(char *cmd, char *usage, int argc, char *data, char *extra = NULL);
 
     // connectivity
     static void setWifi(char *cmd, char *usage, int argc, char *data, char *extra);
     static void setMqtt(char *cmd, char *usage, int argc, char *data, char *extra);
-    static void reconn(char *cmd, char *usage, int argc, char *data, char *extra);
+    static void reconn(char *cmd, char *usage, int argc, char *data, char *extra = NULL);
 
     // config
-    static void printConfig(char *cmd, char *usage, int argc, char *data, char *extra);
-    static void saveConfig(char *cmd, char *usage, int argc, char *data, char *extra);
-    static void switchConfig(char *cmd, char *usage, int argc, char *data, char *extra);
+    static void printConfig(char *cmd, char *usage, int argc, char *data = NULL, char *extra = NULL);
+    static void saveConfig(char *cmd, char *usage, int argc, char *data = NULL, char *extra = NULL);
+    static void switchConfig(char *cmd, char *usage, int argc, char *data, char *extra = NULL);
 };
 
 #endif //_MQTT_TEST_MGR_H_
