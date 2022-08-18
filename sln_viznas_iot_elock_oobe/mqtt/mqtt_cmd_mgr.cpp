@@ -164,7 +164,7 @@ int MqttCmdMgr::pushRecord(Record *record, int cmdType, int priority, int force)
         for (int i = 0; i < m_uploading_records.size(); i++) {
             if (m_uploading_records[i] == id) {
                 LOGD("pushRecrod find id %d\r\n", id);
-                return -1;
+                return 0;
             }
         }
     }

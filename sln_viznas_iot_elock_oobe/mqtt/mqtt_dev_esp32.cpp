@@ -264,7 +264,7 @@ int MqttDevEsp32::sendRawATCmd(char const *cmd, char *data, int data_len, int cm
 
     if (data_len > 25000) {
         LOGD("start AT raw command %s data_len is greater than 25000 which may cause fail\r\n", cmd);
-        return -1;
+        return 0;
     }
 
     lockSendATCmd();
