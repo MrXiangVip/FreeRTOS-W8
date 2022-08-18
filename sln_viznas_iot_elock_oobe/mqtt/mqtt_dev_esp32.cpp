@@ -172,7 +172,9 @@ int MqttDevEsp32::sendATCmd(char const *cmd, int cmd_timeout_usec, int retry_tim
             if (AT_CMD_RESULT_OK == m_at_cmd_result || AT_CMD_RESULT_ERROR == m_at_cmd_result) {
                 // at_cmd_mode = AT_CMD_MODE_INACTIVE;
                 LOGD("<<<<<< run command %s %s\r\n\r\n", cmd, (m_at_cmd_result == AT_CMD_RESULT_OK) ? "OK": "ERROR");
-                unlockSendATCmd();
+                if (lock) {
+                    unlockSendATCmd();
+                }
                 return m_at_cmd_result;
 //            } else {
 //                LOGD("run command %s %d\r\n", cmd, m_at_cmd_result);
@@ -260,6 +262,11 @@ int MqttDevEsp32::sendRawATCmd(char const *cmd, char *data, int data_len, int cm
     int ret = 0;
     LOGD("start AT raw command %s data_len is %d\r\n", cmd, data_len);
 
+    if (data_len > 25000) {
+        LOGD("start AT raw command %s data_len is greater than 25000 which may cause fail\r\n", cmd);
+        return -1;
+    }
+
     lockSendATCmd();
     // Attention: lock parameter should be set to 0 to avoid dead lock
     ret = sendATCmd(cmd, cmd_timeout_usec, retry_times, 0);
@@ -271,6 +278,8 @@ int MqttDevEsp32::sendRawATCmd(char const *cmd, char *data, int data_len, int cm
             LOGD("Failed to run raw command\r\n");
             m_at_cmd_result = AT_CMD_RESULT_ERROR;
             unlockSendATCmd();
+            MqttConnMgr::getInstance()->resetWifi();
+            MqttConnMgr::getInstance()->reconnectWifiAsync();
             return m_at_cmd_result;
         } else {
             LOGD("Succeed to run raw command\r\n");
@@ -293,6 +302,8 @@ int MqttDevEsp32::sendRawATCmd(char const *cmd, char *data, int data_len, int cm
             LOGD("run raw at cmd error\r\n");
             m_at_cmd_result = AT_CMD_RESULT_TIMEOUT;
             unlockSendATCmd();
+            MqttConnMgr::getInstance()->resetWifi();
+            MqttConnMgr::getInstance()->reconnectWifiAsync();
 
             return m_at_cmd_result;
         }
