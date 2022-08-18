@@ -42,8 +42,9 @@ MqttTestMgr::MqttTestMgr() {
     TEST_CMD_DEFINE(listrecords, 2, (char*)("test listrecords"), &MqttTestMgr::listRecords);
 
     // mqtt
-    TEST_CMD_DEFINE(pubraw, 3, (char*)("test pubraw data"), &MqttTestMgr::pubRaw);
+    TEST_CMD_DEFINE(pubraw, 3, (char*)("test pubraw [SIZE|data]"), &MqttTestMgr::pubRaw);
     TEST_CMD_DEFINE(upload, 3, (char*)("test upload uuid"), &MqttTestMgr::uploadFeature);
+    TEST_CMD_DEFINE(pubimg , 3, (char*)("test pubimg filename"), &MqttTestMgr::pubImage);
 
     // connectivity
     TEST_CMD_DEFINE(setwifi, 4, (char*)("test setwifi ssid password"), &MqttTestMgr::setWifi);
@@ -199,14 +200,41 @@ void MqttTestMgr::listRecords(char *cmd, char *usage, int argc, char *data, char
 }
 
 void MqttTestMgr::pubRaw(char *cmd, char *usage, int argc, char *data, char *extra) {
+    int result = 0;
+    int size = atoi(data);
     char *pubTopic = MqttTopicMgr::getInstance()->getPubTopicActionRecord();
-    int result = MqttConnMgr::getInstance()->publishRawMQTT(pubTopic, data, strlen(data));
-    LOGD("do pubRaw result %d\r\n", result);
+    if (size == 0) {
+        result = MqttConnMgr::getInstance()->publishRawMQTT(pubTopic, data, strlen(data));
+    } else {
+        char *dataGen = (char*)pvPortMalloc(size + 1);
+        memset(dataGen, '1', size);
+        dataGen[size] = '\0';
+        result = MqttConnMgr::getInstance()->publishRawMQTT(pubTopic, dataGen, strlen(dataGen));
+    }
+    LOGD("do pubRaw %s result %d\r\n", data, result);
 }
 
 void MqttTestMgr::uploadFeature(char *cmd, char *usage, int argc, char *data, char *extra) {
     int result = MqttFeatureMgr::getInstance()->uploadFeature(data);
     LOGD("do uploadFeature result %d\r\n", result);
+}
+
+void MqttTestMgr::pubImage(char *cmd, char *usage, int argc, char *data, char *extra) {
+    int result = 0;
+//    if (argc == 4) {
+//        int size = atoi(data);
+//        char *pubTopic = MqttTopicMgr::getInstance()->getPubTopicActionRecord();
+//        char *dataGen = (char*)pvPortMalloc(size + 1);
+//        memset(dataGen, '1', size);
+//        dataGen[size] = '\0';
+//        result = MqttConnMgr::getInstance()->publishRawMQTT(pubTopic, dataGen, strlen(dataGen));
+//        LOGD("do pubImage auto generated data len %d result %d\r\n", strlen(dataGen), result);
+//        vPortFree(dataGen);
+//    } else {
+//    int result = MqttFeatureMgr::getInstance()->uploadFeature(data);
+// TODO:
+        LOGD("do pubImage %s result %d\r\n", data, result);
+//    }
 }
 
 void MqttTestMgr::reconn(char *cmd, char *usage, int argc, char *data, char *extra) {

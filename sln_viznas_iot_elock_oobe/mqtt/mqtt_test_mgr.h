@@ -66,6 +66,7 @@ public:
     // mqtt
     static void pubRaw(char *cmd, char *usage, int argc, char *data, char *extra);
     static void uploadFeature(char *cmd, char *usage, int argc, char *data, char *extra);
+    static void pubImage(char *cmd, char *usage, int argc, char *data, char *extra);
 
     // connectivity
     static void setWifi(char *cmd, char *usage, int argc, char *data, char *extra);
