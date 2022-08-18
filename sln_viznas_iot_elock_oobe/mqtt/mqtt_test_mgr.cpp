@@ -243,6 +243,9 @@ void MqttTestMgr::pubImage(char *cmd, char *usage, int argc, char *data, char *e
             LOGD("memory_error1");
             return;
         }
+        if (leftLen < size) {
+            size = leftLen;
+        }
         result = fatfs_read(data, buffer, sentLen, size);
         sentLen += size;
         leftLen -= size;
