@@ -227,20 +227,41 @@ void MqttTestMgr::uploadFeature(char *cmd, char *usage, int argc, char *data, ch
 
 void MqttTestMgr::pubImage(char *cmd, char *usage, int argc, char *data, char *extra) {
     int result = 0;
-//    if (argc == 4) {
-//        int size = atoi(data);
-//        char *pubTopic = MqttTopicMgr::getInstance()->getPubTopicActionRecord();
-//        char *dataGen = (char*)pvPortMalloc(size + 1);
-//        memset(dataGen, '1', size);
-//        dataGen[size] = '\0';
-//        result = MqttConnMgr::getInstance()->publishRawMQTT(pubTopic, dataGen, strlen(dataGen));
-//        LOGD("do pubImage auto generated data len %d result %d\r\n", strlen(dataGen), result);
-//        vPortFree(dataGen);
-//    } else {
-//    int result = MqttFeatureMgr::getInstance()->uploadFeature(data);
-// TODO:
-        LOGD("do pubImage %s result %d\r\n", data, result);
-//    }
+    LOGD("do pubImage %s result %d\r\n", data, result);
+    int fileSize = fatfs_getsize(data);
+    LOGD("%s size is %d\r\n", pubImage, fileSize);
+    if(fileSize == 0) {
+        return;
+    }
+    int size = 18000;
+    int sentLen = 0;
+    int leftLen = fileSize;
+    while (sentLen < fileSize) {
+        //分配内存存储整个图片
+        char *buffer = (char *) pvPortMalloc((size / 4 + 1) * 4);
+        if (NULL == buffer) {
+            LOGD("memory_error1");
+            return;
+        }
+        result = fatfs_read(data, buffer, sentLen, size);
+        sentLen += size;
+        leftLen -= size;
+
+        //base64编码
+        char *buffer1 = (char *) pvPortMalloc((size / 3 + 1) * 4 + 1);
+        if (NULL == buffer1) {
+            LOGD("memory_error2");
+            vPortFree(buffer);
+            return;
+        }
+        char *ret1 = base64_encode(buffer, buffer1, size);
+        char *pubTopic = MqttTopicMgr::getInstance()->getPubTopicActionRecord();
+        MqttConnMgr::getInstance()->publishRawMQTT(pubTopic, buffer1, strlen(buffer1));
+        vPortFree(buffer1);
+        vPortFree(buffer);
+
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
 }
 
 void MqttTestMgr::reconn(char *cmd, char *usage, int argc, char *data, char *extra) {
