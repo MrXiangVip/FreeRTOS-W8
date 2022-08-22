@@ -7,6 +7,8 @@
 #include "FreeRTOS.h"
 #include "semphr.h"
 
+
+static char *logtag ="[DBManager]:";
 DBManager* DBManager::m_instance = NULL;
 list<Record*> DBManager::recordList ;
 
@@ -65,7 +67,7 @@ DBManager* DBManager::getInstance()
 
 bool DBManager::saveRecordToFile(list<Record*> recordList,char *filePath){
 
-    LOGD("----- 保存记录文件-----\r\n");
+    LOGD("%s----- 保存记录文件-----\r\n",logtag);
 #ifdef  FIX_SIZE
     LOGD("-----0.写回固定文件-----\r\n");
 
@@ -73,7 +75,7 @@ bool DBManager::saveRecordToFile(list<Record*> recordList,char *filePath){
     LOGD("-----0.删除文件-----\r\n");
     fatfs_delete( filePath );
 #endif
-    LOGD("-----1.将链表数据组织成json格式-----\r\n");
+    LOGD("%s-----1.将链表数据组织成json格式-----\r\n",logtag);
     list <Record*>::iterator it;
     char 	*cjson_str = NULL;
     cJSON 	*jsonroot = NULL;
@@ -132,11 +134,11 @@ bool DBManager::saveRecordToFile(list<Record*> recordList,char *filePath){
 		vPortFree(cjson_str);
     }
     cJSON_Delete(jsonroot);
-    LOGD("----- 保存记录文件结束-----\r\n");
+    LOGD("%s ----- 保存记录文件结束-----\r\n",logtag);
     return true;
 }
 list<Record*> DBManager::readRecordFromFile(char *filePath){
-    LOGD("-----1.从文件中读出json格式的记录-----\r\n");
+    LOGD("%s -----1.从文件中读出json格式的记录-----\r\n",logtag);
     int ArrLen = 0;
     int fsize=0;
 #ifdef FIX_SIZE
@@ -153,13 +155,13 @@ list<Record*> DBManager::readRecordFromFile(char *filePath){
         memset(buf, 0, fsize);
         int status = fatfs_read(filePath, buf, 0, fsize);
         //LOGD("status %d file size %d ,%s \r\n", status, fsize, buf);
-        LOGD("status %d file size %d\r\n", status, fsize);
+        LOGD("%s status %d file size %d\r\n",logtag, status, fsize);
 
         if (status == 0)
         {
 			cJSON *jsonroot = cJSON_Parse(buf);
 			//4. 解析数组成员是json对象的数组ObjArr
-			LOGD("------2.将json 格式数据组织成链表---------\r\n");
+			LOGD("%s------2.将json 格式数据组织成链表---------\r\n",logtag);
 			cJSON *ObjArr = cJSON_GetObjectItem(jsonroot, DB_KEY_INFO);
 			if (cJSON_IsArray(ObjArr)) {
 				ArrLen = cJSON_GetArraySize(ObjArr);
@@ -197,18 +199,18 @@ list<Record*> DBManager::readRecordFromFile(char *filePath){
 
 			cJSON_Delete(jsonroot);
         }else {
-        	 LOGD("readRecordFromFile status = %d \r\n", status);
+        	 LOGD("%s readRecordFromFile status = %d \r\n",logtag, status);
         }
     }
 
-    LOGD("%s end\r\n", __FUNCTION__);
+    LOGD("%s %s end\r\n",logtag, __FUNCTION__);
     return  recordList;
 }
 // 初始化DB
 void DBManager::initDB()
 {
 
-    LOGD("------初始化------ \r\n");
+    LOGD("%s------初始化------ \r\n",logtag);
     readRecordFromFile(RECORD_PATH);
 }
 
@@ -220,7 +222,7 @@ int DBManager::addRecord(Record *record){
 
 	int id = getLastRecordID()+1;
     int count = recordList.size();
-    LOGD("增加操作记录 %d  最大记录限制到 %d\r\n", id, max_size);
+    LOGD("%s增加操作记录 %d , uuid %s, 最大记录限制到 %d\r\n",logtag, id, record->UUID, max_size);
     if( count >= MAX_COLUMN ){
         record->ID=id;
 #if 0
@@ -253,7 +255,7 @@ int DBManager::addRecord(Record *record){
 
 int  DBManager::getAllUnuploadRecordCount()
 {
-    LOGD("获取操作成功但未上传记录总数 \r\n");
+    LOGD("%s获取操作成功但未上传记录总数 \r\n",logtag);
     if( recordList.empty()== true ){
         getAllUnuploadRecord();
     }
@@ -270,7 +272,7 @@ list<Record*>  DBManager::getAllUnuploadRecord()
 {
     Record_Lock();
 
-    LOGD("获取全部开门成功，但未上传的识别记录 \r\n");
+    LOGD("%s 获取全部开门成功，但未上传的识别记录 \r\n",logtag);
     list <Record*>::iterator it;
     for ( it = recordList.begin( ); it != recordList.end( ); ) {
         Record *tmpRecord = (Record *) *it;
@@ -290,7 +292,7 @@ Record*  DBManager::getLastRecord(   )
 {
     Record_Lock();
 
-    LOGD("获取最后一条记录 \r\n");
+    LOGD("%s 获取最后一条记录 \r\n",logtag);
     Record *record= NULL;
     if( recordList.empty() != true ){
         record = recordList.back();
@@ -306,7 +308,7 @@ Record*  DBManager::getLastRecord(   )
 }
 
 int DBManager::getLastRecordID(){
-        LOGD("获取最后一条记录\r\n");
+        LOGD("%s 获取最后一条记录的ID\r\n",logtag);
         Record_Lock();
 
         int ID=0;
@@ -324,7 +326,7 @@ int DBManager::getLastRecordID(){
 
 int DBManager::getRecordByID( int id, Record *record )
 {
-    LOGD("查找ID为 %d 的记录 \r\n", id);
+    LOGD("%s 查找ID为 %d 的记录 \r\n",logtag, id);
     Record_Lock();
 
     int ret=-1;
@@ -341,7 +343,7 @@ int DBManager::getRecordByID( int id, Record *record )
 }
 bool  DBManager::updateRecordByID(Record *record)
 {
-    LOGD("更新ID匹配的识别记录\r\n");
+    LOGD("%s 更新ID匹配的识别记录\r\n",logtag);
     Record_Lock();
 
     list <Record*>::iterator it;
@@ -357,13 +359,13 @@ bool  DBManager::updateRecordByID(Record *record)
 }
 bool  DBManager::updateLastRecordStatus(int status, long currTime)
 {
-    LOGD("更新最后一条记录\r\n");
+    LOGD("%s 更新最后一条记录\r\n",logtag);
     return  true;
 }
 
 int DBManager::clearRecord()
 {
-    LOGD("清空操作记录 \r\n");
+    LOGD("%s 清空操作记录 \r\n",logtag);
     Record_Lock();
 
     int ret = 0;
@@ -386,7 +388,7 @@ int DBManager::clearRecord()
 }
 bool DBManager::deleteRecordByUUID(char *UUID )
 {
-    LOGD("删除用户UUID %s 对应的操作记录 \r\n", UUID);
+    LOGD("%s 删除用户UUID %s 对应的操作记录 \r\n",logtag, UUID);
     Record_Lock();
 
     bool flag=false;

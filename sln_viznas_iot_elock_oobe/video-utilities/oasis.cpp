@@ -1148,7 +1148,6 @@ int Oasis_Start()
     }
 
     //UsbShell_Printf("[OASIS]:started\r\n");
-    LOGD("[OASIS]:started\r\n");
 
 error_cases:
     if (ret != 0)
@@ -1158,6 +1157,7 @@ error_cases:
         Oasis_Exit();
     }
 
+    LOGD("[OASIS]:started %d\r\n",ret);
     return ret;
 }
 

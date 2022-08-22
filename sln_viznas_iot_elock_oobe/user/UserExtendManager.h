@@ -56,22 +56,22 @@ typedef struct{
 //    long    uEndTime;       // 用户订单的结束时间
 //    char    cDeviceId[48];  // 设备列表
 //    long    lCreateTime;    //用户在内存里创建的时间 用于过滤频繁注册和识别
-}UserExtendType;
+}UserExtendClass;
 
 //全局的用户信息
-extern  UserExtendType  objUserExtend;
 
-//xshx add 将 UserExtendType 转成UserExtend json
-extern void vConvertUserExtendType2Json(UserExtendType *regist, UserExtend  *userExtend);
+//xshx add 将 UserExtendClass 转成UserExtend json
+//extern void vConvertUserExtendType2Json(UserExtendClass *regist, UserExtend  *userExtend);
 //xshx 将UserExtend json 转成UserExtendType
-extern void vConverUserExtendJson2Type(UserExtend  *userExtend, unsigned int lCreateTime,  UserExtendType *userExtendType);
+//extern void vConverUserExtendJson2Type(UserExtend  *userExtend, unsigned int lCreateTime,  UserExtendClass *userExtendType);
 
 #ifdef __cplusplus
 class UserExtendManager {
     private:
         static UserExtendManager *m_instance;
-        static uint32_t        userExtend_FS_Head;
+        static uint32_t         userExtend_FS_Head;
 
+        static UserExtendClass       gUserExtend;
         UserExtendManager();
 
         int get_free_index();
@@ -95,7 +95,9 @@ class UserExtendManager {
 
         int clearAllUserExtend(  );
 
+        void setCurrentUser(char *uuid);// set a user
 
+        UserExtendClass *getCurrentUser( );//get a user
 };
 #endif
 #endif //USEREXTEND_USEREXTENDMANAGER_H

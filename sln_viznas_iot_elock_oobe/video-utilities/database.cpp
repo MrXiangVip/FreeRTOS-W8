@@ -25,7 +25,7 @@
 static FeatureDB *s_DB             = NULL;
 static SemaphoreHandle_t s_DB_Lock = NULL;
 
-static char *logtag ="[DataBase] ";
+static char *logtag ="[DataBase]: ";
 /*******************************************************************************
  * Code
  *******************************************************************************/

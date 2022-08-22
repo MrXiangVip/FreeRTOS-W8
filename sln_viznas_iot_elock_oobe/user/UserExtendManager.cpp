@@ -13,11 +13,10 @@
 static  const char * logtag="[UserExtendManager] ";
 
 //全局的用户 包含的数据集合
-UserExtendType  objUserExtend={0};
 
-
-UserExtendManager* UserExtendManager::m_instance = NULL;
-uint32_t UserExtendManager::userExtend_FS_Head = NULL;
+UserExtendManager*  UserExtendManager::m_instance = NULL; //用户管理类的实例
+UserExtendClass      UserExtendManager::gUserExtend ; // 表示一个全局的用户
+uint32_t            UserExtendManager::userExtend_FS_Head = NULL;//头地址
 
 typedef enum {
     RECORD_MGMT_OK      = 0x00,
@@ -199,8 +198,21 @@ int UserExtendManager::clearAllUserExtend(  ){
 }
 
 
+void UserExtendManager::setCurrentUser(char *uuid){
+    LOGD("%s set current user  %s\r\n", logtag, uuid);
+    memset( &gUserExtend, 0, sizeof(gUserExtend) );
+    strcpy( gUserExtend.UUID, uuid);
+    StrToHex( gUserExtend.HexUID, gUserExtend.UUID, sizeof(gUserExtend.HexUID) );//将uuid 转成16进制 hexuid
+    return;
+}
+
+UserExtendClass *UserExtendManager::getCurrentUser( ){
+    LOGD("%s get current user \r\n", logtag);
+    return &gUserExtend;
+}
+
 //
-//void vConvertUserExtendType2Json(UserExtendType *userExtendType, UserExtend  *userExtend){
+//void vConvertUserExtendType2Json(UserExtendClass *userExtendType, UserExtend  *userExtend){
 //    LOGD("%s 转换用户扩展类为 json \r\n",logtag );
 //
 //    char 	*cjson_str;
@@ -218,7 +230,7 @@ int UserExtendManager::clearAllUserExtend(  ){
 //    LOGD("UserExtend jsonData:%s \r\n", userExtend->jsonData);
 //};
 //
-//void vConverUserExtendJson2Type(UserExtend  *userExtend, unsigned int lCreateTime,  UserExtendType *userExtendType){
+//void vConverUserExtendJson2Type(UserExtend  *userExtend, unsigned int lCreateTime,  UserExtendClass *userExtendType){
 //    LOGD("%s 转换json 为用户扩展类 \r\n",logtag );
 //    strcpy( userExtendType->UUID , userExtend->UUID);
 //    StrToHex( userExtendType->HexUID, userExtendType->UUID, sizeof(userExtendType->HexUID));//将uuid 转成16进制 hexuid

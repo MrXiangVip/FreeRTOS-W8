@@ -281,11 +281,12 @@ static void vReceiveOasisTask(void *pvParameters) {
             switch( faceInfo->evt ){
                 case OASISLT_EVT_REG_COMPLETE:
                     if( boot_mode == BOOT_MODE_REGIST ){
+                        UserExtendClass  *pUserExtendType = UserExtendManager::getInstance()->getCurrentUser();
                         if( faceInfo->enrolment_result == OASIS_REG_RESULT_OK){
-                            LOGD( "%s 注册成功 增加用户附加信息 %s  ,当前的时间 %d   \r\n",logtag, objUserExtend.UUID, ws_systime );
+                            LOGD( "%s 注册成功 增加用户附加信息 %s  ,当前的时间 %d   \r\n",logtag, pUserExtendType->UUID, ws_systime );
 //                            UserExtend userExtend;
 //                            memset( &userExtend, 0, sizeof(UserExtend) );
-//                            vConvertUserExtendType2Json( &objUserExtend,  &userExtend );
+//                            vConvertUserExtendType2Json( &userExtendType,  &userExtend );
 //                            int result = UserExtendManager::getInstance()->addUserExtend(   &userExtend );
 //                            LOGD( "%s 增加用户附加信息 %d\r\n",logtag, result);
                             //增加本次操作记录  增加注册记录
@@ -293,7 +294,7 @@ static void vReceiveOasisTask(void *pvParameters) {
                             Record *record = (Record *) pvPortMalloc(sizeof(Record));
                             memset(record, 0, sizeof(Record));
 //                            strcpy(record->UUID, username);
-                            strcpy(record->UUID, objUserExtend.UUID);
+                            strcpy(record->UUID, pUserExtendType->UUID);
                             record->action = REGISTE;// 0 代表注册
                             record->time_stamp = ws_systime;//当前时间
                             memset(image_path, 0, sizeof(image_path)); // 对注册成功的用户保存一张压缩过的jpeg图片
@@ -313,7 +314,7 @@ static void vReceiveOasisTask(void *pvParameters) {
                             Oasis_SetOasisFileName(record->image_path);
                             Oasis_WriteJpeg();
                             REG_RESULT_FLG = 0; //和后台同步, 0 表示成功
-                            cmdRegResultNotifyReq( &objUserExtend, REG_RESULT_FLG);
+                            cmdRegResultNotifyReq( pUserExtendType, REG_RESULT_FLG);
 //                           请求上传记录
                             LOGD("注册成功,请求MQTT上传本次用户注册记录 \n");
                             int ID = DBManager::getInstance()->getLastRecordID();
@@ -321,11 +322,11 @@ static void vReceiveOasisTask(void *pvParameters) {
                         }else if( faceInfo->enrolment_result == OASIS_REG_RESULT_DUP){
                             LOGD("重复注册 \r\n");
                             REG_RESULT_FLG = 9;// 和后台同步, 9 表示重复注册
-                            cmdRegResultNotifyReq( &objUserExtend, REG_RESULT_FLG);
+                            cmdRegResultNotifyReq( pUserExtendType, REG_RESULT_FLG);
                         }else{
                             LOGD("注册失败 \r\n");
                             REG_RESULT_FLG = 1; //和后台同步, 1 表示失败
-                            cmdRegResultNotifyReq( &objUserExtend, REG_RESULT_FLG);
+                            cmdRegResultNotifyReq( pUserExtendType, REG_RESULT_FLG);
                         }
                         if( xSemaphoreTake( workCountSemaphore,0 ) ==pdTRUE ){
                             LOGD("xSemaphoreTake ok! \r\n");
@@ -341,9 +342,9 @@ static void vReceiveOasisTask(void *pvParameters) {
                 case OASISLT_EVT_REC_COMPLETE:
                     if( boot_mode == BOOT_MODE_RECOGNIZE ) {
                         if (faceInfo->recognize_result == OASIS_REC_RESULT_KNOWN_FACE) {// 识别匹配成功
-                            LOGD("识别成功 \r\n");
+                            LOGD("识别成功, UUID %s\r\n", faceInfo->name.c_str() );
                             char name[64] = {0};
-                            memset(&objUserExtend, 0, sizeof(UserExtendType));
+//                            memset(&userExtendType, 0, sizeof(UserExtendClass));
                             //memcpy(name, gFaceInfo.name.c_str(), gFaceInfo.name.size());
                             memcpy(name, (void *) faceInfo->name.c_str(), faceInfo->name.size());
                             // StrToHex(g_uu_id.UID, name, sizeof(g_uu_id.UID));
@@ -359,16 +360,16 @@ static void vReceiveOasisTask(void *pvParameters) {
 //                                LOGD("%s 同一个人 10秒内不允许重复开门 \r\n", logtag);
 //                            } else {
                                 //                          发送开门请求
-//                                memset(&objUserExtend, 0, sizeof(UserExtendType));
+//                                memset(&objUserExtend, 0, sizeof(UserExtendClass));
 //                                vConverUserExtendJson2Type(&userExtend, ws_systime, &objUserExtend);
 //                                cmdOpenDoorReq(&objUserExtend);
 //                                LOGD("Reset recognize timeout trigger\r\n");
 //                                recognize_times = 0;
 //                            }
-                            strcpy(objUserExtend.UUID, name);
-                            StrToHex( objUserExtend.HexUID, objUserExtend.UUID, sizeof(objUserExtend.HexUID));//将uuid 转成16进制 hexuid
+//                          更新当前用户的用户名
+                            UserExtendManager::getInstance()->setCurrentUser( name );
                             // 发送开门请求
-                            cmdOpenDoorReq(&objUserExtend);
+                            cmdOpenDoorReq( );
                             recognize_times = 0;
 
                         } else if(faceInfo->recognize_result == OASIS_REC_RESULT_UNKNOWN_FACE){

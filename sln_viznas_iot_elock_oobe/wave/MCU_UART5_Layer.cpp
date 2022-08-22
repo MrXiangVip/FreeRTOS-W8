@@ -84,14 +84,12 @@ SemaphoreHandle_t  workCountSemaphore = xSemaphoreCreateCounting(WORK_MAX_COUNT,
 
 lpuart_rtos_handle_t handle5;
 
-uUID g_uu_id;  //记录当前应用的uuid
 bool bInitSyncInfo = false;
 bool bSysTimeSynProc = false;
 
 
 Reg_Status g_reging_flg = REG_STATUS_WAIT;//正在注册流程标记,等待被激活，对识别task发过来的识别结果进行过滤
 //userInfo_data_t userInfoList[MAX_USER_NUM] = {0};
-char username[17] = {0}; //用于存放传入NXP提供的人脸注册于识别相关的API的username
 
 extern int battery_level;
 static bool saving_file = false;
@@ -628,14 +626,15 @@ int cmdUserRegReqProc(unsigned char nMessageLen, const unsigned char *pszMessage
     uint8_t ret = SUCCESS, len = 0;
     const unsigned char *pos = pszMessage;
 
-    memset( &objUserExtend, 0, sizeof(objUserExtend));
 //  1.将当前状态设置为 注册
     boot_mode = BOOT_MODE_REGIST;
 
 //  2. 解析指令, 获取UUID, 开始时间,结束时间,柜门编号
-    if (  nMessageLen >= 8) {
+    UserExtendClass *pUserExtendType = UserExtendManager::getInstance()->getCurrentUser();
+    memset( pUserExtendType, 0, sizeof(UserExtendClass) );
+    if (  nMessageLen >= 8 ) {
 //        memcpy(&g_uu_id, pos + len, 8);
-        memcpy( (void*)objUserExtend.HexUID, pos+len, 8);
+        memcpy( (void*)pUserExtendType->HexUID, pos+len, 8);
         len += 8;
         pos+=8;
     }
@@ -645,14 +644,14 @@ int cmdUserRegReqProc(unsigned char nMessageLen, const unsigned char *pszMessage
         OpenLcdBackground();
     }
 
-    HexToStr(objUserExtend.UUID, objUserExtend.HexUID, sizeof(objUserExtend.HexUID)  );
-    LOGD("%s UUID<len:%d>:%s.\r\n",logtag, sizeof(objUserExtend.UUID), objUserExtend.UUID);
+    HexToStr(pUserExtendType->UUID, pUserExtendType->HexUID, sizeof(pUserExtendType->HexUID)  );
+    LOGD("%s UUID<len:%d>:%s.\r\n",logtag, sizeof(pUserExtendType->UUID), pUserExtendType->UUID);
 
 
 //2.发起注册
     vizn_api_status_t status;
-    status = VIZN_AddUser(NULL, objUserExtend.UUID);
-    LOGD("%s, VIZN AddUser %s\r\n",logtag, objUserExtend.UUID);
+    status = VIZN_AddUser(NULL, pUserExtendType->UUID);
+    LOGD("%s, VIZN AddUser %s\r\n",logtag, pUserExtendType->UUID);
     switch (status) {
         case kStatus_API_Layer_AddUser_NoAddCommand:
             LOGD("No add command registered\r\n");
@@ -692,7 +691,7 @@ int cmdUserRegReqProc(unsigned char nMessageLen, const unsigned char *pszMessage
 1-注册失败
 */
 //int cmdRegResultNotifyReq(uUID uu_id, uint8_t regResult) {
-int cmdRegResultNotifyReq(UserExtendType *userExtendType, uint8_t regResult) {
+int cmdRegResultNotifyReq(UserExtendClass *userExtendType, uint8_t regResult) {
     LOGD("%s 注册结果通知 \r\n", logtag);
     char szBuffer[32] = {0};
     char *pop = NULL;
@@ -733,8 +732,7 @@ int cmdRegResultNotifyReq(UserExtendType *userExtendType, uint8_t regResult) {
 }
 
 //主控发送测试指令:  开门请求
-//int cmdOpenDoorReq(uUID uu_id) {
-int cmdOpenDoorReq(UserExtendType *userExtendType) {
+int cmdOpenDoorReq( ) {
     LOGD("%s  向mcu发送开门请求 \r\n", logtag);
     char szBuffer[64] = {0};
     char *pop = NULL;
@@ -749,10 +747,11 @@ int cmdOpenDoorReq(UserExtendType *userExtendType) {
 //    MsgLen += sizeof(L25MAC);
 //    pop += sizeof(L25MAC);
 //    填入uuid
-    LOGD("%s UUID %s\r\n",logtag, userExtendType->UUID);
-    memcpy(pop, userExtendType->HexUID, sizeof(userExtendType->HexUID));
-    MsgLen += sizeof(userExtendType->HexUID);
-    pop += sizeof(userExtendType->HexUID);
+    UserExtendClass *pUserExtendType = UserExtendManager::getInstance()->getCurrentUser();
+    LOGD("%s UUID %s\r\n",logtag, pUserExtendType->UUID);
+    memcpy(pop, pUserExtendType->HexUID, sizeof(pUserExtendType->HexUID));
+    MsgLen += sizeof(pUserExtendType->HexUID);
+    pop += sizeof(pUserExtendType->HexUID);
 
 //    填入device列表
 //    LOGD( "%s DeviceList %s\r\n",logtag, userExtendType->cDeviceId);
@@ -803,8 +802,9 @@ int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
         uint8_t power2 = StrGetUInt8(pop);
 
         Record *record = (Record *) pvPortMalloc(sizeof(Record));
-        HexToStr(username, g_uu_id.UID, sizeof(g_uu_id.UID));
-        strcpy(record->UUID, username);
+
+        UserExtendClass *pUserExtendType = UserExtendManager::getInstance()->getCurrentUser();
+        strcpy(record->UUID, pUserExtendType->UUID);
         record->action = FACE_UNLOCK;//  操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁
         char image_path[16];
         //record->status = 0; // 0,操作成功 1,操作失败.
@@ -871,8 +871,8 @@ int cmdTemperRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
 
         Record *record = (Record *) pvPortMalloc(sizeof(Record));
         memset( record, 0, sizeof(Record));
-        HexToStr(username, g_uu_id.UID, sizeof(g_uu_id.UID));
-        strcpy(record->UUID, username);
+        UserExtendClass *pUserExtendType = UserExtendManager::getInstance()->getCurrentUser();
+        strcpy(record->UUID, pUserExtendType->UUID);
         record->action = FACE_TEMPER;//  操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁 10 测温
         char image_path[16];
         //record->status = 0; // 0,操作成功 1,操作失败.
@@ -940,8 +940,8 @@ int cmdMechicalLockRsp(unsigned char nMessageLen, const unsigned char *pszMessag
         uint8_t power2 = StrGetUInt8(pop);
 
         Record *record = (Record *) pvPortMalloc(sizeof(Record));
-        HexToStr(username, g_uu_id.UID, sizeof(g_uu_id.UID));
-        strcpy(record->UUID, username);
+        UserExtendClass *pUserExtendType = UserExtendManager::getInstance()->getCurrentUser();
+        strcpy(record->UUID, pUserExtendType->UUID );
         record->action = MECH_UNLOCK;//  操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁  机械开锁
         char image_path[16];
         //record->status = 0; // 0,操作成功 1,操作失败.
@@ -1305,18 +1305,19 @@ int cmdDeleteUserReqProcByHead(unsigned char nHead, unsigned char nMessageLen, c
     LOGD(" 删除用户请求 \r\n");
     const unsigned char *pos = pszMessage;
 
-    memset( &objUserExtend, 0, sizeof(UserExtendType));
-    memcpy( objUserExtend.HexUID, pos, sizeof(objUserExtend.HexUID));
-    HexToStr(objUserExtend.UUID, objUserExtend.HexUID, sizeof(objUserExtend.HexUID));
-    LOGD(" uuid %s \r\n", objUserExtend.UUID);
+    UserExtendClass *pUserExtendType = UserExtendManager::getInstance()->getCurrentUser();
+    memset( pUserExtendType,0, sizeof(UserExtendClass) );
+    memcpy( pUserExtendType->HexUID, pos, sizeof(pUserExtendType->HexUID));
+    HexToStr(pUserExtendType->UUID, pUserExtendType->HexUID, sizeof(pUserExtendType->HexUID));
+    LOGD("current uuid %s \r\n", pUserExtendType->UUID);
 //    删除用户的操作记录
-    int ret = DBManager::getInstance()->deleteRecordByUUID( objUserExtend.UUID );
+    int ret = DBManager::getInstance()->deleteRecordByUUID( pUserExtendType->UUID );
     LOGD("删除用户操作记录 %d\r\n", ret);
 //    删除用户附加信息
 //    ret = UserExtendManager::getInstance()->delUserExtendByUUID( objUserExtend.UUID );
 //    LOGD("删除用户附加信息 %d \r\n", ret);
 //    删除用户
-    vizn_api_status_t status = VIZN_DelUser(NULL, objUserExtend.UUID);
+    vizn_api_status_t status = VIZN_DelUser(NULL, pUserExtendType->UUID);
     LOGD("删除用户注册表中用户 %d \r\n", status);
 
 //    只有一种返回失败的情况 即用户不存在  ,这种情况也返回成功
@@ -1328,7 +1329,7 @@ int cmdDeleteUserReqProcByHead(unsigned char nHead, unsigned char nMessageLen, c
     ret = SUCCESS;
 
     DBManager::getInstance()->flushRecordList();//写回 记录文件
-    LOGD("delete uuid :  %s nHead 0x%2x.\r\n", objUserExtend.UUID, nHead);
+    LOGD("delete uuid :  %s nHead 0x%2x.\r\n", pUserExtendType->UUID, nHead);
     if (nHead == HEAD_MARK_MQTT) {
         cmdCommRsp2MqttByHead(HEAD_MARK_MQTT, CMD_FACE_DELETE_USER, ret);
     } else {

@@ -238,7 +238,7 @@ extern int cmdMechicalLockRsp(unsigned char nMessageLen, const unsigned char *ps
 extern int cmdReqPoweDown(unsigned char nMessageLen, const unsigned char *pszMessage);
 
 //extern int cmdRegResultNotifyReq(uUID uu_id, uint8_t regResult);
-extern int cmdRegResultNotifyReq(UserExtendType *userExtendType, uint8_t regResult);
+extern int cmdRegResultNotifyReq(UserExtendClass *userExtendType, uint8_t regResult);
 
 extern int cmdWifiSSIDProc(unsigned char nMessageLen, const unsigned char *pszMessage);
 
@@ -257,8 +257,7 @@ extern void SysTimeSet(uint8_t year, uint8_t month, uint8_t day, uint8_t hour, u
 
 // 主控发送指令:请求MQTT 上传记录
 extern int cmdRequestMqttUpload(int id);
-//extern int cmdOpenDoorReq(uUID uu_id);
-extern int cmdOpenDoorReq(UserExtendType *userExtendType);
+extern int cmdOpenDoorReq( );
 //关机请求
 extern int cmdCloseFaceBoardReq();
 extern int cmdCloseFaceBoardReqExt(bool save_file);
@@ -289,9 +288,9 @@ extern ws_time_t ws_systime;
 // 20201120 wszgx end
 
 extern  Reg_Status g_reging_flg;//正在注册流程标记,等待被激活，对识别task发过来的识别结果进行过滤
-extern  char username[17];
-extern  uUID g_uu_id;  //记录当前应用的uuid
+
 extern  int boot_mode;
+
 extern  lpuart_rtos_handle_t handle5;
 
 //xshx add 信号量
