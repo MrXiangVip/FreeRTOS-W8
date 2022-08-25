@@ -49,6 +49,7 @@ typedef void (*ST77889V2_delay_ms_t)(uint32_t);
 
 //
 static screen_model_t  screenModel = SCREEN_MODEL_ZMA_IPS;
+//static screen_model_t  screenModel = SCREEN_MODEL_JSX_IPS;
 
 static void ST77889V2_Delay_Ms (uint32_t ms)
 {
@@ -185,17 +186,15 @@ static void ST77889V2_Init(ST77889V2_send_byte_t _writeData, ST77889V2_send_byte
     _writeData(0x33);   
     _writeData(0x33);   
 
-    _writeCommand(0xB7);     
-    _writeData(0x71);   
-
+    _writeCommand(0xB7);
+    _writeData(0x71);
     _writeCommand(0xBB);
     if( screenModel == SCREEN_MODEL_ZMA_IPS ) {
         _writeData(0x3B);
     }else{
         _writeData(0x3E); //0X3e
     }
-
-    _writeCommand(0xC0);     
+    _writeCommand(0xC0);
     _writeData(0x2C);   
 
     _writeCommand(0xC2);     
@@ -270,7 +269,7 @@ static void ST77889V2_Init(ST77889V2_send_byte_t _writeData, ST77889V2_send_byte
 
 }
 
-static void ST77889V3_Init(ST77889V2_send_byte_t _writeData, ST77889V2_send_byte_t _writeCommand, ST77889V2_delay_ms_t _delay_ms)
+static void JSX_TN_Init(ST77889V2_send_byte_t _writeData, ST77889V2_send_byte_t _writeCommand, ST77889V2_delay_ms_t _delay_ms)
 {
 
     uint16_t k,j;
@@ -387,6 +386,7 @@ static void ST77889V3_Init(ST77889V2_send_byte_t _writeData, ST77889V2_send_byte
 
 }
 
+
 int PJDisp_Init(void)
 {
     RST_HI;
@@ -398,11 +398,13 @@ int PJDisp_Init(void)
     Disp_Spi_Init(10000000U);
 
     if( screenModel ==  SCREEN_MODEL_JSX_TN ){
-
-    	ST77889V3_Init(ST77889V2_Write_Dat, ST77889V2_Write_Cmd, ST77889V2_Delay_Ms);
+        JSX_TN_Init(ST77889V2_Write_Dat, ST77889V2_Write_Cmd, ST77889V2_Delay_Ms);
+    }else if( screenModel == SCREEN_MODEL_JSX_IPS ){
+        ST77889V2_Init(ST77889V2_Write_Dat, ST77889V2_Write_Cmd, ST77889V2_Delay_Ms);
     }else{
         ST77889V2_Init(ST77889V2_Write_Dat, ST77889V2_Write_Cmd, ST77889V2_Delay_Ms);
     }
+
     return 1;
 }
 
