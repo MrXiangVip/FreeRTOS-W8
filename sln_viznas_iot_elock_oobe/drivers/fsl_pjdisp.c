@@ -20,9 +20,9 @@
 typedef enum _screen_model
 {
     SCREEN_MODEL_TYPE_NONE = 0, /*!< Default  */
-    SCREEN_MODEL_ZMA_IPS,              /*!< 众铭安科技 */
-    SCREEN_MODEL_JSX_IPS,      /*!< 靖顺兴SPI */
-    SCREEN_MODEL_JSX_TN,       /*!< 靖顺兴TN  */
+    SCREEN_MODEL_ZMA_IPS,       /*!< 众铭安科技 */
+    SCREEN_MODEL_JSX_IPS,       /*!< 靖顺兴SPI */
+    SCREEN_MODEL_JSX_TN,        /*!< 靖顺兴TN  */
 } screen_model_t;
 /*
 CS GPIO3_IO27

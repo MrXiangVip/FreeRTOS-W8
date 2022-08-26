@@ -152,8 +152,12 @@ int MqttManager::handleMqttMsgData(char *jsonMsg) {
     } else if (strcmp("ua", typeStr) == 0) {
         // TODO:
 //        result = DBManager::getInstance()->setUserAccess(dataStr);
+//
+        LOGD("dataStr: %s \r\n", dataStr);
+        UserExtendManager::getInstance()->addStrUser(dataStr);
         result = AT_RSP_SUCCESS;
         MqttCmdMgr::getInstance()->atCmdResponse(result, idStr);
+
     } else if (strcmp("um", typeStr) == 0) {
         // TODO:
 //        result = DBManager::getInstance()->setUserMode(dataStr);

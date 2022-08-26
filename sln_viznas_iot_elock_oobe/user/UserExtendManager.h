@@ -20,7 +20,7 @@ extern "C"  {
 
 
 #define USER_EXTEND_FS_ADDR         (0xE20000U)
-#define USER_EXTEND_PAGE_SIZE       200
+#define USER_EXTEND_PAGE_SIZE       220
 
 #ifdef __cplusplus
 }
@@ -31,6 +31,14 @@ extern "C"  {
 #define TIMEE   "TIMEE"
 #define ADEV    "ADEV"
 #define EXUSR   "EXUSR"
+
+#define DATE    "DATE"
+#define WEEK    "WEEK"
+#define AMin  (60)
+#define AHour (60*AMin)
+#define ADay  (24*AHour)
+#define AWeek (7*ADay)
+
 /*8字节UUID*/
 typedef union{
     struct{
@@ -43,12 +51,14 @@ typedef union{
 typedef union {
         struct {
             char UUID[20];
-            char jsonData[100];  //json 格式的数据  例如 GUI :int , Time:time用来存储 柜子ID,   可能增加时间段等信息
+//            char jsonData[100];  //json 格式的数据  例如 GUI :int , Time:time用来存储 柜子ID,   可能增加时间段等信息
+            char jsonData[200];  //json 格式的数据  例如 GUI :int , Time:time用来存储 柜子ID,   可能增加时间段等信息
         };
         unsigned char raw[USER_EXTEND_PAGE_SIZE ]; // 4-->8
-}UserExtend, *pUserExtend;
+}UserJson, *pUserJson;
 
 //注册时的结构体    uuid , 起始时间, 结束时间, 设备ID
+//
 typedef struct{
     uint8_t HexUID[8];      //十六进制uuid
     char    UUID[17];       //uuid 的字符串
@@ -56,21 +66,19 @@ typedef struct{
 //    long    uEndTime;       // 用户订单的结束时间
 //    char    cDeviceId[48];  // 设备列表
 //    long    lCreateTime;    //用户在内存里创建的时间 用于过滤频繁注册和识别
+    char     dateDuration[40];  // 年月日 格式的日期时间段
+    char     weekDuration[200]; // 星期时分 格式的时间段
+
 }UserExtendClass;
-
-//全局的用户信息
-
-//xshx add 将 UserExtendClass 转成UserExtend json
-//extern void vConvertUserExtendType2Json(UserExtendClass *regist, UserExtend  *userExtend);
-//xshx 将UserExtend json 转成UserExtendType
-//extern void vConverUserExtendJson2Type(UserExtend  *userExtend, unsigned int lCreateTime,  UserExtendClass *userExtendType);
 
 #ifdef __cplusplus
 class UserExtendManager {
     private:
+//  单例模式
         static UserExtendManager *m_instance;
+//  头地址
         static uint32_t         userExtend_FS_Head;
-
+//  当前的用户信息
         static UserExtendClass       gUserExtend;
         UserExtendManager();
 
@@ -83,21 +91,38 @@ class UserExtendManager {
 
         static UserExtendManager *getInstance();
 
-        void initManager();
+//        void initManager();
 
-        int addUserExtend(UserExtend * userExtend);
+        int addUserJson(UserJson * userExtend);
 
-        int  queryUserExtendByUUID( char *uuid, UserExtend *userExtend);
+        int queryUserJsonByUUID( char *uuid, UserJson *userExtend);
 
-        int updateUserExtendByUUID( char *uuid, UserExtend *userExtend);
+        int updateUserJsonByUUID( char *uuid, UserJson *userExtend);
 
-        int delUserExtendByUUID( char *uuid );
+        int delUserJsonByUUID( char *uuid );
 
-        int clearAllUserExtend(  );
-
+        int clearAllUserJson(  );
+//
         void setCurrentUser(char *uuid);// set a user
 
         UserExtendClass *getCurrentUser( );//get a user
+
+        int addStrUser(char * userInfo);//
+
+        int getGroupUser(UserExtendClass *groupUserClass );//
+
+//      将字符串转成用户类实例
+        void convertStr2UserExtendClass( char *strUserInfo, UserExtendClass *userExtendType);
+//
+
+//      将用户类转成 json 格式
+        void convertUserExtendClass2UserJson( UserExtendClass *userExtendType, UserJson *userJson);
+//      将json 格式转用户类
+        void convertUserJson2UserExtendClass(UserJson *userJson, UserExtendClass *userExtendClass );
+
+//      检查用户权限
+        bool checkUUIDUserPermission( char *uuid );
+
 };
 #endif
 #endif //USEREXTEND_USEREXTENDMANAGER_H

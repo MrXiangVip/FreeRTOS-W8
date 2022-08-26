@@ -235,7 +235,7 @@ int DB_GetFeature(uint16_t id, float *feature)
 /*this interface is used to add user without name*/
 int DB_Add(uint16_t id, float *feature)
 {
-    LOGD("[%s] DB_Add id %d  \r\n", logtag, id );
+    LOGD("%s DB_Add id %d  \r\n", logtag, id );
     int ret = DB_MGMT_FAILED;
 
     ret = DB_Lock();
@@ -256,7 +256,7 @@ int DB_Add(uint16_t id, float *feature)
 /*this interface is used to add user with given name*/
 int DB_Add(uint16_t id, std::string name, float *feature)
 {
-    LOGD("[%s] DB_Add id %d , name %s \r\n", logtag, id, name.c_str());
+    LOGD("%s DB_Add id %d , name %s \r\n", logtag, id, name.c_str());
 
     int ret = DB_MGMT_FAILED;
 
@@ -379,42 +379,92 @@ int DB_save_feature(float *feature) {
     return ret;
 }
 
-int DB_GetFeature_ByName(std::string name, float* feature)
-{
-    LOGD("%s, %s , %s \r\n",logtag, __func__, name.c_str());
+
+/*
+ *  函数功能 :检查 name 在db 中是否存在
+ *  如果存在返回 id, 如果不存在返回 -1
+ */
+int DB_GetID_ByName(std::string name ){
+    LOGD("%s %s , %s \r\n",logtag, __func__, name.c_str());
     std::vector<uint16_t> allIDs;
     DB_GetIDs(allIDs);
     for (uint32_t i = 0; i < allIDs.size(); i++) {
         string tmpName;
         // get idx+i ids form DB
-        DB_GetName(allIDs[i], tmpName);
+        DB_GetName( allIDs[i], tmpName );
         LOGD("%s id %d ,tmp name [%s] , name[%s]\r\n",logtag, i, tmpName.c_str(), name.c_str() );
         if( tmpName.compare( name ) == 0 ){
-            DB_GetFeature(allIDs[i], feature);
-            LOGD("%s id %d  \r\n",logtag, i);
-            return DB_MGMT_OK;
+
+            LOGD("%s i: %d  id: %d\r\n",logtag, i, allIDs[i]) ;
+            return allIDs[i];
         }
     }
-    return DB_MGMT_FAILED;
+    return  DB_MGMT_FAILED;
 }
 
+/*
+ *  函數功能: 通过函数名获得特征值
+ *   输入参数: 用户名
+ *   输出参数: 特征值
+ */
+int DB_GetFeature_ByName(std::string name, float* feature)
+{
+    LOGD("%s %s , %s \r\n",logtag, __func__, name.c_str());
+
+    int id = DB_GetID_ByName( name );
+    if( id != DB_MGMT_FAILED){
+        DB_GetFeature( id, feature);
+        LOGD("%s 获取到id %d 的特征值  \r\n",logtag, id);
+        return DB_MGMT_OK;
+    }else{
+        return DB_MGMT_FAILED;
+    }
+}
+/*
+ * 函数功能: 增加 用户名对应的特征值
+ * 输入参数  name. feature
+ * 输出参数 成功或者失败码
+*/
 int DB_AddFeature_WithName( std::string name, float* feature )
 {
-    LOGD("%s, %s , %s \r\n",logtag, __func__, name.c_str());
-    uint16_t    id_local;
-    int ret     = DB_GenID(&id_local);
-    if (ret < 0)
-    {
-        LOGD("db gen id error \r\n");
-        return DB_MGMT_FAILED;
+    LOGD("%s %s , %s \r\n",logtag, __func__, name.c_str());
+//  1.增加前查看是否name 已经存在
+    uint16_t id_local = DB_GetID_ByName( name );
+
+//  2.如果用户已经存在 则更新用户名对应的特征值,
+    if( id_local != DB_MGMT_FAILED ){
+//        DB_Del(name);
+//        LOGD("%s 用户名已存在,则删除 %s  \r\n",logtag, name.c_str());
+//        int ret     = DB_GenID(&id_local);
+//        if (ret < 0)
+//        {
+//            LOGD("db gen id error \r\n");
+//            return DB_MGMT_FAILED;
+//        }
+//        ret = DB_Add(id_local, name, feature);
+//        LOGD("%s 增加 %s ,%d \r\n", logtag, name.c_str(), ret );
+//        return  ret;
+        int ret = DB_Update( id_local, feature);
+        LOGD("%s 更新 %s 的特征值 返回码 %d \r\n", logtag, name.c_str(), ret );
+        return  ret;
+
+//  3.如果 用户不存在,则 增加用户名 特征值
+    } else{
+        int ret     = DB_GenID(&id_local);
+        if (ret < 0)
+        {
+            LOGD("db gen id error \r\n");
+            return DB_MGMT_FAILED;
+        }
+
+        ret   = DB_Add(id_local, name, feature);
+        if (ret != 0)
+        {
+            LOGD("remote add user into local fail, [%d]: [%s]\r\n", id_local, name.c_str());
+            return DB_MGMT_FAILED;
+        }
+        LOGD("%s 增加 user 特征值 into db success, [%d]: [%s]\r\n",logtag, id_local, name.c_str() );
+        return  DB_MGMT_OK;
     }
 
-    ret   = DB_Add(id_local, name, feature);
-    if (ret != 0)
-    {
-        LOGD("remote add user into local fail, [%d]: [%s]\r\n", id_local, name.c_str());
-        return DB_MGMT_FAILED;
-    }
-    LOGD("add user into db success, [%d]: [%s]\r\n", id_local, name.c_str() );
-    return  DB_MGMT_OK;
 }

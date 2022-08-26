@@ -36,6 +36,7 @@
 #include "ic_wifi_16x16.h"
 #include "ble_16x16.h"
 #include "ic_rec_unkown_240x320.h"
+#include "ic_rec_forbiden_240x320.h"
 // 20201114 wavezgx added for UI development
 #include "fsl_log.h"
 
@@ -723,6 +724,15 @@ static void UIInfo_UpdateFaceInfo2(uint16_t *pBufferAddr, QUIInfoMsg* infoMsg)
         {
             uint16_t *pIcon = NULL;
             pIcon = (uint16_t *)ic_rec_unkown;
+            draw_icon(pIcon, 0, 0, APP_AS_WIDTH, APP_AS_HEIGHT,0xFFFF, pBufferAddr);
+
+        }
+        break;
+//      xshx add 20220826
+        case 1 << kEvents_API_Layer_RecForbiden:
+        {
+            uint16_t *pIcon = NULL;
+            pIcon = (uint16_t *)ic_rec_forbiden;
             draw_icon(pIcon, 0, 0, APP_AS_WIDTH, APP_AS_HEIGHT,0xFFFF, pBufferAddr);
 
         }

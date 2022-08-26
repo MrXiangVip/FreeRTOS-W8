@@ -37,6 +37,7 @@ static char file_name[FEATURE_FILE_NAME_LEN];
 
 static bool auto_save_mode = EXCLUSIVE_FLASH_BY_FILE_SYSTEM;
 
+static char *logtag ="[FeatureDB]: ";
 extern uint8_t remote_change_fs;
 
 static int File_FacerecFsReadMap(FeatureMap *pMap)

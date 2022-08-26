@@ -34,6 +34,7 @@ typedef enum _vizn_events
     kEvents_API_Layer_RecCanceled,
     kEvents_API_Layer_RecFailed,
     kEvents_API_Layer_RecUnkown,//陌生人
+    kEvents_API_Layer_RecForbiden,//被禁止 xshx add 20220826
     kEvents_API_Layer_RegNoMemory
 } vizn_events_t;
 

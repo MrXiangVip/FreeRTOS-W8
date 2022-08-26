@@ -514,8 +514,8 @@ void SetSysToFactory() {
     LOGD("Clear Records status is %d\r\n", clear_status);
 
 //  清空用戶附加信息
-//    int ret= UserExtendManager::getInstance()->clearAllUserExtend();
-//    LOGD("%s result: %s \r\n", logtag, ret);
+    int ret= UserExtendManager::getInstance()->clearAllUserJson();
+    LOGD("%s 清空用户附加信息 result: %s \r\n", logtag, ret);
 //    清空用户注册表
     clear_status = VIZN_DelUser(NULL);
     LOGD("Clear Users status is %d\r\n", clear_status);
@@ -1314,8 +1314,8 @@ int cmdDeleteUserReqProcByHead(unsigned char nHead, unsigned char nMessageLen, c
     int ret = DBManager::getInstance()->deleteRecordByUUID( pUserExtendType->UUID );
     LOGD("删除用户操作记录 %d\r\n", ret);
 //    删除用户附加信息
-//    ret = UserExtendManager::getInstance()->delUserExtendByUUID( objUserExtend.UUID );
-//    LOGD("删除用户附加信息 %d \r\n", ret);
+    ret = UserExtendManager::getInstance()->delUserJsonByUUID( pUserExtendType->UUID );
+    LOGD("删除用户 %s 附加信息 返回码 %d \r\n", pUserExtendType->UUID, ret);
 //    删除用户
     vizn_api_status_t status = VIZN_DelUser(NULL, pUserExtendType->UUID);
     LOGD("删除用户注册表中用户 %d \r\n", status);

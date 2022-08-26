@@ -287,7 +287,7 @@ static void vReceiveOasisTask(void *pvParameters) {
 //                            UserExtend userExtend;
 //                            memset( &userExtend, 0, sizeof(UserExtend) );
 //                            vConvertUserExtendType2Json( &userExtendType,  &userExtend );
-//                            int result = UserExtendManager::getInstance()->addUserExtend(   &userExtend );
+//                            int result = UserExtendManager::getInstance()->addUserJson(   &userExtend );
 //                            LOGD( "%s 增加用户附加信息 %d\r\n",logtag, result);
                             //增加本次操作记录  增加注册记录
                             LOGD("%s增加注册记录 \r\n", logtag);
@@ -344,29 +344,10 @@ static void vReceiveOasisTask(void *pvParameters) {
                         if (faceInfo->recognize_result == OASIS_REC_RESULT_KNOWN_FACE) {// 识别匹配成功
                             LOGD("识别成功, UUID %s\r\n", faceInfo->name.c_str() );
                             char name[64] = {0};
-//                            memset(&userExtendType, 0, sizeof(UserExtendClass));
-                            //memcpy(name, gFaceInfo.name.c_str(), gFaceInfo.name.size());
                             memcpy(name, (void *) faceInfo->name.c_str(), faceInfo->name.size());
-                            // StrToHex(g_uu_id.UID, name, sizeof(g_uu_id.UID));
                             // 根据用户名查找柜子的信息
-//                            UserExtend userExtend;
-//                            memset(&userExtend, 0, sizeof(UserExtend));
-//                            int ret = UserExtendManager::getInstance()->queryUserExtendByUUID(name, &userExtend);
-//                            LOGD("%s,查到 UUID %s, JSON %s \r\n", logtag, userExtend.UUID, userExtend.jsonData);
-//                            LOGD("%s,当前时间 %d, 用戶创建时间 %d \r\n", logtag, ws_systime, objUserExtend.lCreateTime);
 
-//                            if ((ws_systime - objUserExtend.lCreateTime) < 10 &&
-//                                strcmp(objUserExtend.UUID, userExtend.UUID) == 0) {// 同一个人， 连续识别时间间隔要大于10秒
-//                                LOGD("%s 同一个人 10秒内不允许重复开门 \r\n", logtag);
-//                            } else {
-                                //                          发送开门请求
-//                                memset(&objUserExtend, 0, sizeof(UserExtendClass));
-//                                vConverUserExtendJson2Type(&userExtend, ws_systime, &objUserExtend);
-//                                cmdOpenDoorReq(&objUserExtend);
-//                                LOGD("Reset recognize timeout trigger\r\n");
-//                                recognize_times = 0;
-//                            }
-//                          更新当前用户的用户名
+//                          更新当前用户  的用户名
                             UserExtendManager::getInstance()->setCurrentUser( name );
                             // 发送开门请求
                             cmdOpenDoorReq( );

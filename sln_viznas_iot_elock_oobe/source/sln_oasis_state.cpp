@@ -201,6 +201,8 @@ void StopRecognitionProcess(uint8_t event)
         StartLockProcess(true);
     }else if( event == kEvents_API_Layer_RecUnkown ){
         StartLockProcess(true);
+    }else if( event == kEvents_API_Layer_RecForbiden ){//xshx add 20220825
+        StartLockProcess(true);
     }
 }
 
@@ -289,8 +291,15 @@ void Oasis_API_Recognize(face_info_t face_info)
         }
         else if (g_RecFace)
         {
-            StopRecognitionProcess(kEvents_API_Layer_RecSuccess);
+//      xshx add 20220826
+            if( face_info.recognize_result == OASIS_REC_RESULT_FORBIDEN_FACE ){
+                StopRecognitionProcess(kEvents_API_Layer_RecForbiden);
+            }else{
+                StopRecognitionProcess(kEvents_API_Layer_RecSuccess);
+            }
         }
+
+
 
     }
     else

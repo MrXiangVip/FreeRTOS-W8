@@ -80,6 +80,7 @@ typedef enum {
 typedef enum {
     OASIS_REC_RESULT_KNOWN_FACE,
     OASIS_REC_RESULT_UNKNOWN_FACE,
+    OASIS_REC_RESULT_FORBIDEN_FACE, //识别通过但是被禁止通行的face   xshx add
     OASIS_REC_RESULT_INVALID = 0xFF
 } OASISLTRecognizeRes_t;
 
