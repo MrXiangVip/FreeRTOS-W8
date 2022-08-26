@@ -16,6 +16,8 @@
 
 #define RTFFI_USE_FATFS 0
 
+static char *logtag ="[FeatureDB]: ";
+
 #if RTFFI_USE_FATFS
 #include "fatfs_op.h"
 #include "ff.h"
@@ -37,7 +39,6 @@ static char file_name[FEATURE_FILE_NAME_LEN];
 
 static bool auto_save_mode = EXCLUSIVE_FLASH_BY_FILE_SYSTEM;
 
-static char *logtag ="[FeatureDB]: ";
 extern uint8_t remote_change_fs;
 
 static int File_FacerecFsReadMap(FeatureMap *pMap)
@@ -133,6 +134,8 @@ FeatureDB::~FeatureDB()
 
 int FeatureDB::add_feature(uint16_t id, const std::string name, float *feature)
 {
+    LOGD("%s %s id %d, name %d ,LINE %d\r\n", logtag, __func__, id, name, __LINE__);
+
     reassign_feature();
 
     int index = get_free_mapmagic();
@@ -979,18 +982,22 @@ int FeatureDB::get_free(int &index)
 int FeatureDB::del_feature(uint16_t id, std::string name)
 {
     int index = FEATUREDATA_MAX_COUNT;
-    FeatureItem item_t;
- 
+//    FeatureItem item_t;
+    FeatureItem *item_t = (FeatureItem*)pvPortMalloc(sizeof(FeatureItem));;
+
     for (int i = 0; i < FEATUREDATA_MAX_COUNT; i++)
     {
         if (s_FeatureMap.magic[i] == FEATUREDATA_MAGIC_VALID)
         {
 #if SDRAM_DB
-            memcpy(&item_t, &s_FeatureItem[i], sizeof(item_t));
+//            memcpy(&item_t, &s_FeatureItem[i], sizeof(item_t));
+            memcpy(item_t, &s_FeatureItem[i], sizeof(FeatureItem));
 #else
-            Flash_FacerecFsReadItem(i,&item_t);
+//            Flash_FacerecFsReadItem(i,&item_t);
+            Flash_FacerecFsReadItem(i,item_t);
 #endif
-            if ((item_t.id == id) && (!strcmp(name.c_str(), item_t.name)))
+//            if ((item_t.id == id) && (!strcmp(name.c_str(), item_t.name)))
+            if ((item_t->id == id) && (!strcmp(name.c_str(), item_t->name)))
             {
                 index = i;
                 break;
@@ -1003,6 +1010,7 @@ int FeatureDB::del_feature(uint16_t id, std::string name)
 
     s_FeatureMap.magic[index] = FEATUREDATA_MAGIC_DELET;
     Flash_FacerecFsUpdateMapMagic(index, &s_FeatureMap, false);
+    vPortFree(item_t);
     return 0;
 }
 
@@ -1058,6 +1066,7 @@ int FeatureDB::database_save(int count)
 
 int FeatureDB::add_feature(uint16_t id, const std::string name, float *feature)
 {
+    LOGD("%s %s id %d, name %d ,LINE %d\r\n", logtag, __func__, id, name, __LINE__);
     reassign_feature();
 
     int index = get_free_mapmagic();
@@ -1086,6 +1095,7 @@ int FeatureDB::add_feature(uint16_t id, const std::string name, float *feature)
 
 int FeatureDB::update_feature(uint16_t id, const std::string name, float *feature)
 {
+    LOGD("%s %s id %d , name %s\r\n", logtag, __func__, id,  name.c_str());
     int ret;
     ret = del_feature(id, name);
     if (ret == -1)

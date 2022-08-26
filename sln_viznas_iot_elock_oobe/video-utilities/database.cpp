@@ -275,6 +275,7 @@ int DB_Add(uint16_t id, std::string name, float *feature)
 
 int DB_Update(uint16_t id, float *feature)
 {
+    LOGD("%s %s id: %d\r\n", logtag, __func__, id);
     int ret = DB_MGMT_FAILED;
 
     ret = DB_Lock();
@@ -321,7 +322,7 @@ int DB_GetID_FeaturePointers(uint16_t* ids,void**pFeatures,int num)
 
 int DB_GetName(uint16_t id, std::string &name)
 {
-    LOGD("%s DB_GetName id %d  \r\n", logtag, id);
+    LOGD("%s %s id %d  \r\n", logtag, __func__, id);
 
     int ret = DB_MGMT_FAILED;
 
@@ -384,7 +385,7 @@ int DB_save_feature(float *feature) {
  *  函数功能 :检查 name 在db 中是否存在
  *  如果存在返回 id, 如果不存在返回 -1
  */
-int DB_GetID_ByName(std::string name ){
+uint16_t DB_GetID_ByName(std::string name ){
     LOGD("%s %s , %s \r\n",logtag, __func__, name.c_str());
     std::vector<uint16_t> allIDs;
     DB_GetIDs(allIDs);
@@ -395,10 +396,11 @@ int DB_GetID_ByName(std::string name ){
         LOGD("%s id %d ,tmp name [%s] , name[%s]\r\n",logtag, i, tmpName.c_str(), name.c_str() );
         if( tmpName.compare( name ) == 0 ){
 
-            LOGD("%s i: %d  id: %d\r\n",logtag, i, allIDs[i]) ;
+            LOGD("%s 用户名已存在 i: %d  id: %d\r\n",logtag, i, allIDs[i]) ;
             return allIDs[i];
         }
     }
+    LOGD("%s 用户名不存在 \r\n",logtag) ;
     return  DB_MGMT_FAILED;
 }
 
@@ -411,8 +413,8 @@ int DB_GetFeature_ByName(std::string name, float* feature)
 {
     LOGD("%s %s , %s \r\n",logtag, __func__, name.c_str());
 
-    int id = DB_GetID_ByName( name );
-    if( id != DB_MGMT_FAILED){
+    uint16_t id = DB_GetID_ByName( name );
+    if( id != (uint16_t)DB_MGMT_FAILED ){
         DB_GetFeature( id, feature);
         LOGD("%s 获取到id %d 的特征值  \r\n",logtag, id);
         return DB_MGMT_OK;
@@ -427,12 +429,12 @@ int DB_GetFeature_ByName(std::string name, float* feature)
 */
 int DB_AddFeature_WithName( std::string name, float* feature )
 {
-    LOGD("%s %s , %s \r\n",logtag, __func__, name.c_str());
+    LOGD("%s %s , name : %s \r\n",logtag, __func__, name.c_str());
 //  1.增加前查看是否name 已经存在
     uint16_t id_local = DB_GetID_ByName( name );
 
 //  2.如果用户已经存在 则更新用户名对应的特征值,
-    if( id_local != DB_MGMT_FAILED ){
+    if( id_local != (uint16_t)DB_MGMT_FAILED ){
 //        DB_Del(name);
 //        LOGD("%s 用户名已存在,则删除 %s  \r\n",logtag, name.c_str());
 //        int ret     = DB_GenID(&id_local);
