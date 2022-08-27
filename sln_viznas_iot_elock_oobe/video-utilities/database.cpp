@@ -465,7 +465,7 @@ int DB_AddFeature_WithName( std::string name, float* feature )
             LOGD("remote add user into local fail, [%d]: [%s]\r\n", id_local, name.c_str());
             return DB_MGMT_FAILED;
         }
-        LOGD("%s 增加 user 特征值 into db success, [%d]: [%s]\r\n",logtag, id_local, name.c_str() );
+        LOGD("%s 增加 user 特征值 into db success, id_local[%d]: name[%s]\r\n",logtag, id_local, name.c_str() );
         return  DB_MGMT_OK;
     }
 

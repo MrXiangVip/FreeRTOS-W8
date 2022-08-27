@@ -12,7 +12,7 @@
 #include "util.h"
 #include "MCU_UART5_Layer.h"
 
-static  const char * logtag="[UserExtendManager] ";
+static  const char * logtag="[UserExtendManager]: ";
 
 //全局的用户 包含的数据集合
 
@@ -93,7 +93,7 @@ int UserExtendManager::get_index_by_uuid(char *uuid) {
 }
 
 int UserExtendManager::addUserJson(UserJson * userExtend){
-    LOGD("%s addUserJson  %s\r\n", logtag, userExtend->UUID);
+    LOGD("%s addUserJson  %s %s \r\n", logtag, userExtend->UUID, userExtend->jsonData);
 //  1.查询uuid 是否已经存在
 //    Record_Lock();
     int index = delUserJsonByUUID( userExtend->UUID);
@@ -132,15 +132,13 @@ int UserExtendManager::addUserJson(UserJson * userExtend){
 }
 //input : uuid
 //output: userExtend
-int  UserExtendManager::queryUserJsonByUUID( char *uuid, UserJson *userExtend){
+int  UserExtendManager::queryUserJsonByUUID( char *uuid, UserJson *userJson){
     LOGD("%s queryUserJsonByUUID  %s\r\n",logtag, uuid);
-    int status =-1;
-
 //    Record_Lock();
     int index = get_index_by_uuid(uuid);
     if( index != -1 ){
 
-        status = SLN_Read_Flash_At_Address(userExtend_FS_Head+index* (FLASH_SECTOR_SIZE), (uint8_t *)userExtend, sizeof(UserJson));
+        int status = SLN_Read_Flash_At_Address(userExtend_FS_Head+index* (FLASH_SECTOR_SIZE), (uint8_t *)userJson, sizeof(UserJson));
         if (status != 0) {
             LOGD("read flash failed %d \r\n", status);
         }
@@ -148,18 +146,18 @@ int  UserExtendManager::queryUserJsonByUUID( char *uuid, UserJson *userExtend){
         LOGD("%s 没有查到对应 UUID 的记录\r\n",logtag);
     }
 //    Record_UnLock();
-    return  status;
+    return  index;
 }
 //
-int UserExtendManager::updateUserJsonByUUID( char *uuid, UserJson *userExtend){
+int UserExtendManager::updateUserJsonByUUID( char *uuid, UserJson *userJson){
     LOGD("%s updateUserJsonByUUID  %s\r\n",logtag, uuid);
     int status =-1;
 //    Record_Lock();
     int index = get_index_by_uuid( uuid );
     if( index != -1 ){
-        status = SLN_Write_Flash_Page(userExtend_FS_Head+index* (FLASH_SECTOR_SIZE), (uint8_t *)userExtend, sizeof(UserJson) );
-//        status = SLN_Write_Flash_At_Address(userExtend_FS_Head+index* (FLASH_SECTOR_SIZE), (uint8_t *)userExtend );
-//        status = SLN_Write_Sector(userExtend_FS_Head+index* (FLASH_SECTOR_SIZE), (uint8_t *)userExtend );
+        status = SLN_Write_Flash_Page(userExtend_FS_Head+index* (FLASH_SECTOR_SIZE), (uint8_t *)userJson, sizeof(UserJson) );
+//        status = SLN_Write_Flash_At_Address(userExtend_FS_Head+index* (FLASH_SECTOR_SIZE), (uint8_t *)userJson );
+//        status = SLN_Write_Sector(userExtend_FS_Head+index* (FLASH_SECTOR_SIZE), (uint8_t *)userJson );
         if (status != 0) {
             LOGD("read flash failed %d \r\n", status);
             return  -1;
@@ -231,15 +229,7 @@ int UserExtendManager::addStrUser(char * userInfo){
     return  ret;
 }
 
-int UserExtendManager::getGroupUser(UserExtendClass *groupUserClass ){
-    LOGD("%s %s \r\n", logtag, __func__);
-    int ret=0;
-    UserJson userJson;
-    memset( &userJson, 0, sizeof(UserJson) );
-    ret =queryUserJsonByUUID("ALL", &userJson);
-    convertUserJson2UserExtendClass(&userJson, groupUserClass);
-    return  ret;
-}
+
 
 void UserExtendManager::convertStr2UserExtendClass(char *strUserInfo, UserExtendClass *userExtendType) {
     LOGD("%s build a user: %d ,%s \r\n",logtag, strlen(strUserInfo), strUserInfo);
@@ -313,75 +303,125 @@ void UserExtendManager::convertUserJson2UserExtendClass(UserJson *userJson, User
  *  参数一 :   用户字串
  *  参数二 :   组用户类 group
  */
-
-
 bool UserExtendManager::checkUUIDUserPermission( char *uuid ) {
     LOGD("%s %s \r\n",logtag, __func__ );
-    UserJson    userJson;
-    UserExtendClass userExtendClass;
-    UserJson    groupJson;
-    UserExtendClass groupExtendClass;
-    memset( &userJson, 0, sizeof(UserJson) );
-    memset( &groupJson, 0, sizeof(groupJson) );
-    memset( &userExtendClass, 0, sizeof(UserExtendClass) );
-    memset( &groupExtendClass, 0, sizeof(UserExtendClass) );
+    bool flag   = false;
+    UserJson        *userJson           = (UserJson *)pvPortMalloc(sizeof(UserJson) );
+    UserExtendClass *userExtendClass    = (UserExtendClass *)pvPortMalloc( sizeof(UserExtendClass) );
+    UserJson        *groupJson          = (UserJson *)pvPortMalloc( sizeof(UserJson) );
+    UserExtendClass *groupExtendClass   = (UserExtendClass *)pvPortMalloc( sizeof(UserExtendClass) );
+    memset( userJson, 0, sizeof(UserJson) );
+    memset( groupJson, 0, sizeof(groupJson) );
+    memset( userExtendClass, 0, sizeof(UserExtendClass) );
+    memset( groupExtendClass, 0, sizeof(UserExtendClass) );
 
-
-    queryUserJsonByUUID( uuid, &userJson);
-    queryUserJsonByUUID( "ALL", &groupJson);
-
-    convertUserJson2UserExtendClass( &userJson, &userExtendClass);
-    convertUserJson2UserExtendClass( &groupJson, &groupExtendClass);
-
-    LOGD("get user:%s ,%s ,%s \r\n", userExtendClass.UUID, userExtendClass.dateDuration, userExtendClass.weekDuration);
-    LOGD("get all: %s, %s, %s \r\n", groupExtendClass.UUID, groupExtendClass.dateDuration, groupExtendClass.weekDuration);
-
-    long currentTime  = ws_systime;
-    long currentTimeSlot = currentTime%AWeek;
-//  1.比较 date 范围
-    char * startDate = strtok(userExtendClass.dateDuration,"-");
-    char * endDate = strtok( NULL, "-");
-    long lStartDate = atol( startDate );
-    long lEndDate = atol( endDate );
-
-
-    char * allStartDate = strtok( groupExtendClass.dateDuration ,"-");
-    char * allEndDate = strtok(NULL, "-");
-    long lAllStartDate = atol( allStartDate );
-    long lAllEndDate = atol( allEndDate);
-
-    if( lStartDate >lEndDate ) {
-        LOGD("error date format\r\n");
-        return false;
-    }
-//    0-0  forbiden   0-1 临时同行  x-y normal
-    if( lStartDate==0 ){
-        if( lEndDate == 0 ) {
-            LOGD("forbiden user  \r\n");
-            return false;
-        }else if( lEndDate == 1 ) {
-            LOGD("temp user can pass \r\n");
-            return true;
-        }else {
-            LOGD(" error format  \r\n");
-            return false;
+    while(1){// 用while break 取代if goto
+        int userIndex = queryUserJsonByUUID( uuid, userJson);
+        int groupIndex = queryUserJsonByUUID( "ALL", groupJson);
+        //  未下发组用户的规则 则禁止通行
+        if( groupIndex == -1 ){
+            LOGD("%s group user not set , forbiden \r\n", logtag);
+            flag = false;
+            break;
         }
-    }
-    if( (currentTime > lAllStartDate) && (currentTime <lAllEndDate) ){
-        LOGD("legal date\n");
-    }else{
-        LOGD("illegal date \n");
-    }
-    //  2.比较week 范围
-    char * aWeekDurationStart = strtok( groupExtendClass.weekDuration, ",-");
-    char *aWeekDurationEnd = strtok( NULL, ",-");
-    LOGD("from %s ,to %s ,current %ld\n", aWeekDurationStart, aWeekDurationEnd, currentTimeSlot);
+//  还没有下发通行时段的用户, 默认使用组用户通行规则
+        if( (groupIndex != -1) && (userIndex == -1) ) {
+            LOGD("%s 还没有下发通行时段的用户, 默认使用组用户通行规则\r\n", logtag);
+            memcpy( userJson, groupJson, sizeof(UserJson) );
+            userIndex = groupIndex;
+        }
+//  有效的用户,拿到当前时间比较通行规则
+        if( (groupIndex !=-1) && (userIndex!=-1) ){
+            convertUserJson2UserExtendClass( userJson, userExtendClass);
+            convertUserJson2UserExtendClass( groupJson, groupExtendClass);
 
-    while( aWeekDurationStart=strtok(NULL, ",-")){
-        aWeekDurationEnd = strtok( NULL, ",-");
-        LOGD("from %s, to %s ,current %ld \n", aWeekDurationStart, aWeekDurationEnd, currentTimeSlot);
+            LOGD("%s %s get user:%s ,%s ,%s \r\n",logtag, userExtendClass->UUID, userExtendClass->dateDuration, userExtendClass->weekDuration);
+            LOGD("%s %s get all: %s, %s, %s \r\n",logtag, groupExtendClass->UUID, groupExtendClass->dateDuration, groupExtendClass->weekDuration);
+
+            long currentTime  = ws_systime;
+            long currentTimeSlot = currentTime%AWeek;
+//  1.比较 date 范围
+            char * startDate = strtok(userExtendClass->dateDuration,"-");
+            char * endDate = strtok( NULL, "-");
+            long lStartDate = atol( startDate );
+            long lEndDate = atol( endDate );
+
+
+            char * allStartDate = strtok( groupExtendClass->dateDuration ,"-");
+            char * allEndDate = strtok(NULL, "-");
+            long lAllStartDate = atol( allStartDate );
+            long lAllEndDate = atol( allEndDate);
+
+            if( lStartDate >lEndDate ) {
+                LOGD("error date format\r\n");
+                flag = false;
+                break;
+            }
+//    0-0  forbiden   0-1 临时同行  x-y normal
+            if( lStartDate==0 ){
+                if( lEndDate == 0 ) {
+                    LOGD("forbiden user  \r\n");
+                    flag = false;
+                    break;
+                }else if( lEndDate == 1 ) {
+                    LOGD("temp user can pass \r\n");
+                    flag = true;
+                    break;
+                }else {
+                    LOGD(" error format  \r\n");
+                    flag = false;
+                    break;
+                }
+            }
+            if( (currentTime > lAllStartDate) && (currentTime <lAllEndDate) ){
+                LOGD("%s当前时间在合法的通行时段里  \r\n", logtag);
+            }else{
+                LOGD("%s不合法的通行时段 \r\n", logtag);
+                flag = false;
+                break;
+            }
+            //  2.比较week 范围
+            char * groupWeekDurationStart = strtok( groupExtendClass->weekDuration, ",-");
+            char *groupWeekDurationEnd = strtok( NULL, ",-");
+            LOGD("from %s ,to %s ,current %d \r\n", groupWeekDurationStart, groupWeekDurationEnd, currentTimeSlot);
+            long lGroupWeekDurationStart = atol( groupWeekDurationStart );
+            long lGroupWeekDurationEnd = atol( groupWeekDurationEnd );
+//        如果当前时间在周时间段里 则通过
+            if( currentTimeSlot >= lGroupWeekDurationStart && currentTimeSlot <= lGroupWeekDurationEnd ){
+                flag = true;
+                break;
+            }
+            while( groupWeekDurationStart=strtok(NULL, ",-")){
+                groupWeekDurationEnd = strtok( NULL, ",-");
+
+                LOGD("from %s, to %s ,current %d \r\n", groupWeekDurationStart, groupWeekDurationEnd, currentTimeSlot);
+                lGroupWeekDurationStart = atol( groupWeekDurationStart );
+                lGroupWeekDurationEnd = atol( groupWeekDurationEnd );
+                if( currentTimeSlot >= lGroupWeekDurationStart && currentTimeSlot <= lGroupWeekDurationEnd ){
+                    flag = true;
+                    break;
+                }
+            }
+
+        }
+        //      最后跳出while
+        break;
+    }
+
+//  释放内存
+    if( userJson !=NULL ){
+        vPortFree(userJson);
+    }
+    if( userExtendClass != NULL){
+        vPortFree( userExtendClass );
+    }
+    if( groupJson != NULL){
+        vPortFree( groupJson );
+    }
+    if( groupExtendClass != NULL){
+        vPortFree( groupExtendClass );
     }
     //    时间段比较通过
-    return  true;
+    return  flag;
 }
 

@@ -439,19 +439,21 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
             {
                 std::string name;
                 //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[OASIS]:face id:%d\r\n", id);
-                LOGD("[OASIS]:face id:%d\r\n", id);
+                LOGD("[OASIS]:faceID:%d\r\n", id);
                 DB_GetName(id, name);
                 memcpy(gui_info.name, name.c_str(), name.size());
                 face_info.recognize = true;
                 face_info.name      = std::string(name);
                 //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[OASIS]:face id:%d name:%s\r\n", id, gui_info.name);
-                LOGD("[OASIS]:face id:%d name:%s\r\n", id, gui_info.name);
+                LOGD("[OASIS]:faceID:%d name:%s\r\n", id, gui_info.name);
 
 //              识别成功后 检查下权限  xshx add 20220825
                 bool ret = UserExtendManager::getInstance()->checkUUIDUserPermission( (char *)name.c_str() );
                 if( ret != true){
-                    LOGD("权限检查 不通过 \r\n");
+                    LOGD("时间段检查 不通过 \r\n");
                     recResult = OASIS_REC_RESULT_FORBIDEN_FACE;
+                }else{
+                    LOGD("时间段检查 通过 \r\n");
                 }
             }
             else

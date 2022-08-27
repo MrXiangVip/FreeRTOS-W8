@@ -91,8 +91,6 @@ class UserExtendManager {
 
         static UserExtendManager *getInstance();
 
-//        void initManager();
-
         int addUserJson(UserJson * userExtend);
 
         int queryUserJsonByUUID( char *uuid, UserJson *userExtend);
@@ -109,11 +107,8 @@ class UserExtendManager {
 
         int addStrUser(char * userInfo);//
 
-        int getGroupUser(UserExtendClass *groupUserClass );//
-
 //      将字符串转成用户类实例
         void convertStr2UserExtendClass( char *strUserInfo, UserExtendClass *userExtendType);
-//
 
 //      将用户类转成 json 格式
         void convertUserExtendClass2UserJson( UserExtendClass *userExtendType, UserJson *userJson);

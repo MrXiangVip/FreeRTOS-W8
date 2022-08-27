@@ -1078,7 +1078,7 @@ int FeatureDB::add_feature(uint16_t id, const std::string name, float *feature)
     s_FeatureMap.magic[index] = FEATUREDATA_MAGIC_VALID;
 
     FeatureItem *item_t = (FeatureItem*)pvPortMalloc(sizeof(FeatureItem));
-    LOGD("[FeatureDB]: add feature 1 featureItem %d faceSize %d\r\n", sizeof(FeatureItem), OASISLT_getFaceItemSize());
+    LOGD("[FeatureDB]: add feature  featureItem %d faceSize %d\r\n", sizeof(FeatureItem), OASISLT_getFaceItemSize());
     item_t->id = id;
     item_t->index = index;
     strcpy(item_t->name, name.c_str());
