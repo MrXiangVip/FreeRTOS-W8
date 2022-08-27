@@ -95,7 +95,7 @@ static void vFakeUartMainTask(void *pvParamters){
                     SendMessageToUart5FromFakeUart(CMD_LIST[gCommandIndex]);
                     gCommandIndex = -1;
                 }else{
-                    vAddAIdNameFeature((char *)name.c_str(), feature);
+//                    vAddAIdNameFeature((char *)name.c_str(), feature);
                     gCommandIndex = -1;
                 }
             }
