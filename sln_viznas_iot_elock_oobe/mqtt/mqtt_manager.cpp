@@ -22,6 +22,7 @@
 #include "MCU_UART5.h"
 #include "MCU_UART5_Layer.h"
 #include "DBManager.h"
+#include "sln_api.h"
 
 // 分析最原始的MQTT AT消息
 int MqttManager::analyzeMqttRecvLine(char *msg) {
@@ -145,9 +146,14 @@ int MqttManager::handleMqttMsgData(char *jsonMsg) {
         MqttCmdMgr::getInstance()->atCmdResponse(result, idStr);
     } else if (strcmp("du", typeStr) == 0) {
         result = DBManager::getInstance()->deleteRecordByUUID(dataStr);
+        result = UserExtendManager::getInstance()->delUserJsonByUUID( dataStr );
+        vizn_api_status_t status = VIZN_DelUser(NULL, dataStr);
         MqttCmdMgr::getInstance()->atCmdResponse(result, idStr);
-    } else if (strcmp("da", typeStr) == 0) {
+    } else if (strcmp("cu", typeStr) == 0) {
         result = DBManager::getInstance()->clearRecord();
+        result = UserExtendManager::getInstance()->clearAllUserJson();
+        result = VIZN_DelUser(NULL);
+
         MqttCmdMgr::getInstance()->atCmdResponse(result, idStr);
     } else if (strcmp("ua", typeStr) == 0) {
         // TODO:
