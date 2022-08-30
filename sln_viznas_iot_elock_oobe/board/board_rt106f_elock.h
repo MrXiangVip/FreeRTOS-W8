@@ -497,9 +497,9 @@ extern "C" {
 #define OTA_SUPPORT		0
 #define	FFD_SUPPORT		0
 
-#define  SYS_VERSION		"1.0.0"
-#define  PROJECT_VERSION    "R60_106F_V1.0.0"
-#define  FIRMWARE_VERSION   "FW_R60_093d07_20220830_V1.0.0"
+#define  SYS_VERSION		"1.0.1"
+#define  PROJECT_VERSION    "R60_106F_V1.0.1"
+#define  FIRMWARE_VERSION   "FW_R60_093d07_20220830_V1.0.1"
 
 /*******************************************************************************
  * API

@@ -335,11 +335,11 @@ bool UserExtendManager::checkUUIDUserPermission( char *uuid ) {
             convertUserJson2UserExtendClass( userJson, userExtendClass);
             convertUserJson2UserExtendClass( groupJson, groupExtendClass);
 
-            LOGD("%s %s get user:%s ,%s ,%s \r\n",logtag, userExtendClass->UUID, userExtendClass->dateDuration, userExtendClass->weekDuration);
+            LOGD("%s %s get user:%s, %s, %s \r\n",logtag, userExtendClass->UUID, userExtendClass->dateDuration, userExtendClass->weekDuration);
             LOGD("%s %s get all: %s, %s, %s \r\n",logtag, groupExtendClass->UUID, groupExtendClass->dateDuration, groupExtendClass->weekDuration);
 
-            long currentTime  = ws_systime + 8*AHour; //东八区加8小时
-            long currentTimeSlot = (currentTime-4*ADay )%AWeek; //1970年 0分0秒是星期四,从星期一开始计时
+            long currentTime  = ws_systime ; //东八区加8小时
+            long currentTimeSlot = (currentTime-4*ADay+ 8*AHour )%AWeek; //1970年 0分0秒是星期四,从星期一开始计时
 
             int weekday = currentTimeSlot /ADay;
             int hour = currentTimeSlot %ADay /AHour;
