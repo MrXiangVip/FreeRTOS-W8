@@ -164,7 +164,7 @@ int MqttCmdMgr::pushRecord(Record *record, int cmdType, int priority, int force)
         for (int i = 0; i < m_uploading_records.size(); i++) {
             if (m_uploading_records[i] == id) {
                 LOGD("pushRecrod find id %d\r\n", id);
-                return 0;
+                return -1;
             }
         }
     }
@@ -186,10 +186,10 @@ int MqttCmdMgr::pushRecords(int uploadStatus, int cmdType, int maxCount) {
         Record *record = (Record * ) * it;
         if (record->upload == uploadStatus) {
             int result = pushRecord(record, cmdType);
-            count++;
             if (result != 0) {
                 continue;
             }
+            count++;
             if (count >= maxCount) {
                 break;
             }
@@ -221,7 +221,7 @@ void MqttCmdMgr::uploadRecords() {
         }
 
         if (recordCount == 0) {
-            if (timeoutCount < 10) {
+            if (timeoutCount < 100) {
                 timeoutCount++;
             }
             vTaskDelay(pdMS_TO_TICKS(6000*timeoutCount));
