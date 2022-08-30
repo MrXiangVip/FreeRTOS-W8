@@ -9,7 +9,8 @@
 
 #include "PriorityQueue.h"
 #include "DBManager.h"
-#include <vector>
+//#include <vector>
+#include <set>
 #include <stdio.h>
 
 #define MSG_ID_LEN 20
@@ -32,7 +33,9 @@ private:
 
     PriorityQueue m_mqtt_cmds;
     int pushRecord(int uploadStatus, int cmdType);
-    vector<int> m_uploading_records;
+//    vector<int> m_uploading_records;
+    set<int> m_uploading_text_records;
+    set<int> m_uploading_image_records;
 
     int uploadRecordText(Record *record);
     int uploadRecordImage(Record *record);

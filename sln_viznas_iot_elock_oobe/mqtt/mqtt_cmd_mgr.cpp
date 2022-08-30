@@ -97,14 +97,9 @@ int MqttCmdMgr::uploadRecordText(Record *record) {
     if (result == 0) {
         record->upload = RECORD_UPLOAD;
         DBManager::getInstance()->updateRecordByID(record);
-        for (int i = 0; i < m_uploading_records.size(); i++) {
-            if (m_uploading_records[i] == record->ID) {
-                m_uploading_records.erase(m_uploading_records.begin() + i);
-                LOGD("uploadRecordText erase id %d uploading_records size %d\r\n", record->ID, m_uploading_records.size());
-                break;
-            }
-        }
     }
+    m_uploading_text_records.erase(record->ID);
+    LOGD("uploadRecordText erase id %d uploading_text_records size %d\r\n", record->ID, m_uploading_text_records.size());
     return result;
 }
 
@@ -143,14 +138,9 @@ int MqttCmdMgr::uploadRecordImage(Record *record) {
     if (result == 0) {
         record->upload = BOTH_UPLOAD;
         DBManager::getInstance()->updateRecordByID(record);
-        for (int i = 0; i < m_uploading_records.size(); i++) {
-            if (m_uploading_records[i] == record->ID) {
-                m_uploading_records.erase(m_uploading_records.begin() + i);
-                LOGD("uploadRecordImage erase id %d uploading_records size %d\r\n", record->ID, m_uploading_records.size());
-                break;
-            }
-        }
     }
+    m_uploading_image_records.erase(record->ID);
+    LOGD("uploadRecordImage erase id %d m_uploading_image_records size %d\r\n", record->ID, m_uploading_image_records.size());
 
     vPortFree(pubMsg);
     vPortFree(base64Buffer);
@@ -161,14 +151,20 @@ int MqttCmdMgr::uploadRecordImage(Record *record) {
 int MqttCmdMgr::pushRecord(Record *record, int cmdType, int priority, int force) {
     int id = record->ID;
     if (!force) {
-        for (int i = 0; i < m_uploading_records.size(); i++) {
-            if (m_uploading_records[i] == id) {
-                LOGD("pushRecrod find id %d\r\n", id);
+        if (cmdType == CMD_TYPE_RECORD_TEXT) {
+            if (m_uploading_text_records.find(id) != m_uploading_text_records.end()) {
+                LOGD("pushRecrod Text find id %d\r\n", id);
                 return -1;
             }
+            m_uploading_text_records.insert(id);
+        } else if (cmdType == CMD_TYPE_RECORD_IMAGE) {
+            if (m_uploading_image_records.find(id) != m_uploading_image_records.end()) {
+                LOGD("pushRecrod Image find id %d\r\n", id);
+                return -1;
+            }
+            m_uploading_image_records.insert(id);
         }
     }
-    m_uploading_records.push_back(id);
     LOGD("pushRecord id %d cmdType %d priority %d force %d\r\n", id, cmdType, priority, force);
     char rid[12] = {0};
     sprintf(rid, "%d", id);
