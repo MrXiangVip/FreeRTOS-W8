@@ -96,6 +96,7 @@ static uint8_t s_appType;
 static char oasis_filename[64] = {0};
 static int oasis_flag = 0;  //1:reg; 2:rec; 0:other
 //extern bool bOasisRecordUpload;
+static int failedCount=0;
 
 volatile int g_OASISLT_heap_debug;
 
@@ -538,7 +539,17 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
             }
 //          xshx add
             face_info.recognize_result = recResult;//保存识别结果
-            VIZN_RecognizeEvent(gApiHandle, face_info);
+//            VIZN_RecognizeEvent(gApiHandle, face_info);
+            if( face_info.recognize == false ){
+                if( failedCount > 4){
+                    failedCount=0;
+                    VIZN_RecognizeEvent(gApiHandle, face_info);
+                }else{
+                    failedCount++;
+                }
+            }else{
+                VIZN_RecognizeEvent(gApiHandle, face_info);
+            }
 
         }
         break;
