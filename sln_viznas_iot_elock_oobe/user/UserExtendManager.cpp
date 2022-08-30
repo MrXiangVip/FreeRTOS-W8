@@ -338,14 +338,14 @@ bool UserExtendManager::checkUUIDUserPermission( char *uuid ) {
             LOGD("%s %s get user:%s ,%s ,%s \r\n",logtag, userExtendClass->UUID, userExtendClass->dateDuration, userExtendClass->weekDuration);
             LOGD("%s %s get all: %s, %s, %s \r\n",logtag, groupExtendClass->UUID, groupExtendClass->dateDuration, groupExtendClass->weekDuration);
 
-            long currentTime  = ws_systime -4*ADay +8*AHour; //东八区加8小时   1970年 0分0秒是星期四,从星期一开始计时
-            long currentTimeSlot = currentTime%AWeek;
+            long currentTime  = ws_systime + 8*AHour; //东八区加8小时
+            long currentTimeSlot = (currentTime-4*ADay )%AWeek; //1970年 0分0秒是星期四,从星期一开始计时
 
             int weekday = currentTimeSlot /ADay;
             int hour = currentTimeSlot %ADay /AHour;
             int min  = currentTimeSlot %AHour /AMin;
             int sec  = currentTimeSlot %AMin;
-            LOGD("%s 现在的时间是%d 取模后%d, 周 %d - %d 时: %d 分: %d 秒\r\n", logtag,currentTime, currentTimeSlot, weekday, hour, min, sec);
+            LOGD("%s 现在的时间是%d 取模后%d, 周 %d - %d 时: %d 分: %d 秒\r\n", logtag,currentTime, currentTimeSlot, weekday +1, hour, min, sec);
 //  1.比较 date 范围
             char * startDate = strtok(userExtendClass->dateDuration,"-");
             char * endDate = strtok( NULL, "-");
