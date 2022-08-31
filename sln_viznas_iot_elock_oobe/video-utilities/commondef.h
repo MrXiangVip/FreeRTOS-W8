@@ -329,7 +329,8 @@ typedef struct
 #define FEATURE_BORDER_ROUTER 0
 
 /* Flash Database related */
-#define FEATUREDATA_MAX_COUNT 100
+//#define FEATUREDATA_MAX_COUNT 100
+#define FEATUREDATA_MAX_COUNT 600    //特征值扩展到600
 
 #define FLASH_OK  0
 #define FLASH_ERR 1

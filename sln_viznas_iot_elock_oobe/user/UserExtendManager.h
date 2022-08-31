@@ -13,8 +13,8 @@ extern "C"  {
 #include "stdio.h"
 #include "sln_flash.h"
 
-//#define MAX_COUNT 100
-#define MAX_EXTEND_COUNT    100
+//#define FEATUREDATA_MAX_COUNT 100
+#define MAX_EXTEND_COUNT    600   //扩展记录最大的数量
 #define UUID_MAGIC_UNUSE    0xFF
 #define FLASH_SECTOR_SIZE   0x1000
 
