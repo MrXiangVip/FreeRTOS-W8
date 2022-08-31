@@ -366,7 +366,7 @@ bool UserExtendManager::checkUUIDUserPermission( char *uuid ) {
 //    0-0  forbiden   0-1 临时同行  x-y normal
             if( lStartDate==0 ){
                 if( lEndDate == 0 ) {
-                    LOGD("forbiden user  \r\n");
+                    LOGD("0-0 forbiden user  \r\n");
                     flag = false;
                     break;
                 }
