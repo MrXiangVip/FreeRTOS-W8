@@ -345,7 +345,8 @@ typedef struct
 #else
 //0xB00000 to 0xB20000 are used by configuration file
 //#define FACEREC_FS_MAP_ADDR  (0xB20000U)
-#define FACEREC_FS_MAP_ADDR  (0xD20000U)
+//#define FACEREC_FS_MAP_ADDR  (0xD20000U)
+#define FACEREC_FS_MAP_ADDR  (0xB20000U) //xshx mod 20220831
 #endif
 
 #define FACEREC_FS_ITEM_ADDR  (FACEREC_FS_MAP_ADDR + FLASH_SECTOR_SIZE)

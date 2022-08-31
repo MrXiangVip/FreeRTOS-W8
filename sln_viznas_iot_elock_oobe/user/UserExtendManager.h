@@ -19,7 +19,8 @@ extern "C"  {
 #define FLASH_SECTOR_SIZE   0x1000
 
 
-#define USER_EXTEND_FS_ADDR         (0xE20000U)
+//#define USER_EXTEND_FS_ADDR         (0xE20000U)
+#define USER_EXTEND_FS_ADDR         (0xB20000U) //xshx mod 20220831
 #define USER_EXTEND_PAGE_SIZE       220
 
 #ifdef __cplusplus
