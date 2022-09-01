@@ -63,11 +63,14 @@ typedef enum {
     AT_CMD_RESULT_UNDEF 	=	-0x04,
 } AT_CMD_RESULT;
 
+#define UART8_BUF_SIZE 8192
+
 class MqttDevEsp32 {
 private:
     SemaphoreHandle_t m_send_at_cmd_lock;
 
-    uint8_t m_background_buffer_esp32[256];
+//    uint8_t m_background_buffer_esp32[256];
+    uint8_t *m_background_buffer_esp32;
 
     uint8_t recv_msg_lines[MAX_MSG_LINES][MAX_MSG_LEN_OF_LINE];
     int current_recv_line = 0;

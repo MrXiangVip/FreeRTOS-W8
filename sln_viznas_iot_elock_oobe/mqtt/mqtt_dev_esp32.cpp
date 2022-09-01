@@ -61,13 +61,15 @@ void MqttDevEsp32::unlockSendATCmd() {
 
 int MqttDevEsp32::initUart() {
     NVIC_SetPriority(ESP32_LPUART_IRQn, 4);
+    m_background_buffer_esp32 = (uint8_t*)pvPortMalloc(UART8_BUF_SIZE);
 
     lpuart_rtos_config_t lpuart_config_esp32 = {
             .baudrate    = 115200,
             .parity      = kLPUART_ParityDisabled,
             .stopbits    = kLPUART_OneStopBit,
             .buffer      = m_background_buffer_esp32,
-            .buffer_size = sizeof(m_background_buffer_esp32),
+//            .buffer_size = sizeof(m_background_buffer_esp32),
+            .buffer_size = UART8_BUF_SIZE,
     };
     lpuart_config_esp32.srcclk = ESP32_LPUART_CLK_FREQ;
     lpuart_config_esp32.base   = ESP32_LPUART;
