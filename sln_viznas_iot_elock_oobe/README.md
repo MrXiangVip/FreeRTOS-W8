@@ -6,11 +6,11 @@
 
 #1 : 分区说明
 BOARD_FLASH:                                 0x60000000  
-fatfs:                 #define FATFS_FLASH_REGION_OFFSET       0xB20000//0x60B20000 -> 0x60D20000
-FACEREC_FS_ITEM_ADDR:   #define FACEREC_FS_MAP_ADDR  (0xD20000U)  
+fatfs:                  #define FATFS_FLASH_REGION_OFFSET       (0x800000)     // -->2M
+FACEREC_FS_ITEM_ADDR:   #define FACEREC_FS_MAP_ADDR             (0xA00000U)    // -->2M
 //拓展的用户数据  
-USER_EXTEND_FS_ADDR:    #define  USER_EXTEND_FS_ADDR    (0xE20000U)  
-config文件的位置：  \#define CONFIG_FS_ADDR               (0xF20000U)//
+USER_EXTEND_FS_ADDR:    #define USER_EXTEND_FS_ADDR             (0xC00000U)    // -->3M          
+config file:            #define CONFIG_FS_ADDR                  (0xF00000U)    // 
 
 Total: 16M
  ______________________________________________________________________

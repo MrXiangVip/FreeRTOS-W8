@@ -14,7 +14,7 @@
 
 #define CONFIG_USE_FATFS 0
 //
-#define CONFIG_FS_ADDR  (0xF20000U)
+#define CONFIG_FS_ADDR  (0xF00000U)
 
 
 VERSIONCONFIG versionConfig;
@@ -40,7 +40,7 @@ void init_config() {
     LOGD("read fatfs, buf length is %d, size is %d, status is %d\r\n", strlen(buf), sizeof(buf), status);
 #else
     int status = SLN_Read_Flash_At_Address(CONFIG_FS_ADDR, buf, sizeof(buf));
-    LOGD( "read flash , buf length is %d, size is %d , status id %d \r\n", strlen(buf), sizeof(buf), status );
+    LOGD( "read flash %x , buf length is %d, size is %d , status id %d \r\n", CONFIG_FS_ADDR, strlen(buf), sizeof(buf), status );
 #endif
     {
         cJSON *root = NULL;
@@ -419,7 +419,7 @@ int save_json_config_file() {
         int status = SLN_Write_Sector(CONFIG_FS_ADDR, buf);
         if (status != 0)
         {
-            LOGD("write flash  %s failed %d \r\n", buf, status);
+            LOGD("write flash %x %s failed %d \r\n",CONFIG_FS_ADDR, buf, status);
         }
 #endif
         config_json_changed = false;

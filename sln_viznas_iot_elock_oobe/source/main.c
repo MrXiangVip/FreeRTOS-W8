@@ -39,6 +39,7 @@
 #include "sln_audio.h"
 #include "UART_FAKER.h"
 #include "wifi_main.h"
+#include "fsl_log.h"
 #define RELOCATE_VECTOR_TABLE 1
 
 const unsigned int gFWVersionNumber = APP_VERSION_NUMBER;
@@ -120,7 +121,7 @@ int main(void)
 
     /* Run RTOS */
     vTaskStartScheduler();
-
+    LOGD("FreeRtos Ready! \r\n");
     /* Should not reach this statement */
     while (1)
     {

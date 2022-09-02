@@ -36,7 +36,7 @@ UserExtendManager::UserExtendManager() {
     // Create a database lock semaphore
     userExtend_FS_Head = USER_EXTEND_FS_ADDR;
 
-    LOGD("%s Init UserExtendManager \r\n",logtag);
+    LOGD("%s Init UserExtendManager %x \r\n",logtag, USER_EXTEND_FS_ADDR);
 }
 
 UserExtendManager* UserExtendManager::getInstance()

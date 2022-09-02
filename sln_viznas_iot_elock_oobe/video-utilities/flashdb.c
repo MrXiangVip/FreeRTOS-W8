@@ -16,7 +16,7 @@
 #include "clock_config.h"
 #include "commondef.h"
 #include "sln_flash.h"
-
+#include "fsl_log.h"
 /*******************************************************************************
  * Definitions
  ******************************************************************************/
@@ -81,7 +81,7 @@ uint32_t Flash_FacerecFsReadMapMagic(FeatureMap *pMap)
     {
         return FLASH_ERR;
     }
-
+    LOGD("%s 0x%x\r\n",__func__, FACEREC_FS_MAP_ADDR);
     return FLASH_OK;
 }
 

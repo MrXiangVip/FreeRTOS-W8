@@ -729,7 +729,7 @@ static FeatureItem s_FeatureItem[FEATUREDATA_MAX_COUNT];
 
 FeatureDB::FeatureDB()
 {
-    PRINTF("[DB]:start:0x%x size:0x%x\r\n", FACEREC_FS_FIRST_SECTOR * FLASH_SECTOR_SIZE,
+    LOGD("%s:start:0x%x size:0x%x\r\n",logtag, FACEREC_FS_FIRST_SECTOR * FLASH_SECTOR_SIZE,
            ((sizeof(FeatureItem) * FEATUREDATA_MAX_COUNT + FLASH_SECTOR_SIZE - 1) / FLASH_SECTOR_SIZE + 1) *
                FLASH_SECTOR_SIZE);
 #if 0
@@ -981,9 +981,10 @@ int FeatureDB::get_free(int &index)
 
 int FeatureDB::del_feature(uint16_t id, std::string name)
 {
+    LOGD("%s %s id %d , name %s\r\n", logtag, __func__, id,  name.c_str());
     int index = FEATUREDATA_MAX_COUNT;
 //    FeatureItem item_t;
-    FeatureItem *item_t = (FeatureItem*)pvPortMalloc(sizeof(FeatureItem));;
+    FeatureItem *item_t = (FeatureItem*)pvPortMalloc(sizeof(FeatureItem));
 
     for (int i = 0; i < FEATUREDATA_MAX_COUNT; i++)
     {
@@ -1016,19 +1017,24 @@ int FeatureDB::del_feature(uint16_t id, std::string name)
 
 int FeatureDB::del_feature(const std::string name)
 {
+    LOGD("%s %s , name %s\r\n", logtag, __func__,   name.c_str());
     int index = FEATUREDATA_MAX_COUNT;
-    FeatureItem item_t;
+//    FeatureItem item_t;
+    FeatureItem *item_t = (FeatureItem*)pvPortMalloc(sizeof(FeatureItem));
 
     for (int i = 0; i < FEATUREDATA_MAX_COUNT; i++)
     {
         if (s_FeatureMap.magic[i] == FEATUREDATA_MAGIC_VALID)
         {
 #if SDRAM_DB
-            memcpy(&item_t, &s_FeatureItem[i], sizeof(item_t));
+//            memcpy(&item_t, &s_FeatureItem[i], sizeof(item_t));
+            memcpy( item_t, &s_FeatureItem[i], sizeof(FeatureItem));
 #else
-            Flash_FacerecFsReadItem(i,&item_t);
+//            Flash_FacerecFsReadItem(i,&item_t);
+            Flash_FacerecFsReadItem(i, item_t);
 #endif
-            if (!strcmp(name.c_str(), item_t.name))
+//            if (!strcmp(name.c_str(), item_t.name))
+            if (!strcmp(name.c_str(), item_t->name))
             {
                 index = i;
                 break;
@@ -1066,7 +1072,7 @@ int FeatureDB::database_save(int count)
 
 int FeatureDB::add_feature(uint16_t id, const std::string name, float *feature)
 {
-    LOGD("%s %s id %d, name %d ,LINE %d\r\n", logtag, __func__, id, name, __LINE__);
+    LOGD("%s %s id %d, name %s ,LINE %d\r\n", logtag, __func__, id, name.c_str(), __LINE__);
     reassign_feature();
 
     int index = get_free_mapmagic();
