@@ -17,8 +17,10 @@ static  const char * logtag="[UserExtendManager]: ";
 //全局的用户 包含的数据集合
 
 UserExtendManager*  UserExtendManager::m_instance = NULL; //用户管理类的实例
-UserExtendClass      UserExtendManager::gUserExtend ; // 表示一个全局的用户
+UserExtendClass     UserExtendManager::gUserExtend ; // 表示一个全局的用户
 uint32_t            UserExtendManager::userExtend_FS_Head = NULL;//头地址
+uint32_t            UserExtendManager::userUUID_FS_Head = NULL;//头地址
+uint8_t            *UserExtendManager::gUIDMap;
 
 typedef enum {
     RECORD_MGMT_OK      = 0x00,
@@ -35,8 +37,15 @@ typedef enum {
 UserExtendManager::UserExtendManager() {
     // Create a database lock semaphore
     userExtend_FS_Head = USER_EXTEND_FS_ADDR;
-
-    LOGD("%s Init UserExtendManager %x \r\n",logtag, USER_EXTEND_FS_ADDR);
+    userUUID_FS_Head   = USER_UUID_FS_ADDR;
+//  XSHX ADD
+    gUIDMap     = (uint8_t *)pvPortMalloc(sizeof(UUIDMap));
+    memset(gUIDMap , 0, sizeof(UUIDMap));
+    int status = SLN_Read_Flash_At_Address( userUUID_FS_Head, (uint8_t *)gUIDMap, sizeof(UUIDMap) );
+    if( status !=0 ) {
+        LOGD("%s read uuid failed \r\n", logtag);
+    }
+    LOGD("%s Init UserExtendManager UUID_ADDR 0x%x, EXTEND_ADDR 0x%x  \r\n",logtag,  USER_UUID_FS_ADDR, USER_EXTEND_FS_ADDR);
 }
 
 UserExtendManager* UserExtendManager::getInstance()
@@ -50,151 +59,220 @@ UserExtendManager* UserExtendManager::getInstance()
     return m_instance;
 }
 
-int UserExtendManager::get_free_index(){
-    LOGD("get free index \r\n");
-    int item_max = MAX_EXTEND_COUNT;
-    // find new map index
-    for (int i = 0; i < item_max; i++)
-    {
-        UserJson userExtend;
-        int status = SLN_Read_Flash_At_Address( userExtend_FS_Head+i*(FLASH_SECTOR_SIZE), (uint8_t *)&userExtend, sizeof(UserJson)  );
-        if( status == 0 ){
-            if(  userExtend.UUID[0] == UUID_MAGIC_UNUSE ) {
-                LOGD("第 %d 块 没有被使用  flash address %x  userExtend.UUID[0] %x\r\n", i, userExtend_FS_Head+i*(FLASH_SECTOR_SIZE), userExtend.UUID[0]);
-                return i;
-            }
-        }else{
-
-            LOGD("read flash error \r\n");
+/*
+ * index 为 -1 表示没有找到 空闲的可写区域
+ * */
+int UserExtendManager::get_free_index(bool *needErase) {
+    LOGD("%s %s \r\n", logtag, __func__);
+    for (int i = 0; i <MAX_EXTEND_COUNT ; ++i) {
+//  如果是没有用过的page 不需要 擦除
+        if(  *(gUIDMap+i* sizeof(uUID)) == UUID_MAGIC_UNUSE ){
+            *needErase = false;
+            return  i;
+//  如果是被标记为 delete 的page ,则需要擦除后 再写
+        }else if( *(gUIDMap+i* sizeof(uUID)) == UUID_MAGIC_DELET ){
+            *needErase = true;
+            return  i;
         }
     }
-
-    return -1;
+    return FLASH_FULL;
 }
 
-// -1 表示没有找到
+
+//-1 表示没有找到
 int UserExtendManager::get_index_by_uuid(char *uuid) {
-    LOGD("%s get_index_by_uuid %s \r\n",logtag, uuid);
-    for( int i=0; i<MAX_EXTEND_COUNT; i++){
-        UserJson userExtend;
-        memset( &userExtend, 0, sizeof(UserJson));
-        int status = SLN_Read_Flash_At_Address( userExtend_FS_Head+i*(FLASH_SECTOR_SIZE), (uint8_t *)&userExtend, sizeof(UserJson)  );
-        if( status == 0 ){
+    LOGD("%s %s %s\r\n", logtag, __func__, uuid);
+    for (int i = 0; i <MAX_EXTEND_COUNT ; ++i) {
 
-            if( strcmp( userExtend.UUID, uuid) == 0 ){
-                LOGD("%s index %i, uuid %s, json %s  \r\n", logtag, i, userExtend.UUID, userExtend.jsonData);
-                return  i;
+        if( strncmp( (char *)(gUIDMap+i* sizeof(uUID)), (char *)uuid, sizeof(uUID) )==0 ){
+            LOGD("%s page: %d 匹配到 uuid %s\r\n", logtag, i, uuid);
+
+            return  i;
+        }
+    }
+    LOGD("%s 未匹配到 uuid %s\r\n", logtag, uuid);
+    return UUID_NOTMATCH;
+}
+
+/*
+ *
+ * */
+int UserExtendManager::addUserJson(UserJson * userJson){
+    LOGD("%s addUserJson  %s, %s \r\n", logtag, userJson->UUID, userJson->jsonData);
+
+//    1 查询uuid 是否已经存在,
+    int pageIndex = get_index_by_uuid( userJson->UUID );
+    LOGD("%s page index %d\r\n",logtag, pageIndex);
+//     如果uuid不存在 则找到一块可写的, 标记为删除 和未使用都为可写
+    if( pageIndex == UUID_NOTMATCH ){
+        LOGD("%s 新增用户时段 \r\n",logtag);
+        bool needErase = false;
+        pageIndex = get_free_index( &needErase );
+        LOGD("%s 可用的index %d, 是否需要擦除 %d\r\n", logtag, pageIndex, needErase);
+        if( pageIndex == FLASH_FULL){
+            LOGD("空间已满\r\n");
+            return  FLASH_FULL;
+        }
+        LOGD("%s 在 %d 处新增 \r\n", logtag, pageIndex);
+        SLN_Read_Flash_At_Address( userUUID_FS_Head, gUIDMap, sizeof(UUIDMap));
+//      不需要擦除 extend 的 page, 直接写 extend 的 page
+        memcpy( (void *)(gUIDMap+pageIndex* sizeof(uUID)), userJson->UUID, sizeof(uUID) );
+//       擦除
+        int uuidSectorCount = sizeof(UUIDMap)/ FLASH_SECTOR_SIZE +1;
+        for(int i=0; i< uuidSectorCount; i++){
+            int status = SLN_Erase_Sector( userUUID_FS_Head +i*FLASH_SECTOR_SIZE );
+            if( status ==0){
+                LOGD("SLN_Erase_Sector %d  0x%x Success \r\n", i, userUUID_FS_Head +i*FLASH_SECTOR_SIZE);
+            }
+        }
+//      写uuid
+        for( int i=0; i<uuidSectorCount;i++ ){
+            int status = SLN_Write_Sector( userUUID_FS_Head+ i* (FLASH_SECTOR_SIZE), (uint8_t *)gUIDMap+i*FLASH_SECTOR_SIZE );
+            if( status ==0){
+                LOGD("SLN_Write_Sector %d 0x%x Success \r\n", i, userUUID_FS_Head+ i* FLASH_SECTOR_SIZE );
+            }
+        }
+
+        if( needErase == false ){
+//          写extend
+            int status = SLN_Write_Flash_Page( userExtend_FS_Head + pageIndex* FLASH_PAGE_SIZE, (uint8_t *)userJson->jsonData, sizeof(userJson->jsonData));
+            if( status ==0){
+                LOGD("SLN_Write_Flash_Page %d 0x%x Success \r\n", pageIndex, userExtend_FS_Head + pageIndex* FLASH_PAGE_SIZE );
             }
         }else{
-            LOGD("read flash failed \r\n");
-        }
-    }
-    return -1;
-}
-
-int UserExtendManager::addUserJson(UserJson * userExtend){
-    LOGD("%s addUserJson  %s %s \r\n", logtag, userExtend->UUID, userExtend->jsonData);
-//  1.查询uuid 是否已经存在
-//    Record_Lock();
-    int index = delUserJsonByUUID( userExtend->UUID);
-//  2. index ==-1 不存在则找到新的index新增,   否则在原有的位置写入
-    if( index ==-1 ){
-        LOGD("%s index %d ,uuid 不存在,则新增 \r\n", logtag, index);
-        index = get_free_index();
-        if( index == -1 ){
-            LOGD("Error: Database is full \n");
-            return -1;
-        }
-        int status = SLN_Write_Flash_Page(userExtend_FS_Head+index* (FLASH_SECTOR_SIZE), (uint8_t *)userExtend, sizeof(UserJson));
-//        int status = SLN_Write_Flash_At_Address(userExtend_FS_Head+index* (FLASH_SECTOR_SIZE), (uint8_t *)userExtend);
-//        int status = SLN_Write_Sector(userExtend_FS_Head+index* FLASH_SECTOR_SIZE, (uint8_t *)userExtend);
-        if (status != 0) {
-            LOGD("write flash failed %d \r\n", status);
-            return  -1;
-        }else{
-            LOGD("第 %d 块写入成功 \r\n", index);
-        }
-        return  index;
-    }else{
-        LOGD("%s uuid 已存在,则擦除后增加  free index %d ,%d  \r\n", logtag, index, sizeof(UserJson) );
-        int status = SLN_Write_Flash_Page(userExtend_FS_Head+index* (FLASH_SECTOR_SIZE), (uint8_t *)userExtend, sizeof(UserJson) );
-//        int status = SLN_Write_Flash_At_Address(userExtend_FS_Head+index* (FLASH_SECTOR_SIZE), (uint8_t *)userExtend );
-//        int status = SLN_Write_Sector(userExtend_FS_Head+index* FLASH_SECTOR_SIZE, (uint8_t *)userExtend );
-        if (status != 0) {
-            LOGD("write flash failed %d \r\n", status);
-            return  -1;
-        }else{
-            LOGD("第 %d 块写入成功 \r\n", index);
-        }
-    }
-//    Record_UnLock();
-    return  index;
-}
-//input : uuid
-//output: userExtend
-int  UserExtendManager::queryUserJsonByUUID( char *uuid, UserJson *userJson){
-    LOGD("%s queryUserJsonByUUID  %s\r\n",logtag, uuid);
-//    Record_Lock();
-    int index = get_index_by_uuid(uuid);
-    if( index != -1 ){
-
-        int status = SLN_Read_Flash_At_Address(userExtend_FS_Head+index* (FLASH_SECTOR_SIZE), (uint8_t *)userJson, sizeof(UserJson));
-        if (status != 0) {
-            LOGD("read flash failed %d \r\n", status);
+//          先擦除 再写入 读整个sector出来
+            int sectorIndex = pageIndex %FLASH_PAGE_SIZE /FLASH_SECTOR_SIZE ;
+            uint8_t   *s_DataCache = (uint8_t *)pvPortMalloc( FLASH_SECTOR_SIZE );
+            memset( s_DataCache, 0, sizeof(FLASH_SECTOR_SIZE) );
+            SLN_Read_Flash_At_Address( userExtend_FS_Head + sectorIndex*FLASH_SECTOR_SIZE, s_DataCache,  FLASH_SECTOR_SIZE);
+            memcpy( s_DataCache +FLASH_PAGE_SIZE *pageIndex, userJson->jsonData, sizeof(userJson->jsonData) );
+            int status = SLN_Erase_Sector( userExtend_FS_Head +sectorIndex*FLASH_SECTOR_SIZE);
+            if( status ==0){
+                LOGD("SLN_Erase_Sector  %d,0x%x Success \r\n", sectorIndex, userExtend_FS_Head + sectorIndex*FLASH_SECTOR_SIZE );
+            }
+            status = SLN_Write_Sector( userExtend_FS_Head+ sectorIndex*FLASH_SECTOR_SIZE, s_DataCache);
+            if( status ==0){
+                LOGD("SLN_Write_Sector  %d,0x%x Success \r\n", sectorIndex, userExtend_FS_Head + sectorIndex* FLASH_SECTOR_SIZE );
+            }
+            vPortFree( s_DataCache);
         }
     }else{
-        LOGD("%s 没有查到对应 UUID 的记录\r\n",logtag);
+//    如果uuid 已经存在则删除原有的 再写入,
+        LOGD("%s 修改用户时段 \r\n",logtag);
+        SLN_Read_Flash_At_Address( userUUID_FS_Head, gUIDMap, sizeof(UUIDMap) );
+        memcpy( (void *)( gUIDMap+pageIndex* sizeof(uUID) ), userJson->UUID, sizeof(uUID) );
+        int uuidSectorCount = sizeof(UUIDMap)/ FLASH_SECTOR_SIZE +1;
+        for(int i=0; i< uuidSectorCount; i++){
+            int status =SLN_Erase_Sector( userUUID_FS_Head +i*FLASH_SECTOR_SIZE );
+            if( status ==0){
+                LOGD("SLN_Erase_Sector %d  0x%x Success \r\n", i, userUUID_FS_Head +i*FLASH_SECTOR_SIZE);
+            }
+        }
+        for( int i=0; i<uuidSectorCount;i++ ){
+            int status = SLN_Write_Sector( userUUID_FS_Head+ i* (FLASH_SECTOR_SIZE), (uint8_t *)gUIDMap+i*FLASH_SECTOR_SIZE );
+            if( status ==0){
+                LOGD("SLN_Write_Sector %d  0x%x Success  \r\n",i, userUUID_FS_Head+ i* (FLASH_SECTOR_SIZE));
+            }
+        }
+//    先删除原有的jsonData sector 再写入
+        uint8_t   *s_DataCache = (uint8_t *)pvPortMalloc( FLASH_SECTOR_SIZE );
+        memset( s_DataCache, 0, FLASH_SECTOR_SIZE );
+        int  extendSectorIndex = pageIndex* FLASH_PAGE_SIZE/FLASH_SECTOR_SIZE;
+        SLN_Read_Flash_At_Address( userExtend_FS_Head + extendSectorIndex*FLASH_SECTOR_SIZE, s_DataCache,  FLASH_SECTOR_SIZE);
+        memcpy( s_DataCache + pageIndex %(FLASH_SECTOR_SIZE/FLASH_PAGE_SIZE), userJson->jsonData, sizeof(userJson->jsonData) );
+        int status =SLN_Erase_Sector( userExtend_FS_Head +extendSectorIndex*FLASH_SECTOR_SIZE );
+        if( status ==0){
+            LOGD("SLN_Erase_Sector %d 0x%x Success \r\n", extendSectorIndex, userExtend_FS_Head +extendSectorIndex*FLASH_SECTOR_SIZE);
+        }
+        SLN_Write_Sector( userExtend_FS_Head +extendSectorIndex*FLASH_SECTOR_SIZE, s_DataCache);
+        if( status ==0){
+            LOGD("SLN_Write_Sector %d 0x%x Success \r\n", extendSectorIndex, userExtend_FS_Head + extendSectorIndex* FLASH_SECTOR_SIZE );
+        }
+        vPortFree( s_DataCache);
     }
-//    Record_UnLock();
-    return  index;
-}
+
+//    for(int i=0; i<MAX_EXTEND_COUNT; i++){
 //
-int UserExtendManager::updateUserJsonByUUID( char *uuid, UserJson *userJson){
-    LOGD("%s updateUserJsonByUUID  %s\r\n",logtag, uuid);
-    int status =-1;
-//    Record_Lock();
-    int index = get_index_by_uuid( uuid );
-    if( index != -1 ){
-        status = SLN_Write_Flash_Page(userExtend_FS_Head+index* (FLASH_SECTOR_SIZE), (uint8_t *)userJson, sizeof(UserJson) );
-//        status = SLN_Write_Flash_At_Address(userExtend_FS_Head+index* (FLASH_SECTOR_SIZE), (uint8_t *)userJson );
-//        status = SLN_Write_Sector(userExtend_FS_Head+index* (FLASH_SECTOR_SIZE), (uint8_t *)userJson );
-        if (status != 0) {
-            LOGD("read flash failed %d \r\n", status);
-            return  -1;
-        }
-    }
-//    Record_UnLock();
-    return  status;
+//        char  cUUID[9]={0};
+//
+//        memcpy( cUUID, gUIDMap+i* sizeof(uUID), sizeof(uUID));
+//        LOGD(" 遍历UUID %d %s\r\n",i, cUUID);
+//    }
+    return pageIndex;
+
 }
 
-int UserExtendManager::delUserJsonByUUID( char *uuid ){
+int  UserExtendManager::queryUserJsonByUUID( char *uuid, UserJson *userJson) {
+    LOGD("%s queryUserJsonByUUID  %s\r\n",logtag, uuid);
+    memcpy(userJson->UUID, uuid, sizeof(uUID));
+    int pageIndex = get_index_by_uuid(uuid);
+    if( pageIndex != UUID_NOTMATCH ){
+
+        int status = SLN_Read_Flash_At_Address( userExtend_FS_Head+pageIndex* (FLASH_PAGE_SIZE), (uint8_t *)userJson->jsonData, sizeof(userJson->jsonData));
+        if (status == 0) {
+            LOGD("SLN_Read_Flash_At_Address %d  Success  uuid %s, data %s\r\n", userExtend_FS_Head + pageIndex*(FLASH_PAGE_SIZE), userJson->UUID, userJson->jsonData );
+        }
+    }else{
+        LOGD("%s 没有查到对应 UUID %s 的记录\r\n",logtag, uuid);
+    }
+    return  pageIndex;
+}
+
+
+int UserExtendManager::delUserJsonByUUID( char *uuid ) {
     LOGD("%s delUserJsonByUUID  %s\r\n",logtag, uuid);
-    int status=-1, index =-1;
-//    Record_Lock();
 
-    index = get_index_by_uuid(uuid );
-    if( index != -1 ){
-        status = SLN_Erase_Sector( userExtend_FS_Head+index*(FLASH_SECTOR_SIZE));
-        if( status !=0 ){
-            LOGD("erase flash failed %d \r\n", status);
-        }else{
-            LOGD("第 %d 块擦除成功 \r\n", index);
+    int pageIndex = get_index_by_uuid(uuid );
+    LOGD("%s 删除在 %d 处用户时段 \r\n",logtag, pageIndex);
+
+    if( pageIndex != UUID_NOTMATCH ){
+//      1.先删除 uuid
+        SLN_Read_Flash_At_Address( userUUID_FS_Head, gUIDMap, sizeof(UUIDMap));
+//      不需要擦除 extend 的 page, 直接写 extend 的 page
+        memset( (void *)( gUIDMap + pageIndex* sizeof(uUID) ), UUID_MAGIC_DELET, sizeof(uUID) );
+//       擦除
+        int uuidSectorCount = sizeof(UUIDMap)/ FLASH_SECTOR_SIZE +1;
+        for(int i=0; i< uuidSectorCount; i++){
+            int status =SLN_Erase_Sector( userUUID_FS_Head +i*FLASH_SECTOR_SIZE );
+            if( status ==0){
+                LOGD("SLN_Erase_Sector %d Success \r\n", userUUID_FS_Head+ i*FLASH_SECTOR_SIZE );
+            }
         }
+//      写uuid
+        for( int i=0; i<uuidSectorCount;i++ ){
+            int status = SLN_Write_Sector( userUUID_FS_Head+ i* (FLASH_SECTOR_SIZE), (uint8_t *)gUIDMap+i*FLASH_SECTOR_SIZE );
+            if( status ==0){
+                LOGD("SLN_Write_Sector %d Success \r\n", userUUID_FS_Head+ i*FLASH_SECTOR_SIZE );
+            }
+        }
+//      2.  extend 不删除,也不管
+    }else{
+        LOGD("UUID %s 不存在\r\n", uuid);
     }
-//    Record_UnLock();
-    return  index;
+    return  pageIndex;
 }
+
+
 
 int UserExtendManager::clearAllUserJson(  ){
     LOGD("%s clearAllUserJson  \r\n",logtag);
-    int status=-1;
-    for( int i =0; i<MAX_EXTEND_COUNT; i++ ){
-        status = SLN_Erase_Sector( userExtend_FS_Head+i*(FLASH_SECTOR_SIZE));
-        if( status !=0 ){
-            LOGD("erase flash failed %d \r\n", status);
+    int status =-1;
+    //      1.先删除 uuid
+    SLN_Read_Flash_At_Address( userUUID_FS_Head, gUIDMap, sizeof(UUIDMap));
+//      不需要擦除 extend 的 page, 直接写 extend 的 page
+    memset( (void *)gUIDMap, UUID_MAGIC_DELET, sizeof(UUIDMap) );
+//       擦除
+    int uuidSectorCount = sizeof(UUIDMap)/ FLASH_SECTOR_SIZE +1;
+    for(int i=0; i< uuidSectorCount; i++){
+        SLN_Erase_Sector( userUUID_FS_Head +i*FLASH_SECTOR_SIZE );
+    }
+    for( int i=0; i<uuidSectorCount;i++ ){
+        status = SLN_Write_Sector( userUUID_FS_Head+ i* (FLASH_SECTOR_SIZE), (uint8_t *)gUIDMap+i*FLASH_SECTOR_SIZE );
+        if( status ==0){
+            LOGD("SLN_Write_Sector Success \r\n");
         }
     }
-    return  status;
+    return status;
 }
 
 
@@ -214,7 +292,7 @@ UserExtendClass *UserExtendManager::getCurrentUser( ){
 
 
 int UserExtendManager::addStrUser(char * userInfo){
-    LOGD("%s %s \r\n", logtag, __func__);
+    LOGD("%s %s %s\r\n", logtag, __func__, userInfo);
     int ret =0;
     UserExtendClass userExtendClass;
     memset( &userExtendClass, 0, sizeof(UserExtendClass) );
@@ -226,13 +304,16 @@ int UserExtendManager::addStrUser(char * userInfo){
     convertUserExtendClass2UserJson( &userExtendClass, &userJson);
 //    3. 存储到flash 中
     ret = addUserJson( &userJson );
+    LOGD("%s 加到第%d处 \r\n",logtag, ret);
+//    LOGD("%s 加入后查询 \r\n",logtag);
+//    ret = queryUserJsonByUUID( userJson.UUID, &userJson );
     return  ret;
 }
 
 
 
 void UserExtendManager::convertStr2UserExtendClass(char *strUserInfo, UserExtendClass *userExtendType) {
-    LOGD("%s build a user: %d ,%s \r\n",logtag, strlen(strUserInfo), strUserInfo);
+    LOGD("%s %s: %d ,%s \r\n",logtag,__func__, strlen(strUserInfo), strUserInfo);
 //1. 先将strUserInfo 拷贝到临时变量
     int infoLength = strlen( strUserInfo )+1;
     char tempUsrInfo[1000]={0};
@@ -294,7 +375,7 @@ void UserExtendManager::convertUserJson2UserExtendClass(UserJson *userJson, User
     cJSON *jsonObj = cJSON_Parse(userJson->jsonData);
     strcpy(userExtendClass->dateDuration , cJSON_GetObjectItem(jsonObj, DATE)->valuestring);
     strcpy(userExtendClass->weekDuration , cJSON_GetObjectItem(jsonObj, WEEK)->valuestring);
-    LOGD("%s UUID %s ,date %s ,week %s \r\n", logtag, userExtendClass->UUID, userExtendClass->dateDuration, userExtendClass->weekDuration);
+    LOGD("%s UUID: %s ,date %s ,week %s \r\n", logtag, userExtendClass->UUID, userExtendClass->dateDuration, userExtendClass->weekDuration);
     return;
 }
 
@@ -363,6 +444,7 @@ bool UserExtendManager::checkUUIDUserPermission( char *uuid ) {
                 flag = false;
                 break;
             }
+
 //    0-0  forbiden   0-1 临时同行  x-y normal
             if( lStartDate==0 ){
                 if( lEndDate == 0 ) {
@@ -396,6 +478,7 @@ bool UserExtendManager::checkUUIDUserPermission( char *uuid ) {
                 lGroupWeekDurationStart = atol( groupWeekDurationStart );
                 lGroupWeekDurationEnd = atol( groupWeekDurationEnd );
                 if( currentTimeSlot >= lGroupWeekDurationStart && currentTimeSlot <= lGroupWeekDurationEnd ){
+                    LOGD("合法的日通行时段 \r\n");
                     flag = true;
                     break;
                 }

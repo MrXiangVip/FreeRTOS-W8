@@ -16,10 +16,15 @@ extern "C"  {
 //#define FEATUREDATA_MAX_COUNT 100
 #define MAX_EXTEND_COUNT    600   //扩展记录最大的数量
 #define UUID_MAGIC_UNUSE    0xFF
+#define UUID_MAGIC_DELET    0x00
 
 //#define USER_EXTEND_FS_ADDR         (0xE20000U)
-#define USER_EXTEND_FS_ADDR         (0xC00000U) //xshx mod 20220831
-#define USER_EXTEND_PAGE_SIZE       220
+#define USER_UUID_FS_ADDR           (0xD00000U) //xshx mod 20220831
+#define USER_EXTEND_FS_ADDR         (0xD20000U) //xshx mod 20220831
+#define USER_EXTEND_PAGE_SIZE       256
+
+#define FLASH_FULL         -1
+#define UUID_NOTMATCH   -1
 
 #ifdef __cplusplus
 }
@@ -46,6 +51,10 @@ typedef union{
     }tUID;
     uint8_t UID[8];
 }uUID;
+
+typedef struct {
+    uint8_t  maxUUID[ MAX_EXTEND_COUNT * sizeof(uUID)];
+}UUIDMap;
 
 typedef union {
         struct {
@@ -77,11 +86,14 @@ class UserExtendManager {
         static UserExtendManager *m_instance;
 //  头地址
         static uint32_t         userExtend_FS_Head;
+        static uint32_t         userUUID_FS_Head;
 //  当前的用户信息
         static UserExtendClass       gUserExtend;
+
+        static uint8_t               *gUIDMap;
         UserExtendManager();
 
-        int get_free_index();
+        int get_free_index(bool *needErase);
 
         int get_index_by_uuid(char *uuid);
     public:
@@ -92,9 +104,9 @@ class UserExtendManager {
 
         int addUserJson(UserJson * userExtend);
 
-        int queryUserJsonByUUID( char *uuid, UserJson *userExtend);
+        int queryUserJsonByUUID( char *uuid, UserJson *userJson);
 
-        int updateUserJsonByUUID( char *uuid, UserJson *userExtend);
+//        int updateUserJsonByUUID( char *uuid, UserJson *userExtend);
 
         int delUserJsonByUUID( char *uuid );
 

@@ -451,10 +451,10 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
 //              识别成功后 检查下权限  xshx add 20220825
                 bool ret = UserExtendManager::getInstance()->checkUUIDUserPermission( (char *)name.c_str() );
                 if( ret != true){
-                    LOGD("时间段检查 不通过 \r\n");
+                    LOGD("[OASIS]: 时间段检查 不通过 \r\n");
                     recResult = OASIS_REC_RESULT_FORBIDEN_FACE;
                 }else{
-                    LOGD("时间段检查 通过 \r\n");
+                    LOGD("[OASIS]: 时间段检查 通过 \r\n");
                 }
             }
             else
@@ -671,7 +671,7 @@ static int GetRegisteredFacesHandler(uint16_t *face_ids, void **faces, uint32_t 
     if (*size == 0)
     {
         DB_Count((int*)size);
-        LOGD("人脸库 return %d\r\n", *size);
+        LOGD("人脸库 return size %d\r\n", *size);
         return 0;
     }
 
@@ -791,7 +791,7 @@ static void Oasis_LedControl(cfg_led_t ledID,uint8_t direction, uint8_t enableRG
     {
         uint8_t mode = Camera_GetRGBExposureMode();
         //UsbShell_Printf("[OASIS]:Oasis_LedControl mode %d",mode);
-        LOGD("[OASIS]:Oasis_LedControl mode %d",mode);
+        LOGD("[OASIS]:Oasis_LedControl mode %d\r\n",mode);
 		if (direction)
 		{
 			//Camera_QMsgSetPWM(LED_WHITE, pwm);
