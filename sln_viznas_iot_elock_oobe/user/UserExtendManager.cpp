@@ -210,7 +210,7 @@ int  UserExtendManager::queryUserJsonByUUID( char *uuid, UserJson *userJson) {
 
         int status = SLN_Read_Flash_At_Address( userExtend_FS_Head+pageIndex* (FLASH_PAGE_SIZE), (uint8_t *)userJson->jsonData, sizeof(userJson->jsonData));
         if (status == 0) {
-            LOGD("SLN_Read_Flash_At_Address %d  Success  uuid %s, data %s\r\n", userExtend_FS_Head + pageIndex*(FLASH_PAGE_SIZE), userJson->UUID, userJson->jsonData );
+            LOGD("SLN_Read_Flash_At_Address 0x%x  Success  uuid %s, data %s\r\n", userExtend_FS_Head + pageIndex*(FLASH_PAGE_SIZE), userJson->UUID, userJson->jsonData );
         }
     }else{
         LOGD("%s 没有查到对应 UUID %s 的记录\r\n",logtag, uuid);
@@ -235,14 +235,14 @@ int UserExtendManager::delUserJsonByUUID( char *uuid ) {
         for(int i=0; i< uuidSectorCount; i++){
             int status =SLN_Erase_Sector( userUUID_FS_Head +i*FLASH_SECTOR_SIZE );
             if( status ==0){
-                LOGD("SLN_Erase_Sector %d Success \r\n", userUUID_FS_Head+ i*FLASH_SECTOR_SIZE );
+                LOGD("SLN_Erase_Sector 0x%x Success \r\n", userUUID_FS_Head+ i*FLASH_SECTOR_SIZE );
             }
         }
 //      写uuid
         for( int i=0; i<uuidSectorCount;i++ ){
             int status = SLN_Write_Sector( userUUID_FS_Head+ i* (FLASH_SECTOR_SIZE), (uint8_t *)gUIDMap+i*FLASH_SECTOR_SIZE );
             if( status ==0){
-                LOGD("SLN_Write_Sector %d Success \r\n", userUUID_FS_Head+ i*FLASH_SECTOR_SIZE );
+                LOGD("SLN_Write_Sector 0x%x Success \r\n", userUUID_FS_Head+ i*FLASH_SECTOR_SIZE );
             }
         }
 //      2.  extend 不删除,也不管
