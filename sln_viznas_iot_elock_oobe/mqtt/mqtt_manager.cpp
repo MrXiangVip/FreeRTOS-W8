@@ -145,20 +145,19 @@ int MqttManager::handleMqttMsgData(char *jsonMsg) {
         result = timeSync(dataStr);
         MqttCmdMgr::getInstance()->atCmdResponse(result, idStr);
     } else if (strcmp("du", typeStr) == 0) {
-        result = DBManager::getInstance()->deleteRecordByUUID(dataStr);
-        result = UserExtendManager::getInstance()->delUserJsonByUUID( dataStr );
+        DBManager::getInstance()->deleteRecordByUUID(dataStr);
+        UserExtendManager::getInstance()->delUserJsonByUUID( dataStr );
         vizn_api_status_t status = VIZN_DelUser(NULL, dataStr);
+        result =AT_RSP_SUCCESS;
         MqttCmdMgr::getInstance()->atCmdResponse(result, idStr);
     } else if (strcmp("cu", typeStr) == 0) {
-        result = DBManager::getInstance()->clearRecord();
-        result = UserExtendManager::getInstance()->clearAllUserJson();
-        result = VIZN_DelUser(NULL);
-
+        DBManager::getInstance()->clearRecord();
+        UserExtendManager::getInstance()->clearAllUserJson();
+        VIZN_DelUser(NULL);
+        result =AT_RSP_SUCCESS;
         MqttCmdMgr::getInstance()->atCmdResponse(result, idStr);
     } else if (strcmp("ua", typeStr) == 0) {
         // TODO:
-//        result = DBManager::getInstance()->setUserAccess(dataStr);
-//
         LOGD("dataStr: %s \r\n", dataStr);
         UserExtendManager::getInstance()->addStrUser(dataStr);
         result = AT_RSP_SUCCESS;

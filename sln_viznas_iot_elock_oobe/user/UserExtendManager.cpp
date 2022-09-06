@@ -264,12 +264,15 @@ int UserExtendManager::clearAllUserJson(  ){
 //       擦除
     int uuidSectorCount = sizeof(UUIDMap)/ FLASH_SECTOR_SIZE +1;
     for(int i=0; i< uuidSectorCount; i++){
-        SLN_Erase_Sector( userUUID_FS_Head +i*FLASH_SECTOR_SIZE );
+        status = SLN_Erase_Sector( userUUID_FS_Head +i*FLASH_SECTOR_SIZE );
+        if( status ==0){
+            LOGD("SLN_Erase_Sector 0x%x Success \r\n", userUUID_FS_Head+ i*FLASH_SECTOR_SIZE );
+        }
     }
     for( int i=0; i<uuidSectorCount;i++ ){
         status = SLN_Write_Sector( userUUID_FS_Head+ i* (FLASH_SECTOR_SIZE), (uint8_t *)gUIDMap+i*FLASH_SECTOR_SIZE );
         if( status ==0){
-            LOGD("SLN_Write_Sector Success \r\n");
+            LOGD("SLN_Write_Sector 0x%x Success \r\n", userUUID_FS_Head+ i*FLASH_SECTOR_SIZE );
         }
     }
     return status;
