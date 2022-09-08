@@ -164,7 +164,7 @@ int MqttManager::handleMqttMsgData(char *jsonMsg) {
         MqttCmdMgr::getInstance()->atCmdResponse(result, idStr);
 
     } else if (strcmp("um", typeStr) == 0) {
-        // TODO:
+        // xshx TODO:
 //        result = DBManager::getInstance()->setUserMode(dataStr);
         result = AT_RSP_SUCCESS;
         MqttCmdMgr::getInstance()->atCmdResponse(result, idStr);

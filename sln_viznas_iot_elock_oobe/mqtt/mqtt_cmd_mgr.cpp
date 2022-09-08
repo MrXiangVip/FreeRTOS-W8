@@ -86,7 +86,7 @@ int MqttCmdMgr::uploadRecordText(Record *record) {
     char pubMsg[MQTT_AT_CMD_LEN]={0};
 //    char pubMsg[8000]={0};
     char *pubTopic = MqttTopicMgr::getInstance()->getPubTopicActionRecord();
-    sprintf(pubMsg, "{\\\"id\\\":\\\"%s\\\"\\,\\\"u\\\":\\\"%s\\\"\\,\\\"ts\\\":%d}", msgId, record->UUID, record->time_stamp);
+    sprintf(pubMsg, "{\\\"id\\\":\\\"%s\\\"\\,\\\"u\\\":\\\"%s\\\"\\,\\\"ts\\\":%d\\,\\\"at\\\":%d\\,\\\"as\\\":%d}", msgId, record->UUID, record->time_stamp, record->action, 0);
 //    sprintf(pubMsg, "{\"id\":\"%s\",\"p\":\"%s\",\"t\":%d}", msgId, record->UUID, record->time_stamp);
 //    sprintf(pubMsg, "{\"id\":\"%s\",\"p\":\"%s\",\"t\":%d,\"i\":\"%s\"}", msgId, record->UUID, record->time_stamp, imageData);
     LOGD("上传record pub_msg %s \r\n", pubMsg);
@@ -131,7 +131,7 @@ int MqttCmdMgr::uploadRecordImage(Record *record) {
 //    char pubMsg[8000]={0};
     char *pubMsg = (char*)pvPortMalloc(base64BufferSize + 100);
     char *pubTopic = MqttTopicMgr::getInstance()->getPubTopicActionRecord();
-    sprintf(pubMsg, "{\"id\":\"%s\",\"u\":\"%s\",\"ts\":%d,\"img\":\"%s\"}", msgId, record->UUID, record->time_stamp, base64Buffer);
+    sprintf(pubMsg, "{\"id\":\"%s\",\"u\":\"%s\",\"ts\":%d,\"at\":%d,\"as\":%d,\"img\":\"%s\"}", msgId, record->UUID, record->time_stamp, record->action, 0, base64Buffer);
     LOGD("上传record pub_msg %d \r\n", strlen(pubMsg));
     result = MqttConnMgr::getInstance()->publishRawMQTT(pubTopic, pubMsg, strlen(pubMsg));
     LOGD("do topic %s result %d\r\n", pubTopic, result);
