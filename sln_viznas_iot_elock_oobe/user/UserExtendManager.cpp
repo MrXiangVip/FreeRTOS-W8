@@ -81,16 +81,16 @@ int UserExtendManager::get_free_index(bool *needErase) {
 
 //-1 表示没有找到
 int UserExtendManager::get_index_by_uuid(char *uuid) {
-    LOGD("%s %s %s\r\n", logtag, __func__, uuid);
+    LOGD("%s %s UUID:%s\r\n", logtag, __func__, uuid);
     for (int i = 0; i <MAX_EXTEND_COUNT ; ++i) {
 
-        if( strncmp( (char *)(gUIDMap+i* sizeof(uUID)), (char *)uuid, sizeof(uUID) )==0 ){
-            LOGD("%s page: %d 匹配到 uuid %s\r\n", logtag, i, uuid);
+        if( strncmp( (char*)gUIDMap+i* sizeof(uUID), (char*)uuid, sizeof(uUID) )==0 ){
+            LOGD("%s page: %d 匹配到 uuid: %s\r\n", logtag, i, uuid);
 
             return  i;
         }
     }
-    LOGD("%s 未匹配到 uuid %s\r\n", logtag, uuid);
+    LOGD("%s 未匹配到 uuid: %s\r\n", logtag, uuid);
     return UUID_NOTMATCH;
 }
 
@@ -116,7 +116,8 @@ int UserExtendManager::addUserJson(UserJson * userJson){
         LOGD("%s 在 %d 处新增 \r\n", logtag, pageIndex);
         SLN_Read_Flash_At_Address( userUUID_FS_Head, gUIDMap, sizeof(UUIDMap));
 //      不需要擦除 extend 的 page, 直接写 extend 的 page
-        memcpy( (void *)(gUIDMap+pageIndex* sizeof(uUID)), userJson->UUID, sizeof(uUID) );
+//        memcpy( (void *)(gUIDMap+pageIndex* sizeof(uUID)), userJson->UUID, sizeof(uUID) );
+        strncpy( (char*)(gUIDMap+pageIndex* sizeof(uUID)), userJson->UUID, sizeof(uUID) );
 //       擦除
         int uuidSectorCount = sizeof(UUIDMap)/ FLASH_SECTOR_SIZE +1;
         for(int i=0; i< uuidSectorCount; i++){
@@ -145,7 +146,8 @@ int UserExtendManager::addUserJson(UserJson * userJson){
             uint8_t   *s_DataCache = (uint8_t *)pvPortMalloc( FLASH_SECTOR_SIZE );
             memset( s_DataCache, 0, sizeof(FLASH_SECTOR_SIZE) );
             SLN_Read_Flash_At_Address( userExtend_FS_Head + sectorIndex*FLASH_SECTOR_SIZE, s_DataCache,  FLASH_SECTOR_SIZE);
-            memcpy( s_DataCache +FLASH_PAGE_SIZE *pageIndex, userJson->jsonData, sizeof(userJson->jsonData) );
+//            memcpy( s_DataCache +FLASH_PAGE_SIZE *pageIndex, userJson->jsonData, sizeof(userJson->jsonData) );
+            strncpy( (char *)s_DataCache +FLASH_PAGE_SIZE *pageIndex, userJson->jsonData, sizeof(userJson->jsonData) );
             int status = SLN_Erase_Sector( userExtend_FS_Head +sectorIndex*FLASH_SECTOR_SIZE);
             if( status ==0){
                 LOGD("SLN_Erase_Sector  %d,0x%x Success \r\n", sectorIndex, userExtend_FS_Head + sectorIndex*FLASH_SECTOR_SIZE );
@@ -160,7 +162,8 @@ int UserExtendManager::addUserJson(UserJson * userJson){
 //    如果uuid 已经存在则删除原有的 再写入,
         LOGD("%s 修改用户时段 \r\n",logtag);
         SLN_Read_Flash_At_Address( userUUID_FS_Head, gUIDMap, sizeof(UUIDMap) );
-        memcpy( (void *)( gUIDMap+pageIndex* sizeof(uUID) ), userJson->UUID, sizeof(uUID) );
+        strncpy( (char *)( gUIDMap+pageIndex* sizeof(uUID) ), userJson->UUID, sizeof(uUID) );
+
         int uuidSectorCount = sizeof(UUIDMap)/ FLASH_SECTOR_SIZE +1;
         for(int i=0; i< uuidSectorCount; i++){
             int status =SLN_Erase_Sector( userUUID_FS_Head +i*FLASH_SECTOR_SIZE );
@@ -179,7 +182,8 @@ int UserExtendManager::addUserJson(UserJson * userJson){
         memset( s_DataCache, 0, FLASH_SECTOR_SIZE );
         int  extendSectorIndex = pageIndex* FLASH_PAGE_SIZE/FLASH_SECTOR_SIZE;
         SLN_Read_Flash_At_Address( userExtend_FS_Head + extendSectorIndex*FLASH_SECTOR_SIZE, s_DataCache,  FLASH_SECTOR_SIZE);
-        memcpy( s_DataCache + pageIndex %(FLASH_SECTOR_SIZE/FLASH_PAGE_SIZE), userJson->jsonData, sizeof(userJson->jsonData) );
+//        memcpy( s_DataCache + pageIndex %(FLASH_SECTOR_SIZE/FLASH_PAGE_SIZE), userJson->jsonData, sizeof(userJson->jsonData) );
+        strncpy( (char *)s_DataCache + pageIndex %(FLASH_SECTOR_SIZE/FLASH_PAGE_SIZE), userJson->jsonData, sizeof(userJson->jsonData) );
         int status =SLN_Erase_Sector( userExtend_FS_Head +extendSectorIndex*FLASH_SECTOR_SIZE );
         if( status ==0){
             LOGD("SLN_Erase_Sector %d 0x%x Success \r\n", extendSectorIndex, userExtend_FS_Head +extendSectorIndex*FLASH_SECTOR_SIZE);
@@ -204,7 +208,8 @@ int UserExtendManager::addUserJson(UserJson * userJson){
 
 int  UserExtendManager::queryUserJsonByUUID( char *uuid, UserJson *userJson) {
     LOGD("%s queryUserJsonByUUID  %s\r\n",logtag, uuid);
-    memcpy(userJson->UUID, uuid, sizeof(uUID));
+//    memcpy(userJson->UUID, uuid, sizeof(uUID));
+    strncpy(userJson->UUID, uuid, sizeof(uUID));
     int pageIndex = get_index_by_uuid(uuid);
     if( pageIndex != UUID_NOTMATCH ){
 
@@ -388,7 +393,7 @@ void UserExtendManager::convertUserJson2UserExtendClass(UserJson *userJson, User
  *  参数二 :   组用户类 group
  */
 bool UserExtendManager::checkUUIDUserPermission( char *uuid ) {
-    LOGD("%s %s \r\n",logtag, __func__ );
+    LOGD("%s %s uuid :%s\r\n",logtag, __func__ , uuid);
     bool flag   = false;
     UserJson        *userJson           = (UserJson *)pvPortMalloc(sizeof(UserJson) );
     UserExtendClass *userExtendClass    = (UserExtendClass *)pvPortMalloc( sizeof(UserExtendClass) );

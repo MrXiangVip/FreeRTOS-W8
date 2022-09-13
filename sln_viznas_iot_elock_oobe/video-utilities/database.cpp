@@ -432,24 +432,14 @@ int DB_AddFeature_WithName( std::string name, float* feature )
     LOGD("%s %s , name : %s \r\n",logtag, __func__, name.c_str());
 //  1.增加前查看是否name 已经存在
     uint16_t id_local = DB_GetID_ByName( name );
-
 //  2.如果用户已经存在 则更新用户名对应的特征值,
     if( id_local != (uint16_t)DB_MGMT_FAILED ){
-//        DB_Del(name);
-//        LOGD("%s 用户名已存在,则删除 %s  \r\n",logtag, name.c_str());
-//        int ret     = DB_GenID(&id_local);
-//        if (ret < 0)
-//        {
-//            LOGD("db gen id error \r\n");
-//            return DB_MGMT_FAILED;
-//        }
-//        ret = DB_Add(id_local, name, feature);
-//        LOGD("%s 增加 %s ,%d \r\n", logtag, name.c_str(), ret );
-//        return  ret;
+
         int ret = DB_Update( id_local, feature);
         LOGD("%s 更新 %s 的特征值 返回码 %d \r\n", logtag, name.c_str(), ret );
+        DB_GetName( id_local, name);
+        LOGD("%s 回读 id: %d name %s\r\n", logtag, id_local, name.c_str() );
         return  ret;
-
 //  3.如果 用户不存在,则 增加用户名 特征值
     } else{
         int ret     = DB_GenID(&id_local);
@@ -458,7 +448,6 @@ int DB_AddFeature_WithName( std::string name, float* feature )
             LOGD("db gen id error \r\n");
             return DB_MGMT_FAILED;
         }
-
         ret   = DB_Add(id_local, name, feature);
         if (ret != 0)
         {
@@ -468,5 +457,4 @@ int DB_AddFeature_WithName( std::string name, float* feature )
         LOGD("%s 增加 user 特征值 into db success, id_local[%d]: name[%s]\r\n",logtag, id_local, name.c_str() );
         return  DB_MGMT_OK;
     }
-
 }
