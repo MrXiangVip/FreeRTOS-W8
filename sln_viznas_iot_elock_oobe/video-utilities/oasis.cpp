@@ -707,7 +707,9 @@ static int UpdateFaceHandler(uint16_t face_id, void *face,void* snapshot_data, i
 {
     int ret;
     float *feature_data = (float *)face;
-
+    LOGD("[OASIS] %s %d\r\n", __func__, __LINE__);
+//  xshx add
+    return 0;
     ret = DB_Update(face_id, feature_data);
 
     if (ret >= 0)
