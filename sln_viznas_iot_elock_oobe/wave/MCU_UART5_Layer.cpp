@@ -60,7 +60,7 @@
 /* The callback function. */
 static void SwTimerCallback(TimerHandle_t xTimer);
 
-ws_time_t ws_systime = 0;
+//ws_time_t ws_systime = 0;
 static bool timer_started = false;
 // 20201120 wszgx end
 
@@ -690,8 +690,7 @@ int cmdUserRegReqProc(unsigned char nMessageLen, const unsigned char *pszMessage
 0-完成注册,待激活
 1-注册失败
 */
-//int cmdRegResultNotifyReq(uUID uu_id, uint8_t regResult) {
-int cmdRegResultNotifyReq(UserExtendClass *userExtendType, uint8_t regResult) {
+int cmdRegResultNotifyReq(UserExtendClass *userExtendClass, uint8_t regResult) {
     LOGD("%s 注册结果通知 \r\n", logtag);
     char szBuffer[32] = {0};
     char *pop = NULL;
@@ -701,9 +700,9 @@ int cmdRegResultNotifyReq(UserExtendClass *userExtendType, uint8_t regResult) {
     pop = szBuffer + sizeof(MESSAGE_HEAD);
 
     /*填充消息体*/
-    memcpy(pop, userExtendType->HexUID, sizeof(userExtendType->HexUID));
-    MsgLen += sizeof( userExtendType->HexUID);
-    pop += sizeof( userExtendType->HexUID);
+    memcpy(pop, userExtendClass->HexUID, sizeof(userExtendClass->HexUID));
+    MsgLen += sizeof( userExtendClass->HexUID);
+    pop += sizeof( userExtendClass->HexUID);
 //    StrSetUInt8((uint8_t *) pop, CMD_FACE_REG);
 //    MsgLen += sizeof(uint8_t);
 //    pop += sizeof(uint8_t);

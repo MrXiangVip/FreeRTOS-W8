@@ -6,16 +6,15 @@
 #define W8_WAVE_COMMON_H
 
 #include "commondef.h"
-#include "UserExtendManager.h"
+#include "aw_wstime.h"
 
+extern ws_time_t ws_systime;
 
 typedef  struct
 {
     int MessageID;
     char Data[ 128 ];
 } UartMessage, *pUartMessage;
-
-
 
 
 

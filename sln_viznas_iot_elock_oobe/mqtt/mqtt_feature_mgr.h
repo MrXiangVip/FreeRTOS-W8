@@ -11,7 +11,7 @@ class MqttFeatureMgr {
 private:
     MqttFeatureMgr() {};
     int saveFeature(char *uuid, char *payload_bin, int payload_bin_len);
-    int verifyFeature(char *uuid, unsigned char *payload, char *sign, int length);
+    int verifyFeature(char *uuid, unsigned char *payload, char *sign, int length, int mode, char *workno);
 public:
     static MqttFeatureMgr *getInstance() {
         static MqttFeatureMgr m_instance;

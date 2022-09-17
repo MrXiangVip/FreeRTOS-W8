@@ -287,7 +287,7 @@ static void vReceiveOasisTask(void *pvParameters) {
 //                            UserExtend userExtend;
 //                            memset( &userExtend, 0, sizeof(UserExtend) );
 //                            vConvertUserExtendType2Json( &userExtendType,  &userExtend );
-//                            int result = UserExtendManager::getInstance()->addUserJson(   &userExtend );
+//                            int result = UserExtendManager::getInstance()->saveUserJsonToFlash(   &userExtend );
 //                            LOGD( "%s 增加用户附加信息 %d\r\n",logtag, result);
                             //增加本次操作记录  增加注册记录
                             LOGD("%s增加注册记录 \r\n", logtag);

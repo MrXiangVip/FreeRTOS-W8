@@ -44,7 +44,7 @@
 #include "database.h"
 #include "UART_FAKER.h"
 #include "oasis.h"
-
+#include "UserExtendManager.h"
 #include <ctype.h>
 
 
@@ -58,7 +58,7 @@ int MqttFeatureMgr::saveFeature(char *uuid, char *payload_bin, int payload_bin_l
     return ret;
 }
 
-int MqttFeatureMgr::verifyFeature(char *uuid, unsigned char *payload, char *sign, int length) {
+int MqttFeatureMgr::verifyFeature(char *uuid, unsigned char *payload, char *sign, int length, int mode, char *workno) {
     // decode base64
     int payload_len = strlen((const char*)payload);
 //    char payload_bin[UART_RX_BUF_LEN];
@@ -104,7 +104,12 @@ int MqttFeatureMgr::verifyFeature(char *uuid, unsigned char *payload, char *sign
         return -1;
     }
 
-    int result = saveFeature(uuid, payload_bin, payload_bin_len);
+    // int result = saveFeature(uuid, payload_bin, payload_bin_len);
+    int result = 0;
+    result = UserExtendManager::getInstance()->setFeatureWithUUID(uuid, (float*)payload_bin);
+    if (result == 0) {
+        result = UserExtendManager::getInstance()->addUserNoModeWithUUID(workno, mode, uuid);
+    }
     vPortFree(payload_bin);
 
     return result;
@@ -117,10 +122,14 @@ int MqttFeatureMgr::downloadFeature(char *data) {
     cJSON *j_sign = NULL;
     cJSON *j_length = NULL;
     cJSON *j_data = NULL;
+    cJSON *j_workno = NULL;
+    cJSON *j_mode = NULL;
     char *msg_idStr = NULL;
     char *uuid = 0;
     char *dataStr = NULL;
     char *sign = NULL;
+    char *workno = NULL;
+    int mode = 0;
     int length = 0;
 
     mqtt = cJSON_Parse(data);
@@ -140,13 +149,22 @@ int MqttFeatureMgr::downloadFeature(char *data) {
     length = (int)cJSON_GetNumberValue(j_length);
     LOGD("rfd length is %d\r\n", length);
 
+    j_workno = cJSON_GetObjectItem(mqtt, "no");
+    workno = cJSON_GetStringValue(j_workno);
+    LOGD("rfd workno is %s\r\n", workno);
+
+    j_mode = cJSON_GetObjectItem(mqtt, "m");
+    mode = (int)cJSON_GetNumberValue(j_mode);
+    LOGD("rfd mode is %d\r\n", mode);
+
+
     int result = 0;
 
     j_data = cJSON_GetObjectItem(mqtt, "d");
     if (uuid != NULL && j_data != NULL) {
         dataStr = cJSON_GetStringValue(j_data);
         LOGD("---JSON j_data is %d %s\r\n", strlen(dataStr), dataStr);
-        result = verifyFeature(uuid, (unsigned char*)dataStr, sign, length);
+        result = verifyFeature(uuid, (unsigned char*)dataStr, sign, length, mode, workno);
         MqttCmdMgr::getInstance()->atCmdResponse(result, msg_idStr);
     }
 

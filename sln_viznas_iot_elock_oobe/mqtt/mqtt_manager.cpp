@@ -23,7 +23,6 @@
 #include "MCU_UART5_Layer.h"
 #include "DBManager.h"
 #include "sln_api.h"
-
 // 分析最原始的MQTT AT消息
 int MqttManager::analyzeMqttRecvLine(char *msg) {
     static int ana_timeout_count = 0;
@@ -145,9 +144,10 @@ int MqttManager::handleMqttMsgData(char *jsonMsg) {
         result = timeSync(dataStr);
         MqttCmdMgr::getInstance()->atCmdResponse(result, idStr);
     } else if (strcmp("du", typeStr) == 0) {
-        DBManager::getInstance()->deleteRecordByUUID(dataStr);
-        UserExtendManager::getInstance()->delUserJsonByUUID( dataStr );
-        vizn_api_status_t status = VIZN_DelUser(NULL, dataStr);
+//        DBManager::getInstance()->deleteRecordByUUID(dataStr);
+//        UserExtendManager::getInstance()->delUserJsonByUUID( dataStr );
+//        vizn_api_status_t status = VIZN_DelUser(NULL, dataStr);
+        UserExtendManager::getInstance()->delUserModeWithUUIDStr( dataStr );
         result =AT_RSP_SUCCESS;
         MqttCmdMgr::getInstance()->atCmdResponse(result, idStr);
     } else if (strcmp("cu", typeStr) == 0) {
@@ -159,7 +159,7 @@ int MqttManager::handleMqttMsgData(char *jsonMsg) {
     } else if (strcmp("ua", typeStr) == 0) {
         // TODO:
         LOGD("dataStr: %s \r\n", dataStr);
-        UserExtendManager::getInstance()->addStrUser(dataStr);
+        UserExtendManager::getInstance()->addDurationUUIDStr(dataStr);
         result = AT_RSP_SUCCESS;
         MqttCmdMgr::getInstance()->atCmdResponse(result, idStr);
 

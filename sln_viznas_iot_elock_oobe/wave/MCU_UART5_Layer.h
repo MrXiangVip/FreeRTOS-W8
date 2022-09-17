@@ -20,11 +20,12 @@
 #include "fsl_common.h"
 #include "fsl_iomuxc.h"
 
+#include "WAVE_COMMON.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include "WAVE_COMMON.h"
+#include "UserExtendManager.h"
 
 
 /*******************************************************************************
@@ -191,12 +192,6 @@ typedef struct wf_face_info{
     unsigned face_id;
 }wf_face_info_t;
 
-typedef struct userInfo_data_t
-{
-    uUID uuId;  /**APP 端产生的UUID，8字节 */
-    uint8_t userName[12];     /**NXP 算法维护的username*/
-} userInfo_data_t;
-
 
 int MsgTail_Pack(char *Message, int iTailIndex );
 
@@ -238,12 +233,12 @@ extern int cmdMechicalLockRsp(unsigned char nMessageLen, const unsigned char *ps
 extern int cmdReqPoweDown(unsigned char nMessageLen, const unsigned char *pszMessage);
 
 //extern int cmdRegResultNotifyReq(uUID uu_id, uint8_t regResult);
-extern int cmdRegResultNotifyReq(UserExtendClass *userExtendType, uint8_t regResult);
 
 extern int cmdWifiSSIDProc(unsigned char nMessageLen, const unsigned char *pszMessage);
 
 //send qMsg to uart5 task when face register over
-
+extern int cmdRegResultNotifyReq(UserExtendClass *userExtendType, uint8_t regResult);
+//extern int cmdRegResultNotifyReq(void *userExtendType, uint8_t regResult);
 
 
 //从oasis_rt106f_elcok.cpp中获取识别或者注册时的face_info
@@ -279,12 +274,12 @@ extern const unsigned char *MsgHead_Unpacket(
 }
 #endif
 
+
 // 20201119 wszgx modified for display correct battery information in the screen
 extern bool	bInitSyncInfo;
 extern bool bSysTimeSynProc;
 // 20201119 wszgx end
 // 20201120 wszgx modified for display correct date/time information in the screen
-extern ws_time_t ws_systime;
 // 20201120 wszgx end
 
 extern  Reg_Status g_reging_flg;//正在注册流程标记,等待被激活，对识别task发过来的识别结果进行过滤

@@ -31,6 +31,7 @@
 bool lcd_back_ground = true;
 static const char *logtag ="[WAVE-COMMON]-";
 QueueHandle_t  Uart5FromFakeUartMsgQueue;
+ws_time_t ws_systime = 0;
 
 void OpenLcdBackground() {
     if (!lcd_back_ground) {

@@ -11,6 +11,12 @@
 #include "cJSON.h"
 #include "util.h"
 #include "MCU_UART5_Layer.h"
+#include "commondef.h"
+#include "database.h"
+#include "WAVE_COMMON.h"
+#include "sln_flash.h"
+#include "DBManager.h"
+#include "sln_api.h"
 
 static  const char * logtag="[UserExtendManager]: ";
 
@@ -85,7 +91,7 @@ int UserExtendManager::get_index_by_uuid(char *uuid) {
     for (int i = 0; i <MAX_EXTEND_COUNT ; ++i) {
 
         if( strncmp( (char*)gUIDMap+i* sizeof(uUID), (char*)uuid, sizeof(uUID) )==0 ){
-            LOGD("%s page: %d 匹配到 uuid: %s\r\n", logtag, i, uuid);
+            LOGD("%s page: %d 匹配到 uuid: %s \r\n", logtag, i, uuid);
 
             return  i;
         }
@@ -95,10 +101,10 @@ int UserExtendManager::get_index_by_uuid(char *uuid) {
 }
 
 /*
- *
+ * 函数功能： 将json 格式的用户信息存储到 flash
  * */
-int UserExtendManager::addUserJson(UserJson * userJson){
-    LOGD("%s addUserJson  %s, %s \r\n", logtag, userJson->UUID, userJson->jsonData);
+int UserExtendManager::saveUserJsonToFlash(UserJson * userJson){
+    LOGD("%s %s  %s, %s \r\n", logtag, __func__, userJson->UUID, userJson->jsonData);
 
 //    1 查询uuid 是否已经存在,
     int pageIndex = get_index_by_uuid( userJson->UUID );
@@ -160,7 +166,7 @@ int UserExtendManager::addUserJson(UserJson * userJson){
         }
     }else{
 //    如果uuid 已经存在则删除原有的 再写入,
-        LOGD("%s 修改用户时段 \r\n",logtag);
+        LOGD("%s 修改用户信息 \r\n",logtag);
         SLN_Read_Flash_At_Address( userUUID_FS_Head, gUIDMap, sizeof(UUIDMap) );
         strncpy( (char *)( gUIDMap+pageIndex* sizeof(uUID) ), userJson->UUID, sizeof(uUID) );
 
@@ -182,8 +188,8 @@ int UserExtendManager::addUserJson(UserJson * userJson){
         memset( s_DataCache, 0, FLASH_SECTOR_SIZE );
         int  extendSectorIndex = pageIndex* FLASH_PAGE_SIZE/FLASH_SECTOR_SIZE;
         SLN_Read_Flash_At_Address( userExtend_FS_Head + extendSectorIndex*FLASH_SECTOR_SIZE, s_DataCache,  FLASH_SECTOR_SIZE);
-//        memcpy( s_DataCache + pageIndex %(FLASH_SECTOR_SIZE/FLASH_PAGE_SIZE), userJson->jsonData, sizeof(userJson->jsonData) );
-        strncpy( (char *)s_DataCache + pageIndex %(FLASH_SECTOR_SIZE/FLASH_PAGE_SIZE), userJson->jsonData, sizeof(userJson->jsonData) );
+        memcpy( s_DataCache + pageIndex %(FLASH_SECTOR_SIZE/FLASH_PAGE_SIZE), userJson->jsonData, sizeof(userJson->jsonData) );
+//        strncpy( (char *)s_DataCache + pageIndex %(FLASH_SECTOR_SIZE/FLASH_PAGE_SIZE), userJson->jsonData, sizeof(userJson->jsonData) );
         int status =SLN_Erase_Sector( userExtend_FS_Head +extendSectorIndex*FLASH_SECTOR_SIZE );
         if( status ==0){
             LOGD("SLN_Erase_Sector %d 0x%x Success \r\n", extendSectorIndex, userExtend_FS_Head +extendSectorIndex*FLASH_SECTOR_SIZE);
@@ -195,35 +201,73 @@ int UserExtendManager::addUserJson(UserJson * userJson){
         vPortFree( s_DataCache);
     }
 
-//    for(int i=0; i<MAX_EXTEND_COUNT; i++){
-//
-//        char  cUUID[9]={0};
-//
-//        memcpy( cUUID, gUIDMap+i* sizeof(uUID), sizeof(uUID));
-//        LOGD(" 遍历UUID %d %s\r\n",i, cUUID);
-//    }
+
     return pageIndex;
 
 }
 
-int  UserExtendManager::queryUserJsonByUUID( char *uuid, UserJson *userJson) {
+int UserExtendManager::saveUserExtendClassToFlash(UserExtendClass * userExtendClass) {
+    LOGD("%s    %s \r\n", logtag, __func__ );
+    UserJson  userJson;
+    memset( &userJson, 0, sizeof(UserJson) );
+    convertUserExtendClass2UserJson( &userJson, userExtendClass );
+    saveUserJsonToFlash( &userJson );
+    return 0;
+}
+/*
+ * 函数功能： 通过uuid 查找userJson
+ * 输入参数： uuid
+ * 输出参数： userJson
+ * 返回值 :成功返回 uuid 对应的下标  失败返回-1
+ * */
+
+int  UserExtendManager::queryUserJsonByUUID(  UserJson *userJson, char *uuid ) {
     LOGD("%s queryUserJsonByUUID  %s\r\n",logtag, uuid);
-//    memcpy(userJson->UUID, uuid, sizeof(uUID));
-    strncpy(userJson->UUID, uuid, sizeof(uUID));
     int pageIndex = get_index_by_uuid(uuid);
     if( pageIndex != UUID_NOTMATCH ){
-
+        strncpy(userJson->UUID, uuid, sizeof(uUID));
         int status = SLN_Read_Flash_At_Address( userExtend_FS_Head+pageIndex* (FLASH_PAGE_SIZE), (uint8_t *)userJson->jsonData, sizeof(userJson->jsonData));
         if (status == 0) {
             LOGD("SLN_Read_Flash_At_Address 0x%x  Success  uuid %s, data %s\r\n", userExtend_FS_Head + pageIndex*(FLASH_PAGE_SIZE), userJson->UUID, userJson->jsonData );
         }
     }else{
-        LOGD("%s 没有查到对应 UUID %s 的记录\r\n",logtag, uuid);
+        LOGD("%s 没有查到对应 UUID %s 的记录 \r\n",logtag, uuid);
+        strcpy( userJson->UUID, uuid );
+        cJSON * jsonObj = cJSON_CreateObject();
+        cJSON_AddNullToObject(jsonObj, WORKNO);
+        cJSON_AddNullToObject(jsonObj, WORKMD);
+        cJSON_AddNullToObject(jsonObj, DATE);
+        cJSON_AddNullToObject(jsonObj, WEEK);
+        char *cjson_str = cJSON_PrintUnformatted( jsonObj);
+        printf("%s \n", cjson_str );
+        strcpy( userJson->jsonData, cjson_str);
+//       删除cJsonObject
     }
     return  pageIndex;
 }
 
+/*
+ * 函数功能： 通过uuid  获得 对应的用户类信息
+ * 输入参数： uuid
+ * 输出参数： userExtendClass
+ * */
+int UserExtendManager::getUserExtendClassByUUID( UserExtendClass *userExtendClass, char *uuid ){
+    LOGD("%s %s %s  \r\n", logtag, __func__,   uuid );
+//  1. 先从flash 中读出 uuid 对应的userJson
+    UserJson userJson;
+    memset( &userJson, 0, sizeof(UserJson) );
+    int index = queryUserJsonByUUID( &userJson, uuid);
+    LOGD("查到 %s ? %s\r\n", uuid, (index>=0)?" 是":"否");
+//   2. 将json 转成 class
 
+    convertUserJson2UserExtendClass( userExtendClass, &userJson );
+
+    return  index;
+}
+
+/*
+ * 函数功能：
+ * */
 int UserExtendManager::delUserJsonByUUID( char *uuid ) {
     LOGD("%s delUserJsonByUUID  %s\r\n",logtag, uuid);
 
@@ -283,7 +327,9 @@ int UserExtendManager::clearAllUserJson(  ){
     return status;
 }
 
-
+/*
+ * 函数功能: 设置系统中当前用户的uuid
+ * */
 void UserExtendManager::setCurrentUser(char *uuid){
     LOGD("%s set current user  %s\r\n", logtag, uuid);
     memset( &gUserExtend, 0, sizeof(gUserExtend) );
@@ -291,36 +337,43 @@ void UserExtendManager::setCurrentUser(char *uuid){
     StrToHex( gUserExtend.HexUID, gUserExtend.UUID, sizeof(gUserExtend.HexUID) );//将uuid 转成16进制 hexuid
     return;
 }
-
+/*
+ * 函数功能:获取系统中当前用户
+ * */
 UserExtendClass *UserExtendManager::getCurrentUser( ){
     LOGD("%s get current user \r\n", logtag);
     return &gUserExtend;
 }
 
 
-
-int UserExtendManager::addStrUser(char * userInfo){
+/*
+ * 函数功能: 增加用户通行日期
+ * */
+int UserExtendManager::addDurationUUIDStr(char * userInfo){
     LOGD("%s %s %s\r\n", logtag, __func__, userInfo);
     int ret =0;
-    UserExtendClass userExtendClass;
+    UserExtendClass userExtendClass, tmpUserExtendClass;
     memset( &userExtendClass, 0, sizeof(UserExtendClass) );
-//    1.将字符串转成用户类
-    convertStr2UserExtendClass( userInfo,  &userExtendClass);
-//    2. 将将用户类转成 json格式
-    UserJson    userJson;
-    memset( &userJson, 0, sizeof(UserJson) );
-    convertUserExtendClass2UserJson( &userExtendClass, &userJson);
-//    3. 存储到flash 中
-    ret = addUserJson( &userJson );
+    memset( &tmpUserExtendClass, 0, sizeof(UserExtendClass) );
+//    1. 先从字符串 中分隔出  date_duration, week_duration, uuid
+//    convertStr2UserExtendClass( userInfo,  &userExtendClass);
+    spliteDurationUUIDFromStr( tmpUserExtendClass.weekDuration, tmpUserExtendClass.dateDuration, tmpUserExtendClass.UUID, userInfo );
+//    2.  从flash 中查出 userExtendClass
+    ret = getUserExtendClassByUUID( &userExtendClass, tmpUserExtendClass.UUID );
+    //    更新week  date
+    strcpy( userExtendClass.weekDuration, tmpUserExtendClass.weekDuration);
+    strcpy( userExtendClass.dateDuration, tmpUserExtendClass.dateDuration);
+//  3.  将class 写入 flash 中存储
+    saveUserExtendClassToFlash( &userExtendClass );
     LOGD("%s 加到第%d处 \r\n",logtag, ret);
-//    LOGD("%s 加入后查询 \r\n",logtag);
-//    ret = queryUserJsonByUUID( userJson.UUID, &userJson );
     return  ret;
 }
-
-
-
-void UserExtendManager::convertStr2UserExtendClass(char *strUserInfo, UserExtendClass *userExtendType) {
+/*
+ * 函数功能: 从字符串中分隔出 通行日期 和uuid
+ * 输入参数  strUserInfo
+ * 输出参数  week_duration, date_duration, uuid
+ * */
+void UserExtendManager::spliteDurationUUIDFromStr( char *week_duration, char *date_duration, char *uuid,  char *strUserInfo ) {
     LOGD("%s %s: %d ,%s \r\n",logtag,__func__, strlen(strUserInfo), strUserInfo);
 //1. 先将strUserInfo 拷贝到临时变量
     int infoLength = strlen( strUserInfo )+1;
@@ -330,13 +383,13 @@ void UserExtendManager::convertStr2UserExtendClass(char *strUserInfo, UserExtend
     }
     strcpy( tempUsrInfo, strUserInfo);
 //2. 第一个"," 分隔出 uuid
-    char *uuid =NULL;
-    uuid = strtok(tempUsrInfo, ",");
-    if( uuid ==NULL ){
+    char *tmpUuid =NULL;
+    tmpUuid = strtok(tempUsrInfo, ",");
+    if( tmpUuid ==NULL ){
         return;
     }
-    strcpy( userExtendType->UUID, uuid );
-    LOGD( "uuid: %s \r\n", userExtendType->UUID);
+    strcpy( uuid, tmpUuid );
+    LOGD( "uuid: %s \r\n", tmpUuid);
 
 //3. 第二个"," 分隔出 日期字段
     char *dateDuration=NULL;
@@ -344,69 +397,196 @@ void UserExtendManager::convertStr2UserExtendClass(char *strUserInfo, UserExtend
     if( dateDuration ==NULL ){
         return;
     }
-    strcpy( userExtendType->dateDuration, dateDuration);
-    LOGD( "date: %s \r\n", userExtendType->dateDuration);
+    strcpy( date_duration, dateDuration );
+    LOGD( "date: %s \r\n", dateDuration);
 
 //4. 第三个","  分隔出 一周内时间字段
     char *weekDuration=NULL;
     while( weekDuration =strtok(NULL, ",") ){
 //        LOGD( "week: %s \r\n", weekDuration);
-        strcat( userExtendType->weekDuration, weekDuration);
-        strcat( userExtendType->weekDuration,",");
+        strcat( week_duration, weekDuration);
+        strcat( week_duration, ",");
     }
-    LOGD( "week: %s \r\n", userExtendType->weekDuration);
+    LOGD( "week: %s \r\n", week_duration);
 
     return;
 }
 
+/*
+ * 函数功能： 设置uuid 对应的特征值
+ * */
+int UserExtendManager::setFeatureWithUUID(  char * name , float *feature ){
+    LOGD("%s %s   \r\n", logtag, __func__    );
+    int ret = DB_AddFeature_WithName( name,  feature );
+    return  ret;
+}
+/*
+ * 函数功能: 设置uuid  对应的 worKNo  workMode 到 flash
+ * */
+int UserExtendManager::addUserNoModeWithUUID( char *workNo, uint8_t workMode,char *uuid  ){
+    LOGD("%s %s workNo: %s, Mode: %d, uuid: %s\r\n", logtag, __func__, workNo, workMode, uuid );
+//  1 .先从 flash 中 读出 uuid 对应的userExtendClass
+    UserExtendClass userExtendClass;
+    memset( &userExtendClass, 0, sizeof(UserExtendClass) );
+    int ret = getUserExtendClassByUUID( &userExtendClass, uuid );
+//  2.修改 userNo, workMode
+    strcpy( userExtendClass.work_no, workNo);
+    userExtendClass.work_mode |= workMode;
 
-void UserExtendManager::convertUserExtendClass2UserJson( UserExtendClass *userExtend, UserJson *userJson){
+//  3. 将class 转成json 写回flash
+    ret = saveUserExtendClassToFlash( &userExtendClass );
+    return  0;
+}
+/*
+ * 函数功能 :分隔字符串  分隔出 workMode 和uuid,
+ * */
+int UserExtendManager::delUserModeWithUUIDStr(char *strInfo){
+    LOGD("%s %s  \r\n",logtag, __func__);
+    UserExtendClass userExtendClass, tmpUserExtendClass;
+    memset( &userExtendClass, 0, sizeof(UserExtendClass) );
+    memset( &tmpUserExtendClass, 0, sizeof(UserExtendClass) );
+//    1.分隔字符串
+    spliteUserModeUUIDFromStr( tmpUserExtendClass.work_mode, tmpUserExtendClass.UUID, strInfo);
+
+//  2. 将 workMode 和对应的 uuid 加入flash
+    int pageIndex = getUserExtendClassByUUID( &userExtendClass, tmpUserExtendClass.UUID);
+    if( pageIndex == UUID_NOTMATCH ){
+        return 0;
+    }
+//  3.修改workmode
+    userExtendClass.work_mode &= !tmpUserExtendClass.work_mode;
+    if( userExtendClass.work_mode == 0){
+        vizn_api_status_t status = VIZN_DelUser(NULL, userExtendClass.UUID);
+        DBManager::getInstance()->deleteRecordByUUID( userExtendClass.UUID);
+        delUserJsonByUUID( userExtendClass.UUID );
+        return 0;
+    }else{
+        //  4. 写回flash
+        saveUserExtendClassToFlash( &userExtendClass );
+        return  0;
+    }
+}
+
+/* 分隔 出workMode uuid*/
+int UserExtendManager::spliteUserModeUUIDFromStr(uint8_t workMode, char *uuid, char *strInfo){
+    LOGD("%s %s  \r\n",logtag, __func__);
+//1. 先将strUserInfo 拷贝到临时变量
+    int infoLength = strlen( strInfo )+1;
+    char tempUsrInfo[1000]={0};
+    if( sizeof(tempUsrInfo) < infoLength ){
+        LOGD("error \r\n");
+    }
+    strcpy( tempUsrInfo, strInfo);
+//2. 第一个"," 分隔出 uuid
+    char *tmpWorkMode =NULL;
+    tmpWorkMode = strtok(tempUsrInfo, "-");
+    if( tmpWorkMode ==NULL ){
+        return -1;
+    }
+    workMode =atoi(tmpWorkMode);
+    LOGD( "workMode: %d \r\n", workMode);
+
+//3. 第二个"," 分隔出 日期字段
+    char *tmpUuid=NULL;
+    tmpUuid =strtok(NULL, ",");
+    if( tmpUuid ==NULL ){
+        return -1;
+    }
+    strcpy( uuid, tmpUuid );
+    LOGD( "uuid: %s \r\n", uuid);
+    return 0;
+
+}
+
+/*
+ * 函数功能： 将userExtendClass 转成 userJson
+ * 输入参数: userExtendClass
+ * 输出参数: userJson
+ * */
+void UserExtendManager::convertUserExtendClass2UserJson( UserJson *userJson,  UserExtendClass *userExtendClass ){
     LOGD("%s %s  \r\n",logtag, __func__);
 
     char 	*cjson_str=NULL;
     cJSON * cObj = cJSON_CreateObject();
-    cJSON_AddStringToObject(cObj, DATE, userExtend->dateDuration);
-    cJSON_AddStringToObject(cObj, WEEK, userExtend->weekDuration);
+    cJSON_AddStringToObject(cObj, WORKNO, userExtendClass->work_no);
+    cJSON_AddNumberToObject(cObj, WORKMD, userExtendClass->work_mode);
+    cJSON_AddStringToObject(cObj, DATE, userExtendClass->dateDuration);
+    cJSON_AddStringToObject(cObj, WEEK, userExtendClass->weekDuration);
+
     cjson_str = cJSON_PrintUnformatted( cObj);
     LOGD("cjson %s \r\n",  cjson_str);
 
-    memcpy( userJson->UUID, userExtend->UUID, sizeof(userExtend->UUID));
+    memcpy( userJson->UUID, userExtendClass->UUID, sizeof(userExtendClass->UUID));
     memcpy( userJson->jsonData, cjson_str, strlen(cjson_str));
 
+    cJSON_Delete(cObj);
     return;
 }
-
-void UserExtendManager::convertUserJson2UserExtendClass(UserJson *userJson, UserExtendClass *userExtendClass ){
-    LOGD("%s %s  \r\n",logtag, __func__);
+/*
+ *  函数功能： 将UserJson 转成 UserExtendClass
+ * 输入  userJson
+ * 输出  userExtendClass
+ * */
+void UserExtendManager::convertUserJson2UserExtendClass( UserExtendClass *userExtendClass ,UserJson *userJson ){
+    LOGD("%s %s  uuid:%s, jsonData: %s\r\n",logtag, __func__, userJson->UUID, userJson->jsonData );
     strcpy( userExtendClass->UUID , userJson->UUID);
     StrToHex( userExtendClass->HexUID, userExtendClass->UUID, sizeof(userExtendClass->HexUID));//将uuid 转成16进制 hexuid
     cJSON *jsonObj = cJSON_Parse(userJson->jsonData);
-    strcpy(userExtendClass->dateDuration , cJSON_GetObjectItem(jsonObj, DATE)->valuestring);
-    strcpy(userExtendClass->weekDuration , cJSON_GetObjectItem(jsonObj, WEEK)->valuestring);
-    LOGD("%s UUID: %s ,date %s ,week %s \r\n", logtag, userExtendClass->UUID, userExtendClass->dateDuration, userExtendClass->weekDuration);
+    if( jsonObj == NULL ){
+        LOGD("%s %s userJson can't null \r\n", logtag, __func__);
+    }else{
+        cJSON *cJson;
+        cJson= cJSON_GetObjectItem(jsonObj, WORKNO);
+        if( cJson->valuestring == NULL ){
+            printf( "work no %s \n", userExtendClass->work_no);
+        }else{
+            strcpy( userExtendClass->work_no,  cJson->valuestring );
+        }
+        cJson = cJSON_GetObjectItem(jsonObj, WORKMD);
+        if( cJson-> valueint ==NULL ){
+            userExtendClass->work_mode =0;
+        }else{
+            userExtendClass->work_mode = cJson->valueint;
+        }
+        cJson =  cJSON_GetObjectItem(jsonObj, DATE);
+        if( cJson->valuestring ==NULL ){
+            printf( "dateDuration %s \n", userExtendClass->dateDuration);
+
+        }else{
+            strcpy( userExtendClass->dateDuration , cJson->valuestring );
+        }
+        cJson = cJSON_GetObjectItem(jsonObj, WEEK);
+        if( cJson->valuestring ==NULL ){
+            printf( "weekDuration %s \n", userExtendClass->weekDuration);
+
+        } else{
+            strcpy( userExtendClass->weekDuration , cJSON_GetObjectItem(jsonObj, WEEK)->valuestring );
+        }
+    }
+
+    LOGD("%s %s uuid: %s , work no %s, work mode %d ,date %s ,week %s \r\n", logtag, __func__, userExtendClass->UUID,
+            userExtendClass->work_no, userExtendClass->work_mode, userExtendClass->dateDuration, userExtendClass->weekDuration);
     return;
 }
 
 
-/**
+
+/** 函數功能： 检查用户通行权限
  *  参数一 :   用户字串
  *  参数二 :   组用户类 group
  */
 bool UserExtendManager::checkUUIDUserPermission( char *uuid ) {
     LOGD("%s %s uuid :%s\r\n",logtag, __func__ , uuid);
     bool flag   = false;
-    UserJson        *userJson           = (UserJson *)pvPortMalloc(sizeof(UserJson) );
     UserExtendClass *userExtendClass    = (UserExtendClass *)pvPortMalloc( sizeof(UserExtendClass) );
-    UserJson        *groupJson          = (UserJson *)pvPortMalloc( sizeof(UserJson) );
     UserExtendClass *groupExtendClass   = (UserExtendClass *)pvPortMalloc( sizeof(UserExtendClass) );
-    memset( userJson, 0, sizeof(UserJson) );
-    memset( groupJson, 0, sizeof(groupJson) );
     memset( userExtendClass, 0, sizeof(UserExtendClass) );
     memset( groupExtendClass, 0, sizeof(UserExtendClass) );
 
     while(1){// 用while break 取代if goto
-        int userIndex = queryUserJsonByUUID( uuid, userJson);
-        int groupIndex = queryUserJsonByUUID( "ALL", groupJson);
+        int userIndex  = getUserExtendClassByUUID(  userExtendClass, uuid );
+        int groupIndex = getUserExtendClassByUUID(  groupExtendClass, "ALL");
+        LOGD("%s %s , userIndex: %d , groupIndex: %d\r\n", logtag, __func__, userIndex, groupIndex);
         //  未下发组用户的规则 则禁止通行
         if( groupIndex == -1 ){
             LOGD("%s group user not set , forbiden \r\n", logtag);
@@ -416,16 +596,15 @@ bool UserExtendManager::checkUUIDUserPermission( char *uuid ) {
 //  还没有下发通行时段的用户, 默认使用组用户通行规则
         if( (groupIndex != -1) && (userIndex == -1) ) {
             LOGD("%s 还没有下发通行时段的用户, 默认使用组用户通行规则\r\n", logtag);
-            memcpy( userJson, groupJson, sizeof(UserJson) );
+            memcpy( userExtendClass, groupExtendClass, sizeof(UserExtendClass) );
             userIndex = groupIndex;
         }
 //  有效的用户,拿到当前时间比较通行规则
         if( (groupIndex !=-1) && (userIndex!=-1) ){
-            convertUserJson2UserExtendClass( userJson, userExtendClass);
-            convertUserJson2UserExtendClass( groupJson, groupExtendClass);
 
-            LOGD("%s %s get user:%s, %s, %s \r\n",logtag, userExtendClass->UUID, userExtendClass->dateDuration, userExtendClass->weekDuration);
-            LOGD("%s %s get all: %s, %s, %s \r\n",logtag, groupExtendClass->UUID, groupExtendClass->dateDuration, groupExtendClass->weekDuration);
+            LOGD("%s :%s get user:%s, %s, %s \r\n",logtag, userExtendClass->UUID, userExtendClass->dateDuration, userExtendClass->weekDuration);
+            LOGD("%s :%s get all: %s, %s, %s \r\n",logtag, groupExtendClass->UUID, groupExtendClass->dateDuration, groupExtendClass->weekDuration);
+
 
             long currentTime  = ws_systime ; //东八区加8小时
             long currentTimeSlot = (currentTime-4*ADay+ 8*AHour )%AWeek; //1970年 0分0秒是星期四,从星期一开始计时
@@ -436,6 +615,11 @@ bool UserExtendManager::checkUUIDUserPermission( char *uuid ) {
             int sec  = currentTimeSlot %AMin;
             LOGD("%s 现在的时间是%d 取模后%d, 周 %d - %d 时: %d 分: %d 秒\r\n", logtag,currentTime, currentTimeSlot, weekday +1, hour, min, sec);
 //  1.比较 date 范围
+            if( strlen(userExtendClass->dateDuration) == 0 ){
+                LOGD("%s %s 使用组用户时间段\r\n", logtag, __func__);
+                strcpy( userExtendClass->dateDuration, groupExtendClass->dateDuration );
+                strcpy( userExtendClass->weekDuration, groupExtendClass->weekDuration );
+            }
             char * startDate = strtok(userExtendClass->dateDuration,"-");
             char * endDate = strtok( NULL, "-");
             long lStartDate = atol( startDate );
@@ -498,15 +682,11 @@ bool UserExtendManager::checkUUIDUserPermission( char *uuid ) {
     }
 
 //  释放内存
-    if( userJson !=NULL ){
-        vPortFree(userJson);
-    }
+
     if( userExtendClass != NULL){
         vPortFree( userExtendClass );
     }
-    if( groupJson != NULL){
-        vPortFree( groupJson );
-    }
+
     if( groupExtendClass != NULL){
         vPortFree( groupExtendClass );
     }

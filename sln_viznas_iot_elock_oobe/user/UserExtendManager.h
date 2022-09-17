@@ -1,7 +1,6 @@
 //
 // Created by xshx on 2022/5/18.
 //
-
 #ifndef USEREXTEND_USEREXTENDMANAGER_H
 #define USEREXTEND_USEREXTENDMANAGER_H
 #ifdef __cplusplus
@@ -12,6 +11,8 @@ extern "C"  {
 #include <stdlib.h>
 #include "stdio.h"
 #include "sln_flash.h"
+
+
 
 //#define FEATUREDATA_MAX_COUNT 100
 #define MAX_EXTEND_COUNT    600   //扩展记录最大的数量
@@ -26,6 +27,7 @@ extern "C"  {
 #define FLASH_FULL         -1
 #define UUID_NOTMATCH   -1
 
+
 #ifdef __cplusplus
 }
 #endif
@@ -36,6 +38,8 @@ extern "C"  {
 #define ADEV    "ADEV"
 #define EXUSR   "EXUSR"
 
+#define WORKNO    "WNO"
+#define WORKMD    "WMD"
 #define DATE    "DATE"
 #define WEEK    "WEEK"
 #define AMin  (60)
@@ -74,10 +78,14 @@ typedef struct{
 //    long    uEndTime;       // 用户订单的结束时间
 //    char    cDeviceId[48];  // 设备列表
 //    long    lCreateTime;    //用户在内存里创建的时间 用于过滤频繁注册和识别
+    char     work_no[10];   // 工号
+    uint8_t  work_mode;     // 1 .考勤   ,2.门禁, 3,考勤+门禁
     char     dateDuration[40];  // 年月日 格式的日期时间段
-    char     weekDuration[200]; // 星期时分 格式的时间段
+    char     weekDuration[160]; // 星期时分 格式的时间段
 
 }UserExtendClass;
+
+
 
 #ifdef __cplusplus
 class UserExtendManager {
@@ -102,9 +110,13 @@ class UserExtendManager {
 
         static UserExtendManager *getInstance();
 
-        int addUserJson(UserJson * userExtend);
+        int saveUserJsonToFlash(UserJson * userExtend);
 
-        int queryUserJsonByUUID( char *uuid, UserJson *userJson);
+        int saveUserExtendClassToFlash(UserExtendClass * userExtendClass);
+
+        int queryUserJsonByUUID(  UserJson *userJson, char *uuid );
+
+        int getUserExtendClassByUUID( UserExtendClass *userExtendClass, char *uuid );
 
 //        int updateUserJsonByUUID( char *uuid, UserJson *userExtend);
 
@@ -116,15 +128,22 @@ class UserExtendManager {
 
         UserExtendClass *getCurrentUser( );//get a user
 
-        int addStrUser(char * userInfo);//
+        int     addDurationUUIDStr(char * userInfo);
+        void    spliteDurationUUIDFromStr( char *week_duration, char *date_duration,char *uuid,  char *strUserInfo );
 
-//      将字符串转成用户类实例
-        void convertStr2UserExtendClass( char *strUserInfo, UserExtendClass *userExtendType);
+
+        int     addUserNoModeWithUUID( char *workNo, uint8_t workMode,char *uuid  );
+
+        int     delUserModeWithUUIDStr(char *strInfo);
+
+        int     spliteUserModeUUIDFromStr(uint8_t workMode, char *uuid, char *strInfo);
+
+        int     setFeatureWithUUID(  char* name , float *feature );
 
 //      将用户类转成 json 格式
-        void convertUserExtendClass2UserJson( UserExtendClass *userExtendType, UserJson *userJson);
+        void convertUserExtendClass2UserJson(  UserJson *userJson, UserExtendClass *userExtendType );
 //      将json 格式转用户类
-        void convertUserJson2UserExtendClass(UserJson *userJson, UserExtendClass *userExtendClass );
+        void convertUserJson2UserExtendClass( UserExtendClass *userExtendClass, UserJson *userJson );
 
 //      检查用户权限
         bool checkUUIDUserPermission( char *uuid );
