@@ -23,7 +23,7 @@ static  const char * logtag="[UserExtendManager]: ";
 //全局的用户 包含的数据集合
 
 UserExtendManager*  UserExtendManager::m_instance = NULL; //用户管理类的实例
-UserExtendClass     UserExtendManager::gUserExtend ; // 表示一个全局的用户
+UserExtendClass     UserExtendManager::gUserExtendClass ; // 表示一个全局的用户
 uint32_t            UserExtendManager::userExtend_FS_Head = NULL;//头地址
 uint32_t            UserExtendManager::userUUID_FS_Head = NULL;//头地址
 uint8_t            *UserExtendManager::gUIDMap;
@@ -239,7 +239,7 @@ int  UserExtendManager::queryUserJsonByUUID(  UserJson *userJson, char *uuid ) {
         cJSON_AddNullToObject(jsonObj, DATE);
         cJSON_AddNullToObject(jsonObj, WEEK);
         char *cjson_str = cJSON_PrintUnformatted( jsonObj);
-        printf("%s \n", cjson_str );
+        printf("%s \r\n", cjson_str );
         strcpy( userJson->jsonData, cjson_str);
 //       删除cJsonObject
     }
@@ -332,9 +332,9 @@ int UserExtendManager::clearAllUserJson(  ){
  * */
 void UserExtendManager::setCurrentUser(char *uuid){
     LOGD("%s set current user  %s\r\n", logtag, uuid);
-    memset( &gUserExtend, 0, sizeof(gUserExtend) );
-    strcpy( gUserExtend.UUID, uuid);
-    StrToHex( gUserExtend.HexUID, gUserExtend.UUID, sizeof(gUserExtend.HexUID) );//将uuid 转成16进制 hexuid
+    memset( &gUserExtendClass, 0, sizeof(gUserExtendClass) );
+    strcpy( gUserExtendClass.UUID, uuid);
+    StrToHex( gUserExtendClass.HexUID, gUserExtendClass.UUID, sizeof(gUserExtendClass.HexUID) );//将uuid 转成16进制 hexuid
     return;
 }
 /*
@@ -342,7 +342,8 @@ void UserExtendManager::setCurrentUser(char *uuid){
  * */
 UserExtendClass *UserExtendManager::getCurrentUser( ){
     LOGD("%s get current user \r\n", logtag);
-    return &gUserExtend;
+    getUserExtendClassByUUID( &gUserExtendClass, gUserExtendClass.UUID );
+    return &gUserExtendClass;
 }
 
 
@@ -573,10 +574,52 @@ void UserExtendManager::convertUserJson2UserExtendClass( UserExtendClass *userEx
 
 /** 函數功能： 检查用户通行权限
  *  参数一 :   用户字串
- *  参数二 :   组用户类 group
  */
-bool UserExtendManager::checkUUIDUserPermission( char *uuid ) {
-    LOGD("%s %s uuid :%s\r\n",logtag, __func__ , uuid);
+int UserExtendManager::checkUUIDUserModePermission( char *uuid ) {
+    LOGD("%s %s 检查 uuid :%s 工作模式\r\n",logtag, __func__ , uuid);
+    int flag=-1;
+    bool pass =false;
+    UserExtendClass *userExtendClass    = (UserExtendClass *)pvPortMalloc( sizeof(UserExtendClass) );
+    memset( userExtendClass, 0, sizeof(UserExtendClass) );
+
+    int userIndex  = getUserExtendClassByUUID(  userExtendClass, uuid );
+    LOGD("%s %s index %d\r\n",logtag, __func__, userIndex );
+    switch( userExtendClass->work_mode ){
+        case NO_WORK_MODE: //
+            LOGD("没有设置考勤和门禁模式");
+            flag = OASIS_REC_RESULT_UNKNOWN_FACE;
+            break;
+        case ATTENDANCE_MODE: //仅考勤模式, 考勤不检查,直接通过
+            LOGD("考勤模式 \r\n");
+            flag = R60_REC_ATTSUCC_ACCFAIL_FACE;
+            break;
+        case ACCESS_MODE: //仅仅 门禁模式, 需要检查通行时段
+            pass= checkUUIDUserDurationPermission( uuid );
+            if( pass ){
+                flag = R60_REC_ATTFAIL_ACCSUCC_FACE; //考勤不通过,门禁通过
+            }else{
+                flag = R60_REC_ATTFAIL_ACCFAIL_FACE; // 考勤和门禁都不通过
+            }
+            break;
+        case ATT_ACC_MODE:// 门禁和考勤模式, 需要检查通行时段
+            pass = checkUUIDUserDurationPermission( uuid );
+            if( pass ){
+                flag = R60_REC_ATTSUCC_ACCSUCC_FACE; //考勤通过,门禁通过
+            } else{
+                flag = R60_REC_ATTSUCC_ACCFAIL_FACE; // 考勤通过, 门禁不通过
+
+            }
+            break;
+        default:
+            LOGD("未知工作模式 \r\n");
+            break;
+    }
+//   释放内存, 返回结果
+    vPortFree( userExtendClass );
+    return  flag;
+}
+bool UserExtendManager::checkUUIDUserDurationPermission( char *uuid ) {
+    LOGD("%s %s 检查 uuid :%s 通行日期\r\n",logtag, __func__ , uuid);
     bool flag   = false;
     UserExtendClass *userExtendClass    = (UserExtendClass *)pvPortMalloc( sizeof(UserExtendClass) );
     UserExtendClass *groupExtendClass   = (UserExtendClass *)pvPortMalloc( sizeof(UserExtendClass) );
@@ -587,27 +630,27 @@ bool UserExtendManager::checkUUIDUserPermission( char *uuid ) {
         int userIndex  = getUserExtendClassByUUID(  userExtendClass, uuid );
         int groupIndex = getUserExtendClassByUUID(  groupExtendClass, "ALL");
         LOGD("%s %s , userIndex: %d , groupIndex: %d\r\n", logtag, __func__, userIndex, groupIndex);
-        //  未下发组用户的规则 则禁止通行
-        if( groupIndex == -1 ){
+
+        //  未下发组用户的规则 则通行日期检查不通过
+        if( groupIndex == UUID_NOTMATCH ){
             LOGD("%s group user not set , forbiden \r\n", logtag);
             flag = false;
             break;
         }
 //  还没有下发通行时段的用户, 默认使用组用户通行规则
-        if( (groupIndex != -1) && (userIndex == -1) ) {
+        if( (groupIndex != UUID_NOTMATCH) && (userIndex == UUID_NOTMATCH) ) {
             LOGD("%s 还没有下发通行时段的用户, 默认使用组用户通行规则\r\n", logtag);
             memcpy( userExtendClass, groupExtendClass, sizeof(UserExtendClass) );
             userIndex = groupIndex;
         }
 //  有效的用户,拿到当前时间比较通行规则
-        if( (groupIndex !=-1) && (userIndex!=-1) ){
+        if( (groupIndex != UUID_NOTMATCH) && (userIndex!= UUID_NOTMATCH) ){
 
-            LOGD("%s :%s get user:%s, %s, %s \r\n",logtag, userExtendClass->UUID, userExtendClass->dateDuration, userExtendClass->weekDuration);
-            LOGD("%s :%s get all: %s, %s, %s \r\n",logtag, groupExtendClass->UUID, groupExtendClass->dateDuration, groupExtendClass->weekDuration);
+            LOGD("%s :%s get user:%s ,时段 %s ,周时段 %s \r\n",logtag, userExtendClass->UUID, userExtendClass->dateDuration, userExtendClass->weekDuration);
+            LOGD("%s :%s get all: %s ,时段 %s ,周时段 %s \r\n",logtag, groupExtendClass->UUID, groupExtendClass->dateDuration, groupExtendClass->weekDuration);
 
-
-            long currentTime  = ws_systime ; //东八区加8小时
-            long currentTimeSlot = (currentTime-4*ADay+ 8*AHour )%AWeek; //1970年 0分0秒是星期四,从星期一开始计时
+            long currentTime  = ws_systime ; //时间戳不区分时区
+            long currentTimeSlot = (currentTime-4*ADay+ 8*AHour )%AWeek; //1970年 0分0秒是星期四,从星期一开始计时  ,时间区分时区
 
             int weekday = currentTimeSlot /ADay;
             int hour = currentTimeSlot %ADay /AHour;
@@ -615,15 +658,16 @@ bool UserExtendManager::checkUUIDUserPermission( char *uuid ) {
             int sec  = currentTimeSlot %AMin;
             LOGD("%s 现在的时间是%d 取模后%d, 周 %d - %d 时: %d 分: %d 秒\r\n", logtag,currentTime, currentTimeSlot, weekday +1, hour, min, sec);
 //  1.比较 date 范围
+//          如果dateDuration 长度为0 表示 时间段没有设置,使用组用户的时间
             if( strlen(userExtendClass->dateDuration) == 0 ){
-                LOGD("%s %s 使用组用户时间段\r\n", logtag, __func__);
+                LOGD("%s 未设置用户时段 , 使用组用户时间段\r\n", logtag );
                 strcpy( userExtendClass->dateDuration, groupExtendClass->dateDuration );
                 strcpy( userExtendClass->weekDuration, groupExtendClass->weekDuration );
             }
-            char * startDate = strtok(userExtendClass->dateDuration,"-");
-            char * endDate = strtok( NULL, "-");
-            long lStartDate = atol( startDate );
-            long lEndDate = atol( endDate );
+            char * userStartDate = strtok(userExtendClass->dateDuration,"-");
+            char * userEndDate = strtok( NULL, "-");
+            long lStartDate = atol( userStartDate );
+            long lEndDate = atol( userEndDate );
 
 
             char * allStartDate = strtok( groupExtendClass->dateDuration ,"-");
@@ -693,4 +737,3 @@ bool UserExtendManager::checkUUIDUserPermission( char *uuid ) {
     //    时间段比较通过
     return  flag;
 }
-

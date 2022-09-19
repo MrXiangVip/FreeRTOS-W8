@@ -449,12 +449,13 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
                 LOGD("[OASIS]:faceID:%d name:%s\r\n", id, gui_info.name);
 
 //              识别成功后 检查下权限  xshx add 20220825
-                bool ret = UserExtendManager::getInstance()->checkUUIDUserPermission( (char *)name.c_str() );
-                if( ret != true){
-                    LOGD("[OASIS]: 时间段检查 不通过 \r\n");
-                    recResult = OASIS_REC_RESULT_FORBIDEN_FACE;
+                int ret = UserExtendManager::getInstance()->checkUUIDUserModePermission( (char *)name.c_str() );
+                if( ret > R60_REC_ATTFAIL_ACCFAIL_FACE ){
+                    LOGD("[OASIS]: 权限检查 通过 \r\n");
+                    recResult = (OASISLTRecognizeRes_t)ret;
                 }else{
-                    LOGD("[OASIS]: 时间段检查 通过 \r\n");
+                    LOGD("[OASIS]: 权限 不通过 \r\n");
+                    recResult = R60_REC_ATTFAIL_ACCFAIL_FACE;
                 }
             }
             else

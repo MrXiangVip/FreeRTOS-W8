@@ -56,6 +56,12 @@ typedef union{
     uint8_t UID[8];
 }uUID;
 
+typedef  enum {
+    NO_WORK_MODE    =0x00,  //没有设置模式
+    ATTENDANCE_MODE =0x01,  //仅考勤模式
+    ACCESS_MODE     =0x02,  // 仅门禁模式
+    ATT_ACC_MODE    =0x03,  //考勤+门禁模式
+}UserWorkMode;
 typedef struct {
     uint8_t  maxUUID[ MAX_EXTEND_COUNT * sizeof(uUID)];
 }UUIDMap;
@@ -96,7 +102,7 @@ class UserExtendManager {
         static uint32_t         userExtend_FS_Head;
         static uint32_t         userUUID_FS_Head;
 //  当前的用户信息
-        static UserExtendClass       gUserExtend;
+        static UserExtendClass       gUserExtendClass;
 
         static uint8_t               *gUIDMap;
         UserExtendManager();
@@ -146,7 +152,8 @@ class UserExtendManager {
         void convertUserJson2UserExtendClass( UserExtendClass *userExtendClass, UserJson *userJson );
 
 //      检查用户权限
-        bool checkUUIDUserPermission( char *uuid );
+        int  checkUUIDUserModePermission( char *uuid );
+        bool checkUUIDUserDurationPermission( char *uuid );
 
 };
 #endif

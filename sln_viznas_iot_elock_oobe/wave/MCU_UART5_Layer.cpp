@@ -73,7 +73,6 @@ static bool timer_started = false;
 #define uart5_task_PRIORITY (configMAX_PRIORITIES - 1)
 
 #define SUPPORT_PRESSURE_TEST   0
-#define SUPPORT_POWEROFF        1
 //xshx add
 #define WORK_MAX_COUNT          6
 
@@ -800,11 +799,13 @@ int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
         pop += 1;
         uint8_t power2 = StrGetUInt8(pop);
 
-        Record *record = (Record *) pvPortMalloc(sizeof(Record));
+        UserExtendClass *pUserExtendClass = UserExtendManager::getInstance()->getCurrentUser();
 
-        UserExtendClass *pUserExtendType = UserExtendManager::getInstance()->getCurrentUser();
-        strcpy(record->UUID, pUserExtendType->UUID);
-        record->action = FACE_UNLOCK;//  操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁
+        LOGD("%s 创建门禁记录\r\n",logtag);
+        Record *record = (Record *) pvPortMalloc(sizeof(Record));
+        strcpy(record->UUID, pUserExtendClass->UUID);
+//        record->action = FACE_UNLOCK;//  操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁
+        record->action = pUserExtendClass->work_mode;// R60 项目 操作类型：0代表 1: 考勤 2：门禁  3 门禁 +考勤
         char image_path[16];
         //record->status = 0; // 0,操作成功 1,操作失败.
         record->time_stamp = ws_systime; //时间戳 从1970年开始的秒数
@@ -818,11 +819,8 @@ int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
 //        record->action_upload = 0x300;
         memset(image_path, 0, sizeof(image_path)); // 对注册成功的用户保存一张压缩过的jpeg图片
         //snprintf(image_path, sizeof(image_path), "REC_%d_%d_%s.jpg", 0, record->time_stamp, record->UUID);
-#if    SUPPORT_PRESSURE_TEST != 0
-        snprintf(image_path, sizeof(image_path), "%x21.jpg", record->time_stamp & 0x00FFFFFF);
-#else
         snprintf(image_path, sizeof(image_path), "%x.jpg", record->time_stamp);
-#endif
+
         memcpy(record->image_path, image_path, sizeof(image_path));//image_path
 
         DBManager::getInstance()->addRecord(record);

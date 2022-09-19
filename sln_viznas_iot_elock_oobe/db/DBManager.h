@@ -68,13 +68,14 @@ typedef enum {
 using namespace std;
 
 typedef struct {
-    int ID;
-    char UUID[20];
-    int action;       //  操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁 
-    char image_path[16];    //64
+    int     ID;
+    char    UUID[20];
+//    int     action;       // W8 操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁
+    int     action;       //  R60 操作类型 枚举类型 UserWorkMode：  1 表示考勤, 2 表示 门禁, 3 表示考勤+门禁
+    char    image_path[16];    //64
     //int     status;   // 0,操作成功 1,操作失败.(暂时不要,每次都是上传0)
-    long time_stamp; //时间戳 从1970年开始的秒数
-    char     data[32];  //data , 用作蓝牙锁时, 存储锁电量.  用作蓝牙测温时,存储蓝牙测温信息.
+    long    time_stamp; //时间戳 从1970年开始的秒数
+    char    data[32];  //data , 用作蓝牙锁时, 存储锁电量.  用作蓝牙测温时,存储蓝牙测温信息.
     int     upload; //   enum UPLOAD
     // short power;    // 电池电量 高8位为power1, 低8位为power2
     //int     power1;    // 电池电量

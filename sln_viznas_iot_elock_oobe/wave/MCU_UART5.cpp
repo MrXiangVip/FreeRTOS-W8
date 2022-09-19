@@ -341,23 +341,64 @@ static void vReceiveOasisTask(void *pvParameters) {
                     break;
                 case OASISLT_EVT_REC_COMPLETE:
                     if( boot_mode == BOOT_MODE_RECOGNIZE ) {
-                        if (faceInfo->recognize_result == OASIS_REC_RESULT_KNOWN_FACE) {// 识别匹配成功
-                            LOGD("识别成功, UUID %s\r\n", faceInfo->name.c_str() );
+                        if (faceInfo->recognize_result == R60_REC_ATTSUCC_ACCFAIL_FACE || faceInfo->recognize_result==R60_REC_ATTSUCC_ACCSUCC_FACE ) {// 考勤成功
+                            LOGD("UUID %s ,考勤模式通过  %d\r\n", faceInfo->name.c_str(), faceInfo->recognize_result );
                             char name[64] = {0};
                             memcpy(name, (void *) faceInfo->name.c_str(), faceInfo->name.size());
-                            // 根据用户名查找柜子的信息
 
 //                          更新当前用户  的用户名
                             UserExtendManager::getInstance()->setCurrentUser( name );
-                            // 发送开门请求
-                            cmdOpenDoorReq( );
+//                          获取当前用户, 如果是1 考勤模式,则上传记录 2. 门禁模式, 则在开门成功后上传记录
+                            UserExtendClass *pUserExtendClass = UserExtendManager::getInstance()->getCurrentUser( );
+                            LOGD("创建考勤记录 \r\n");
+//                          创建记录
+                            Record *record = (Record *) pvPortMalloc(sizeof(Record));
+                            strcpy(record->UUID, pUserExtendClass->UUID);
+//        record->action = FACE_UNLOCK;//  操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁
+                            record->action = pUserExtendClass->work_mode;// R60 项目 操作类型：0代表 1: 考勤 2：门禁  3 门禁 +考勤
+                            char image_path[16] = {0};
+                            //record->status = 0; // 0,操作成功 1,操作失败.
+                            record->time_stamp = ws_systime; //时间戳 从1970年开始的秒数
+//        record->power = power * 256 + power2;
+                            record->data[0] = 0xff;//未知电量
+                            record->data[1] = 0xff;//未知电量
+                            //sprintf(power_msg, "{\\\"batteryA\\\":%d\\,\\\"batteryB\\\":%d}", record->power, record->power2);
+                            //LOGD("power_msg is %s \r\n", power_msg);
+
+                            record->upload = BOTH_UNUPLOAD; //   0代表没上传 1代表记录上传图片未上传 2代表均已
+//        record->action_upload = 0x300;
+                            memset(image_path, 0, sizeof(image_path)); // 对注册成功的用户保存一张压缩过的jpeg图片
+                            //snprintf(image_path, sizeof(image_path), "REC_%d_%d_%s.jpg", 0, record->time_stamp, record->UUID);
+                            snprintf(image_path, sizeof(image_path), "%x.jpg", record->time_stamp);
+
+                            memcpy(record->image_path, image_path, sizeof(image_path));//image_path
+
+                            DBManager::getInstance()->addRecord(record);
+
+                            Oasis_SetOasisFileName(record->image_path);
+                            Oasis_WriteJpeg();
+
+                            int ID = DBManager::getInstance()->getLastRecordID();
+                            LOGD("识别成功, 更新记录数据库状态.请求MQTT上传本次开门的记录 \r\n");
+                            cmdRequestMqttUpload(ID);
+                            recognize_times = 0;
+                        }
+                        if( (faceInfo->recognize_result == R60_REC_ATTFAIL_ACCSUCC_FACE) || (faceInfo->recognize_result == R60_REC_ATTSUCC_ACCSUCC_FACE)){
+                                // 发送开门请求
+                            LOGD("UUID %s ,门禁模式通过 %d, 发送开门请求 \r\n", faceInfo->name.c_str(), faceInfo->recognize_result);
+                            char name[64] = {0};
+                            memcpy(name, (void *) faceInfo->name.c_str(), faceInfo->name.size());
+//                          更新当前用户  的用户名
+                            UserExtendManager::getInstance()->setCurrentUser(name);
+                            cmdOpenDoorReq();
                             recognize_times = 0;
 
-                        } else if(faceInfo->recognize_result == OASIS_REC_RESULT_UNKNOWN_FACE){
+                        }
+                        if(faceInfo->recognize_result == OASIS_REC_RESULT_UNKNOWN_FACE){
                             LOGD("陌生人 \r\n");
                             recognize_times = 0;
                         }
-                        else{// 识别40次 重新计数
+                        if(true){// 识别40次 重新计数
                             recognize_times++;
                             if (recognize_times > 40 ) {
                                 LOGD("User face recognize timeout \r\n");
