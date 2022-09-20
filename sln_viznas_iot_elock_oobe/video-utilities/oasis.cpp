@@ -454,8 +454,9 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
                     LOGD("[OASIS]: 权限检查 通过 \r\n");
                     recResult = (OASISLTRecognizeRes_t)ret;
                 }else{
-                    LOGD("[OASIS]: 权限 不通过 \r\n");
+                    LOGD("[OASIS]: 权限 不通过 %d \r\n",ret);
                     recResult = R60_REC_ATTFAIL_ACCFAIL_FACE;
+//                    recResult = OASIS_REC_RESULT_FORBIDEN_FACE;
                 }
             }
             else

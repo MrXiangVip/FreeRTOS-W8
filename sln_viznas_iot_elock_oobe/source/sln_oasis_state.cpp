@@ -292,7 +292,7 @@ void Oasis_API_Recognize(face_info_t face_info)
         else if (g_RecFace)
         {
 //      xshx add 20220826
-            if( face_info.recognize_result == OASIS_REC_RESULT_FORBIDEN_FACE ){
+            if( face_info.recognize_result == OASIS_REC_RESULT_FORBIDEN_FACE ||face_info.recognize_result== R60_REC_ATTFAIL_ACCFAIL_FACE){
                 StopRecognitionProcess(kEvents_API_Layer_RecForbiden);
             }else{
                 StopRecognitionProcess(kEvents_API_Layer_RecSuccess);

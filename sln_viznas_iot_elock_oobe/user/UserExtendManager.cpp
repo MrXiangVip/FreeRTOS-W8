@@ -114,7 +114,7 @@ int UserExtendManager::saveUserJsonToFlash(UserJson * userJson){
         LOGD("%s 新增用户时段 \r\n",logtag);
         bool needErase = false;
         pageIndex = get_free_index( &needErase );
-        LOGD("%s 可用的index %d, 是否需要擦除 %d\r\n", logtag, pageIndex, needErase);
+        LOGD("%s 可用的index %d, 是否需要擦除 %s\r\n", logtag, pageIndex, needErase?"是":"否");
         if( pageIndex == FLASH_FULL){
             LOGD("空间已满\r\n");
             return  FLASH_FULL;
@@ -152,8 +152,11 @@ int UserExtendManager::saveUserJsonToFlash(UserJson * userJson){
             uint8_t   *s_DataCache = (uint8_t *)pvPortMalloc( FLASH_SECTOR_SIZE );
             memset( s_DataCache, 0, sizeof(FLASH_SECTOR_SIZE) );
             SLN_Read_Flash_At_Address( userExtend_FS_Head + sectorIndex*FLASH_SECTOR_SIZE, s_DataCache,  FLASH_SECTOR_SIZE);
-//            memcpy( s_DataCache +FLASH_PAGE_SIZE *pageIndex, userJson->jsonData, sizeof(userJson->jsonData) );
-            strncpy( (char *)s_DataCache +FLASH_PAGE_SIZE *pageIndex, userJson->jsonData, sizeof(userJson->jsonData) );
+            memcpy( s_DataCache +FLASH_PAGE_SIZE *pageIndex, userJson->jsonData, sizeof(userJson->jsonData) );
+            for(int i=0; i< FLASH_SECTOR_SIZE/FLASH_PAGE_SIZE; i++){
+                LOGD("s_DataCache  pageSize %d, sectorSize %d, page %d, %s \r\n", FLASH_PAGE_SIZE, FLASH_SECTOR_SIZE, i, s_DataCache+i*FLASH_PAGE_SIZE%FLASH_SECTOR_SIZE);
+            }
+//            strncpy( (char *)s_DataCache +FLASH_PAGE_SIZE *pageIndex, userJson->jsonData, sizeof(userJson->jsonData) );
             int status = SLN_Erase_Sector( userExtend_FS_Head +sectorIndex*FLASH_SECTOR_SIZE);
             if( status ==0){
                 LOGD("SLN_Erase_Sector  %d,0x%x Success \r\n", sectorIndex, userExtend_FS_Head + sectorIndex*FLASH_SECTOR_SIZE );
@@ -186,9 +189,12 @@ int UserExtendManager::saveUserJsonToFlash(UserJson * userJson){
 //    先删除原有的jsonData sector 再写入
         uint8_t   *s_DataCache = (uint8_t *)pvPortMalloc( FLASH_SECTOR_SIZE );
         memset( s_DataCache, 0, FLASH_SECTOR_SIZE );
-        int  extendSectorIndex = pageIndex* FLASH_PAGE_SIZE/FLASH_SECTOR_SIZE;
+        int  extendSectorIndex = pageIndex* FLASH_PAGE_SIZE/ FLASH_SECTOR_SIZE;
         SLN_Read_Flash_At_Address( userExtend_FS_Head + extendSectorIndex*FLASH_SECTOR_SIZE, s_DataCache,  FLASH_SECTOR_SIZE);
-        memcpy( s_DataCache + pageIndex %(FLASH_SECTOR_SIZE/FLASH_PAGE_SIZE), userJson->jsonData, sizeof(userJson->jsonData) );
+        memcpy( s_DataCache + pageIndex* FLASH_PAGE_SIZE% FLASH_SECTOR_SIZE, userJson->jsonData, sizeof(userJson->jsonData) );
+        for(int i=0; i< FLASH_SECTOR_SIZE/FLASH_PAGE_SIZE; i++){
+            LOGD("s_DataCache  pageSize %d, sectorSize %d, page %d, %s \r\n", FLASH_PAGE_SIZE, FLASH_SECTOR_SIZE, i, s_DataCache+i*FLASH_PAGE_SIZE%FLASH_SECTOR_SIZE);
+        }
 //        strncpy( (char *)s_DataCache + pageIndex %(FLASH_SECTOR_SIZE/FLASH_PAGE_SIZE), userJson->jsonData, sizeof(userJson->jsonData) );
         int status =SLN_Erase_Sector( userExtend_FS_Head +extendSectorIndex*FLASH_SECTOR_SIZE );
         if( status ==0){
@@ -201,18 +207,17 @@ int UserExtendManager::saveUserJsonToFlash(UserJson * userJson){
         vPortFree( s_DataCache);
     }
 
-
     return pageIndex;
 
 }
 
-int UserExtendManager::saveUserExtendClassToFlash(UserExtendClass * userExtendClass) {
-    LOGD("%s    %s \r\n", logtag, __func__ );
+int UserExtendManager::saveUserExtendClassToFlash(UserExtendClass * pUserExtendClass) {
+    LOGD("%s %s \r\n", logtag, __func__ );
     UserJson  userJson;
     memset( &userJson, 0, sizeof(UserJson) );
-    convertUserExtendClass2UserJson( &userJson, userExtendClass );
-    saveUserJsonToFlash( &userJson );
-    return 0;
+    convertUserExtendClass2UserJson( &userJson, pUserExtendClass );
+    int pageIndex = saveUserJsonToFlash( &userJson );
+    return pageIndex;
 }
 /*
  * 函数功能： 通过uuid 查找userJson
@@ -352,7 +357,7 @@ UserExtendClass *UserExtendManager::getCurrentUser( ){
  * */
 int UserExtendManager::addDurationUUIDStr(char * userInfo){
     LOGD("%s %s %s\r\n", logtag, __func__, userInfo);
-    int ret =0;
+    int pageIndex =0;
     UserExtendClass userExtendClass, tmpUserExtendClass;
     memset( &userExtendClass, 0, sizeof(UserExtendClass) );
     memset( &tmpUserExtendClass, 0, sizeof(UserExtendClass) );
@@ -360,14 +365,18 @@ int UserExtendManager::addDurationUUIDStr(char * userInfo){
 //    convertStr2UserExtendClass( userInfo,  &userExtendClass);
     spliteDurationUUIDFromStr( tmpUserExtendClass.weekDuration, tmpUserExtendClass.dateDuration, tmpUserExtendClass.UUID, userInfo );
 //    2.  从flash 中查出 userExtendClass
-    ret = getUserExtendClassByUUID( &userExtendClass, tmpUserExtendClass.UUID );
+    pageIndex = getUserExtendClassByUUID( &userExtendClass, tmpUserExtendClass.UUID );
     //    更新week  date
     strcpy( userExtendClass.weekDuration, tmpUserExtendClass.weekDuration);
     strcpy( userExtendClass.dateDuration, tmpUserExtendClass.dateDuration);
 //  3.  将class 写入 flash 中存储
-    saveUserExtendClassToFlash( &userExtendClass );
-    LOGD("%s 加到第%d处 \r\n",logtag, ret);
-    return  ret;
+    pageIndex=saveUserExtendClassToFlash( &userExtendClass );
+    LOGD("%s 加到第%d处 \r\n",logtag, pageIndex);
+//  4.回读, 检查数据写入是否正确
+    LOGD("回读, 检查数据写入是否正确\r\n");
+    memset( &userExtendClass, 0, sizeof(UserExtendClass) );
+    pageIndex = getUserExtendClassByUUID( &userExtendClass,  tmpUserExtendClass.UUID );
+    return  pageIndex;
 }
 /*
  * 函数功能: 从字符串中分隔出 通行日期 和uuid
@@ -429,13 +438,17 @@ int UserExtendManager::addUserNoModeWithUUID( char *workNo, uint8_t workMode,cha
 //  1 .先从 flash 中 读出 uuid 对应的userExtendClass
     UserExtendClass userExtendClass;
     memset( &userExtendClass, 0, sizeof(UserExtendClass) );
-    int ret = getUserExtendClassByUUID( &userExtendClass, uuid );
+    int pageIndex = getUserExtendClassByUUID( &userExtendClass, uuid );
 //  2.修改 userNo, workMode
     strcpy( userExtendClass.work_no, workNo);
     userExtendClass.work_mode |= workMode;
 
 //  3. 将class 转成json 写回flash
-    ret = saveUserExtendClassToFlash( &userExtendClass );
+    pageIndex = saveUserExtendClassToFlash( &userExtendClass );
+//  4.回读, 检查数据写入是否正确
+    LOGD("回读, 检查数据写入是否正确\r\n");
+    memset( &userExtendClass, 0, sizeof(UserExtendClass) );
+    pageIndex = getUserExtendClassByUUID( &userExtendClass,  uuid);
     return  0;
 }
 /*
@@ -504,22 +517,22 @@ int UserExtendManager::spliteUserModeUUIDFromStr(uint8_t workMode, char *uuid, c
  * 输入参数: userExtendClass
  * 输出参数: userJson
  * */
-void UserExtendManager::convertUserExtendClass2UserJson( UserJson *userJson,  UserExtendClass *userExtendClass ){
+void UserExtendManager::convertUserExtendClass2UserJson( UserJson *pUserJson,  UserExtendClass *pUserExtendClass ){
     LOGD("%s %s  \r\n",logtag, __func__);
 
     char 	*cjson_str=NULL;
     cJSON * cObj = cJSON_CreateObject();
-    cJSON_AddStringToObject(cObj, WORKNO, userExtendClass->work_no);
-    cJSON_AddNumberToObject(cObj, WORKMD, userExtendClass->work_mode);
-    cJSON_AddStringToObject(cObj, DATE, userExtendClass->dateDuration);
-    cJSON_AddStringToObject(cObj, WEEK, userExtendClass->weekDuration);
+    cJSON_AddStringToObject(cObj, WORKNO, pUserExtendClass->work_no);
+    cJSON_AddNumberToObject(cObj, WORKMD, pUserExtendClass->work_mode);
+    cJSON_AddStringToObject(cObj, DATE, pUserExtendClass->dateDuration);
+    cJSON_AddStringToObject(cObj, WEEK, pUserExtendClass->weekDuration);
 
     cjson_str = cJSON_PrintUnformatted( cObj);
     LOGD("cjson %s \r\n",  cjson_str);
 
-    memcpy( userJson->UUID, userExtendClass->UUID, sizeof(userExtendClass->UUID));
-    memcpy( userJson->jsonData, cjson_str, strlen(cjson_str));
-
+    memcpy( pUserJson->UUID, pUserExtendClass->UUID, sizeof(pUserExtendClass->UUID));
+    memcpy( pUserJson->jsonData, cjson_str, strlen(cjson_str));
+    LOGD("uuid %s, jsonData %s \r\n", pUserJson->UUID, pUserJson->jsonData);
     cJSON_Delete(cObj);
     return;
 }
@@ -576,7 +589,7 @@ void UserExtendManager::convertUserJson2UserExtendClass( UserExtendClass *userEx
  *  参数一 :   用户字串
  */
 int UserExtendManager::checkUUIDUserModePermission( char *uuid ) {
-    LOGD("%s %s 检查 uuid :%s 工作模式\r\n",logtag, __func__ , uuid);
+    LOGD("%s %s 检查 uuid :%s 的工作模式\r\n",logtag, __func__ , uuid);
     int flag=-1;
     bool pass =false;
     UserExtendClass *userExtendClass    = (UserExtendClass *)pvPortMalloc( sizeof(UserExtendClass) );
@@ -586,7 +599,7 @@ int UserExtendManager::checkUUIDUserModePermission( char *uuid ) {
     LOGD("%s %s index %d\r\n",logtag, __func__, userIndex );
     switch( userExtendClass->work_mode ){
         case NO_WORK_MODE: //
-            LOGD("没有设置考勤和门禁模式");
+            LOGD("没有设置考勤和门禁模式\r\n");
             flag = OASIS_REC_RESULT_UNKNOWN_FACE;
             break;
         case ATTENDANCE_MODE: //仅考勤模式, 考勤不检查,直接通过
@@ -616,6 +629,7 @@ int UserExtendManager::checkUUIDUserModePermission( char *uuid ) {
     }
 //   释放内存, 返回结果
     vPortFree( userExtendClass );
+    LOGD("%s %s 用户模式权限检查结果 %d , 日期检查结果 %s \r\n",logtag, __func__ , flag, pass?" 通过":" 不通过");
     return  flag;
 }
 bool UserExtendManager::checkUUIDUserDurationPermission( char *uuid ) {
