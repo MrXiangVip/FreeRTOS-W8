@@ -805,7 +805,7 @@ int cmdOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
         Record *record = (Record *) pvPortMalloc(sizeof(Record));
         strcpy(record->UUID, pUserExtendClass->UUID);
 //        record->action = FACE_UNLOCK;//  操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁
-        record->action = pUserExtendClass->work_mode;// R60 项目 操作类型：0代表 1: 考勤 2：门禁  3 门禁 +考勤
+        record->action = ACCESS_MODE;// R60 项目 操作类型：0代表 1: 考勤 2：门禁  3 门禁 +考勤
         char image_path[16];
         //record->status = 0; // 0,操作成功 1,操作失败.
         record->time_stamp = ws_systime; //时间戳 从1970年开始的秒数

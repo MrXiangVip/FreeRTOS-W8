@@ -355,7 +355,7 @@ static void vReceiveOasisTask(void *pvParameters) {
                             Record *record = (Record *) pvPortMalloc(sizeof(Record));
                             strcpy(record->UUID, pUserExtendClass->UUID);
 //        record->action = FACE_UNLOCK;//  操作类型：0代表注册 1: 一键开锁 2：钥匙开锁  3 人脸识别开锁
-                            record->action = pUserExtendClass->work_mode;// R60 项目 操作类型：0代表 1: 考勤 2：门禁  3 门禁 +考勤
+                            record->action = ATTENDANCE_MODE;// R60 项目 操作类型：0代表 1: 考勤 2：门禁  3 门禁 +考勤
                             char image_path[16] = {0};
                             //record->status = 0; // 0,操作成功 1,操作失败.
                             record->time_stamp = ws_systime; //时间戳 从1970年开始的秒数
@@ -377,7 +377,6 @@ static void vReceiveOasisTask(void *pvParameters) {
 
                             Oasis_SetOasisFileName(record->image_path);
                             Oasis_WriteJpeg();
-
                             int ID = DBManager::getInstance()->getLastRecordID();
                             LOGD("识别成功, 更新记录数据库状态.请求MQTT上传本次开门的记录 \r\n");
                             cmdRequestMqttUpload(ID);
