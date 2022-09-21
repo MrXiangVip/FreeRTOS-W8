@@ -337,7 +337,7 @@ int UserExtendManager::clearAllUserJson(  ){
  * 函数功能： 清理所有用户的usermode
  * */
 int UserExtendManager::clearAllUserMode(char *strInfo  ){
-    LOGD("%s %s  \r\n",logtag, __func__);
+    LOGD("%s %s  %s\r\n",logtag, __func__, strInfo);
     int status =-1;
 //  1.分隔字符串
     UserExtendClass tmpUserExtendClass;
@@ -353,7 +353,7 @@ int UserExtendManager::clearAllUserMode(char *strInfo  ){
 //      3. 通过uuid 找到 用户的信息
         UserExtendClass userExtendClass;
         memset( &userExtendClass, 0, sizeof(UserExtendClass));
-        int pageIndex = getUserExtendClassByUUID( &userExtendClass, tmpUserExtendClass.UUID);
+        int pageIndex = getUserExtendClassByUUID( &userExtendClass, (char *)it->c_str());
         if( pageIndex == UUID_NOTMATCH ){
 
             continue;
@@ -365,11 +365,9 @@ int UserExtendManager::clearAllUserMode(char *strInfo  ){
             vizn_api_status_t status = VIZN_DelUser(NULL, userExtendClass.UUID);
             DBManager::getInstance()->deleteRecordByUUID( userExtendClass.UUID);
             delUserJsonByUUID( userExtendClass.UUID );
-            continue;
         }else{
             //  5. 写回flash
             saveUserExtendClassToFlash( &userExtendClass );
-            continue;
         }
     }
 
@@ -530,7 +528,7 @@ int UserExtendManager::delUserModeWithUUIDStr(char *strInfo){
 
 /* 分隔 出workMode uuid*/
 int UserExtendManager::spliteUserModeUUIDFromStr(uint8_t workMode, char *uuid, char *strInfo){
-    LOGD("%s %s  \r\n",logtag, __func__);
+    LOGD("%s %s  %s\r\n",logtag, __func__, strInfo);
 //1. 先将strUserInfo 拷贝到临时变量
     int infoLength = strlen( strInfo )+1;
     char tempUsrInfo[1000]={0};
