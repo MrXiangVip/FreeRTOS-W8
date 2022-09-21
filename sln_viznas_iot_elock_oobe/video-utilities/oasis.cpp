@@ -26,6 +26,7 @@
 #include "toojpeg.h"
 #include "fatfs_op.h"
 #include "fsl_log.h"
+#include "ff.h"
 
 /*******************************************************************************
  * Definitions
@@ -94,8 +95,6 @@ static uint8_t s_lockstatus       = 1;
 static OasisState s_CurOasisState = OASIS_STATE_FACE_REC_START;
 static uint8_t s_appType;
 static char oasis_filename[64] = {0};
-static int oasis_flag = 0;  //1:reg; 2:rec; 0:other
-//extern bool bOasisRecordUpload;
 static int failedCount=0;
 
 volatile int g_OASISLT_heap_debug;
@@ -143,24 +142,25 @@ static float s_OasisFeature[1024];
 //static OasisJpegImgCtx s_JpegImgContext = {0};
 void Oasis_SetOasisFileName(const char *filename)
 {
+    LOGD("[OASIS]: %s %s\r\n",__func__, filename);
     memset(oasis_filename, 0, sizeof(oasis_filename));
     strcpy(oasis_filename, filename);
 }
 
-void Oasis_WriteJpeg()
-{
-//    if(((oasis_flag == 1) || (oasis_flag == 2)) && (bOasisRecordUpload == false) ) {
-    if((oasis_flag == 1) || (oasis_flag == 2)) {
-        if(  strlen(oasis_filename ) != 0 ){
-            int ret = fatfs_write(oasis_filename, (char *) s_tmpBuffer4Jpeg, 0, s_dataSizeInJpeg);
-            LOGD("[OASIS]:%s saved ret:%d\r\n", oasis_filename, ret);
-            memset( oasis_filename, 0, sizeof(oasis_filename));
-        } else{
-            LOGD("[OASIS]:%s not need saved \r\n", oasis_filename);
+void Oasis_WriteJpeg() {
 
+    if (strlen(oasis_filename) != 0) {
+        int ret = fatfs_write(oasis_filename, (char *) s_tmpBuffer4Jpeg, 0, s_dataSizeInJpeg);
+        if (ret == FR_OK) {
+            LOGD("[OASIS]:%s  保存图片文件成功 %d\r\n", oasis_filename, ret);
+        } else {
+            LOGD("[OASIS]:%s  保存图片文件失败 %d\r\n", oasis_filename, ret);
         }
-        //UsbShell_Printf("[OASIS]:%s saved ret:%d\r\n", oasis_filename, ret);
+        memset(oasis_filename, 0, sizeof(oasis_filename));
+    } else {
+        LOGD("不合法的文件名\r\n");
     }
+    return;
 }
 
 char * getOasisBuffer() {
@@ -456,7 +456,6 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
                 }else{
                     LOGD("[OASIS]: 权限 不通过 %d \r\n",ret);
                     recResult = R60_REC_ATTFAIL_ACCFAIL_FACE;
-//                    recResult = OASIS_REC_RESULT_FORBIDEN_FACE;
                 }
             }
             else
@@ -470,8 +469,8 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
 //            VIZN_RecognizeEvent(gApiHandle, face_info);
             //save face into jpeg
             //void util_crop(unsigned char* src, int srcw, int srch, unsigned char* dst, int dstw, int dsth, int top, int left, int elemsize);
-//            if ((para->faceBoxRGB != NULL) && (recResult == OASIS_REC_RESULT_KNOWN_FACE))
-            if (  recResult == OASIS_REC_RESULT_KNOWN_FACE )
+//          保存图像到缓存
+            if (  recResult != OASIS_REC_RESULT_UNKNOWN_FACE && recResult != OASIS_REC_RESULT_INVALID )
             {
 //            	int w = para->faceBoxRGB->rect[2] - para->faceBoxRGB->rect[0] + 1;
 //            	int h = para->faceBoxRGB->rect[3] - para->faceBoxRGB->rect[1] + 1;
@@ -518,30 +517,22 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
 
             	}
 
-
             	s_dataSizeInJpeg = 0;
             	auto ok = TooJpeg::writeJpeg(Oasis_WriteJpegBuffer, resized, OASIS_JPEG_IMG_WIDTH, OASIS_JPEG_IMG_HEIGHT);
             	//UsbShell_Printf("[OASIS]:TooJpeg ret:%d file size:%d\r\n", ok,s_dataSizeInJpeg);
             	LOGD("[OASIS]:TooJpeg ret:%d file size:%d\r\n", ok,s_dataSizeInJpeg);
             	vPortFree(resized);
 
-                oasis_flag = 2;
-#if 0
-            	char fn[32];
-            	sprintf(fn,"rec_%d.jpg", rand());
-            	int ret = fatfs_write(fn, (char *)s_tmpBuffer4Jpeg, 0, s_dataSizeInJpeg);
-            	UsbShell_Printf("[OASIS]:%s saved ret:%d\r\n",fn,ret);
-#endif
             }else if(recResult == OASIS_REC_RESULT_UNKNOWN_FACE){
                 LOGD("[OASIS]:陌生人脸!\r\n");
-            }else{
+            }else if(recResult == OASIS_REC_RESULT_INVALID ){
                 if( (ws_systime %10) ==0 ){
                     LOGD("[OASIS]:  无人脸!\r\n");
                 }
             }
 //          xshx add
             face_info.recognize_result = recResult;//保存识别结果
-//            VIZN_RecognizeEvent(gApiHandle, face_info);
+//            VIZN_RecognizeEvent(gApiHandle, face_info);  识别失败四次 提示失败
             if( face_info.recognize == false ){
                 if( failedCount > 4){
                     failedCount=0;
@@ -635,7 +626,6 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
                 LOGD("[OASIS]:TooJpeg ret:%d file size:%d\r\n", ok,s_dataSizeInJpeg);
                 vPortFree(resized);
 
-                oasis_flag = 1;
 
 #if 0
                 char fn[32];

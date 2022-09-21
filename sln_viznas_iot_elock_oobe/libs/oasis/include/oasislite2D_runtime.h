@@ -80,7 +80,6 @@ typedef enum {
 typedef enum {
     OASIS_REC_RESULT_KNOWN_FACE,
     OASIS_REC_RESULT_UNKNOWN_FACE,
-    OASIS_REC_RESULT_FORBIDEN_FACE, //识别通过但是被禁止通行的face   xshx add
     R60_REC_ATTFAIL_ACCFAIL_FACE,  // 考勤和门禁都不通过 的识别结果   xshx add 20220919
     R60_REC_ATTFAIL_ACCSUCC_FACE,  // 考勤fail, 门禁 通过 的识别结果   xshx add 20220919
     R60_REC_ATTSUCC_ACCFAIL_FACE,  // 考勤通过, 门禁 failed 的识别结果 xshx add 20220919
