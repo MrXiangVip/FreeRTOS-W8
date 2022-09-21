@@ -153,10 +153,11 @@ int UserExtendManager::saveUserJsonToFlash(UserJson * userJson){
             memset( s_DataCache, 0, sizeof(FLASH_SECTOR_SIZE) );
             SLN_Read_Flash_At_Address( userExtend_FS_Head + sectorIndex*FLASH_SECTOR_SIZE, s_DataCache,  FLASH_SECTOR_SIZE);
             memcpy( s_DataCache +FLASH_PAGE_SIZE *pageIndex, userJson->jsonData, sizeof(userJson->jsonData) );
-            for(int i=0; i< FLASH_SECTOR_SIZE/FLASH_PAGE_SIZE; i++){
-                LOGD("s_DataCache  pageSize %d, sectorSize %d, page %d, %s \r\n", FLASH_PAGE_SIZE, FLASH_SECTOR_SIZE, i, s_DataCache+i*FLASH_PAGE_SIZE%FLASH_SECTOR_SIZE);
-            }
 //            strncpy( (char *)s_DataCache +FLASH_PAGE_SIZE *pageIndex, userJson->jsonData, sizeof(userJson->jsonData) );
+//            for(int i=0; i< FLASH_SECTOR_SIZE/FLASH_PAGE_SIZE; i++){
+//                LOGD("s_DataCache  pageSize %d, sectorSize %d, page %d, %s \r\n", FLASH_PAGE_SIZE, FLASH_SECTOR_SIZE, i, s_DataCache+i*FLASH_PAGE_SIZE%FLASH_SECTOR_SIZE);
+//            }
+            LOGD("s_DataCache  pageSize %d, sectorSize %d, pageIndex %d, %s \r\n", FLASH_PAGE_SIZE, FLASH_SECTOR_SIZE, pageIndex, s_DataCache+pageIndex*FLASH_PAGE_SIZE%FLASH_SECTOR_SIZE);
             int status = SLN_Erase_Sector( userExtend_FS_Head +sectorIndex*FLASH_SECTOR_SIZE);
             if( status ==0){
                 LOGD("SLN_Erase_Sector  %d,0x%x Success \r\n", sectorIndex, userExtend_FS_Head + sectorIndex*FLASH_SECTOR_SIZE );
@@ -192,10 +193,11 @@ int UserExtendManager::saveUserJsonToFlash(UserJson * userJson){
         int  extendSectorIndex = pageIndex* FLASH_PAGE_SIZE/ FLASH_SECTOR_SIZE;
         SLN_Read_Flash_At_Address( userExtend_FS_Head + extendSectorIndex*FLASH_SECTOR_SIZE, s_DataCache,  FLASH_SECTOR_SIZE);
         memcpy( s_DataCache + pageIndex* FLASH_PAGE_SIZE% FLASH_SECTOR_SIZE, userJson->jsonData, sizeof(userJson->jsonData) );
-        for(int i=0; i< FLASH_SECTOR_SIZE/FLASH_PAGE_SIZE; i++){
-            LOGD("s_DataCache  pageSize %d, sectorSize %d, page %d, %s \r\n", FLASH_PAGE_SIZE, FLASH_SECTOR_SIZE, i, s_DataCache+i*FLASH_PAGE_SIZE%FLASH_SECTOR_SIZE);
-        }
 //        strncpy( (char *)s_DataCache + pageIndex %(FLASH_SECTOR_SIZE/FLASH_PAGE_SIZE), userJson->jsonData, sizeof(userJson->jsonData) );
+//        for(int i=0; i< FLASH_SECTOR_SIZE/FLASH_PAGE_SIZE; i++){
+//            LOGD("s_DataCache  pageSize %d, sectorSize %d, page %d, %s \r\n", FLASH_PAGE_SIZE, FLASH_SECTOR_SIZE, i, s_DataCache+i*FLASH_PAGE_SIZE%FLASH_SECTOR_SIZE);
+//        }
+        LOGD("s_DataCache  pageSize %d, sectorSize %d, pageIndex %d, %s \r\n", FLASH_PAGE_SIZE, FLASH_SECTOR_SIZE, pageIndex, s_DataCache+pageIndex*FLASH_PAGE_SIZE%FLASH_SECTOR_SIZE);
         int status =SLN_Erase_Sector( userExtend_FS_Head +extendSectorIndex*FLASH_SECTOR_SIZE );
         if( status ==0){
             LOGD("SLN_Erase_Sector %d 0x%x Success \r\n", extendSectorIndex, userExtend_FS_Head +extendSectorIndex*FLASH_SECTOR_SIZE);
@@ -331,6 +333,50 @@ int UserExtendManager::clearAllUserJson(  ){
     }
     return status;
 }
+/*
+ * 函数功能： 清理所有用户的usermode
+ * */
+int UserExtendManager::clearAllUserMode(char *strInfo  ){
+    LOGD("%s %s  \r\n",logtag, __func__);
+    int status =-1;
+//  1.分隔字符串
+    UserExtendClass tmpUserExtendClass;
+    memset( &tmpUserExtendClass, 0, sizeof(UserExtendClass) );
+    spliteUserModeUUIDFromStr( tmpUserExtendClass.work_mode, tmpUserExtendClass.UUID, strInfo );
+    LOGD("%s workMode:%d UUID:%s\r\n", logtag, tmpUserExtendClass.work_mode, tmpUserExtendClass.UUID);
+//  2.遍历所有的user  修改 workMode
+    std::vector<std::string>  userNames;
+    status= DB_GetNames(&userNames);
+    for (std::vector<std::string>::iterator it = userNames.begin(); it != userNames.end(); it++)
+    {
+        LOGD("清除用户 %s 的workMode\r\n", it->c_str());
+//      3. 通过uuid 找到 用户的信息
+        UserExtendClass userExtendClass;
+        memset( &userExtendClass, 0, sizeof(UserExtendClass));
+        int pageIndex = getUserExtendClassByUUID( &userExtendClass, tmpUserExtendClass.UUID);
+        if( pageIndex == UUID_NOTMATCH ){
+
+            continue;
+        }
+//      4.修改workmode,  如果work_mode 为0 ,则删除用户特征值, 删除用户记录, 删除用户扩展信息, 否则将修改后的用户写入flash
+        userExtendClass.work_mode &= !tmpUserExtendClass.work_mode;
+        if( userExtendClass.work_mode == 0){
+            LOGD("%s 清除用户特征值,记录,扩展信息 %s\r\n",logtag, userExtendClass.UUID);
+            vizn_api_status_t status = VIZN_DelUser(NULL, userExtendClass.UUID);
+            DBManager::getInstance()->deleteRecordByUUID( userExtendClass.UUID);
+            delUserJsonByUUID( userExtendClass.UUID );
+            continue;
+        }else{
+            //  5. 写回flash
+            saveUserExtendClassToFlash( &userExtendClass );
+            continue;
+        }
+    }
+
+    return status;
+}
+
+
 
 /*
  * 函数功能: 设置系统中当前用户的uuid
@@ -470,6 +516,7 @@ int UserExtendManager::delUserModeWithUUIDStr(char *strInfo){
 //  3.修改workmode
     userExtendClass.work_mode &= !tmpUserExtendClass.work_mode;
     if( userExtendClass.work_mode == 0){
+        LOGD("%s 清除用户特征值,记录,扩展信息 %s\r\n", logtag, userExtendClass.UUID);
         vizn_api_status_t status = VIZN_DelUser(NULL, userExtendClass.UUID);
         DBManager::getInstance()->deleteRecordByUUID( userExtendClass.UUID);
         delUserJsonByUUID( userExtendClass.UUID );

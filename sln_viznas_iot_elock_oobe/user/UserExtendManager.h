@@ -62,6 +62,7 @@ typedef  enum {
     ACCESS_MODE     =0x02,  // 仅门禁模式
     ATT_ACC_MODE    =0x03,  //考勤+门禁模式
 }UserWorkMode;
+
 typedef struct {
     uint8_t  maxUUID[ MAX_EXTEND_COUNT * sizeof(uUID)];
 }UUIDMap;
@@ -130,6 +131,8 @@ class UserExtendManager {
 
         int clearAllUserJson(  );
 //
+        int clearAllUserMode(char *strInfo  );
+
         void setCurrentUser(char *uuid);// set a user
 
         UserExtendClass *getCurrentUser( );//get a user

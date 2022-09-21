@@ -151,9 +151,10 @@ int MqttManager::handleMqttMsgData(char *jsonMsg) {
         result =AT_RSP_SUCCESS;
         MqttCmdMgr::getInstance()->atCmdResponse(result, idStr);
     } else if (strcmp("cu", typeStr) == 0) {
-        DBManager::getInstance()->clearRecord();
-        UserExtendManager::getInstance()->clearAllUserJson();
-        VIZN_DelUser(NULL);
+//        DBManager::getInstance()->clearRecord();
+//        UserExtendManager::getInstance()->clearAllUserJson();
+//        VIZN_DelUser(NULL);
+        UserExtendManager::getInstance()->clearAllUserMode( dataStr );
         result =AT_RSP_SUCCESS;
         MqttCmdMgr::getInstance()->atCmdResponse(result, idStr);
     } else if (strcmp("ua", typeStr) == 0) {
