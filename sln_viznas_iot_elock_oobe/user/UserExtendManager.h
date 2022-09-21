@@ -145,7 +145,7 @@ class UserExtendManager {
 
         int     delUserModeWithUUIDStr(char *strInfo);
 
-        int     spliteUserModeUUIDFromStr(uint8_t workMode, char *uuid, char *strInfo);
+        int     spliteUserModeUUIDFromStr(uint8_t *workMode, char *uuid, char *strInfo);
 
         int     setFeatureWithUUID(  char* name , float *feature );
 

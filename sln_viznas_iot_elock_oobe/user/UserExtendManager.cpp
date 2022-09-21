@@ -342,7 +342,7 @@ int UserExtendManager::clearAllUserMode(char *strInfo  ){
 //  1.分隔字符串
     UserExtendClass tmpUserExtendClass;
     memset( &tmpUserExtendClass, 0, sizeof(UserExtendClass) );
-    spliteUserModeUUIDFromStr( tmpUserExtendClass.work_mode, tmpUserExtendClass.UUID, strInfo );
+    spliteUserModeUUIDFromStr( &tmpUserExtendClass.work_mode, tmpUserExtendClass.UUID, strInfo );
     LOGD("%s workMode:%d UUID:%s\r\n", logtag, tmpUserExtendClass.work_mode, tmpUserExtendClass.UUID);
 //  2.遍历所有的user  修改 workMode
     std::vector<std::string>  userNames;
@@ -359,7 +359,7 @@ int UserExtendManager::clearAllUserMode(char *strInfo  ){
             continue;
         }
 //      4.修改workmode,  如果work_mode 为0 ,则删除用户特征值, 删除用户记录, 删除用户扩展信息, 否则将修改后的用户写入flash
-        userExtendClass.work_mode &= !tmpUserExtendClass.work_mode;
+        userExtendClass.work_mode &= ~tmpUserExtendClass.work_mode;//逻辑运算,包括与(&&)、或(||)、非(!)三种
         if( userExtendClass.work_mode == 0){
             LOGD("%s 清除用户特征值,记录,扩展信息 %s\r\n",logtag, userExtendClass.UUID);
             vizn_api_status_t status = VIZN_DelUser(NULL, userExtendClass.UUID);
@@ -499,12 +499,12 @@ int UserExtendManager::addUserNoModeWithUUID( char *workNo, uint8_t workMode,cha
  * 函数功能 :分隔字符串  分隔出 workMode 和uuid,
  * */
 int UserExtendManager::delUserModeWithUUIDStr(char *strInfo){
-    LOGD("%s %s  \r\n",logtag, __func__);
+    LOGD("%s %s  %s\r\n",logtag, __func__, strInfo);
     UserExtendClass userExtendClass, tmpUserExtendClass;
     memset( &userExtendClass, 0, sizeof(UserExtendClass) );
     memset( &tmpUserExtendClass, 0, sizeof(UserExtendClass) );
 //    1.分隔字符串
-    spliteUserModeUUIDFromStr( tmpUserExtendClass.work_mode, tmpUserExtendClass.UUID, strInfo);
+    spliteUserModeUUIDFromStr( &tmpUserExtendClass.work_mode, tmpUserExtendClass.UUID, strInfo);
 
 //  2. 将 workMode 和对应的 uuid 加入flash
     int pageIndex = getUserExtendClassByUUID( &userExtendClass, tmpUserExtendClass.UUID);
@@ -512,7 +512,7 @@ int UserExtendManager::delUserModeWithUUIDStr(char *strInfo){
         return 0;
     }
 //  3.修改workmode
-    userExtendClass.work_mode &= !tmpUserExtendClass.work_mode;
+    userExtendClass.work_mode &= ~tmpUserExtendClass.work_mode; //位运算符 位与(&)、位或(|)、位非(~)、位异或(^)、左移(<<)、右移(>>)六种
     if( userExtendClass.work_mode == 0){
         LOGD("%s 清除用户特征值,记录,扩展信息 %s\r\n", logtag, userExtendClass.UUID);
         vizn_api_status_t status = VIZN_DelUser(NULL, userExtendClass.UUID);
@@ -527,7 +527,7 @@ int UserExtendManager::delUserModeWithUUIDStr(char *strInfo){
 }
 
 /* 分隔 出workMode uuid*/
-int UserExtendManager::spliteUserModeUUIDFromStr(uint8_t workMode, char *uuid, char *strInfo){
+int UserExtendManager::spliteUserModeUUIDFromStr(uint8_t *workMode, char *uuid, char *strInfo){
     LOGD("%s %s  %s\r\n",logtag, __func__, strInfo);
 //1. 先将strUserInfo 拷贝到临时变量
     int infoLength = strlen( strInfo )+1;
@@ -542,8 +542,8 @@ int UserExtendManager::spliteUserModeUUIDFromStr(uint8_t workMode, char *uuid, c
     if( tmpWorkMode ==NULL ){
         return -1;
     }
-    workMode =atoi(tmpWorkMode);
-    LOGD( "workMode: %d \r\n", workMode);
+    *workMode =atoi(tmpWorkMode);
+    LOGD( "workMode: %d \r\n", *workMode);
 
 //3. 第二个"," 分隔出 日期字段
     char *tmpUuid=NULL;
