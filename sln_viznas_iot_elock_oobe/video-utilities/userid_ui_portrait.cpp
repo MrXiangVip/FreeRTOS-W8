@@ -726,6 +726,7 @@ static void UIInfo_UpdateFaceInfo2(uint16_t *pBufferAddr, QUIInfoMsg* infoMsg)
             pIcon = (uint16_t *)welcome_v4;
             draw_icon(pIcon, 0, 0, APP_AS_WIDTH, APP_AS_HEIGHT,0xFFFF, pBufferAddr);
         }
+        break;
 //      xshx add  end 20220922  门禁 和考勤都成功 显示欢迎回家, 同时显示工号
         case 1 << kEvents_API_Layer_Rec_ATT_ACCSuccess:
         {
