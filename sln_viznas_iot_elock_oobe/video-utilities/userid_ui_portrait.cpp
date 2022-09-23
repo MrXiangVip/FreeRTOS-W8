@@ -716,7 +716,7 @@ static void UIInfo_UpdateFaceInfo2(uint16_t *pBufferAddr, QUIInfoMsg* infoMsg)
         {
             UserExtendClass  *pUserExtendType = UserExtendManager::getInstance()->getCurrentUser();
             sprintf(tstring, "%s", pUserExtendType->work_no);
-            draw_text(tstring, APP_AS_WIDTH /2-30, APP_AS_HEIGHT/2, RGB565_GREEN,  0x0, OPENSANS16, pBufferAddr);
+            draw_text(tstring, APP_AS_WIDTH /2-30, APP_AS_HEIGHT/2, RGB565_GREEN,  0x0, CAMBO18, pBufferAddr);
         }
         break;
 //      xshx add  end 20220922  门禁成功 显示欢迎回家

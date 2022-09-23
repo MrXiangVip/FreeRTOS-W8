@@ -499,7 +499,7 @@ extern "C" {
 
 #define  SYS_VERSION		"1.1.6"
 #define  PROJECT_VERSION    "R60_106F_V1.1.6"
-#define  FIRMWARE_VERSION   "FW_R60_093d07_20220922_V1.1.6"
+#define  FIRMWARE_VERSION   "FW_R60_093d07_20220923_V1.1.6"
 
 /*******************************************************************************
  * API
