@@ -196,7 +196,20 @@ void StopRecognitionProcess(uint8_t event)
 #endif
         StartLockProcess(true);
     }
-    else if (event == kEvents_API_Layer_RecFailed )
+//  xshx add 20220922
+    if (event == kEvents_API_Layer_Rec_ATTSuccess )
+    {
+        StartLockProcess(true);
+    }
+    if (event == kEvents_API_Layer_Rec_ACCSuccess )
+    {
+        StartLockProcess(true);
+    }
+    if (event == kEvents_API_Layer_Rec_ATT_ACCSuccess )
+    {
+        StartLockProcess(true);
+    }
+    if (event == kEvents_API_Layer_RecFailed )
     {
         StartLockProcess(true);
     }else if( event == kEvents_API_Layer_RecUnkown ){
@@ -291,11 +304,24 @@ void Oasis_API_Recognize(face_info_t face_info)
         }
         else if (g_RecFace)
         {
-//      xshx add 20220826
+//      xshx add 20220826  mod 20220922 如果门禁和考勤检验不通过 提示无权限
             if( face_info.recognize_result== R60_REC_ATTFAIL_ACCFAIL_FACE ){
                 StopRecognitionProcess(kEvents_API_Layer_RecForbiden);
-            }else{
-                StopRecognitionProcess(kEvents_API_Layer_RecSuccess);
+            }
+//      xshx add 20220922 如果考勤校验通过, 提示工号
+            if( face_info.recognize_result == R60_REC_ATTSUCC_ACCFAIL_FACE  ){
+//                StopRecognitionProcess(kEvents_API_Layer_RecSuccess);
+                StopRecognitionProcess(kEvents_API_Layer_Rec_ATTSuccess);
+            }
+//      xshx add 20220922 如果门禁校验通过,提示欢迎回家
+            if( face_info.recognize_result == R60_REC_ATTFAIL_ACCSUCC_FACE  ){
+//                StopRecognitionProcess(kEvents_API_Layer_RecSuccess);
+                StopRecognitionProcess(kEvents_API_Layer_Rec_ACCSuccess);
+            }
+//      xshx add 20220922 如果门禁和考勤校验通过,提示欢迎回家,同时显示工号
+            if( face_info.recognize_result == R60_REC_ATTSUCC_ACCSUCC_FACE ){
+//                StopRecognitionProcess(kEvents_API_Layer_RecSuccess);
+                StopRecognitionProcess(kEvents_API_Layer_Rec_ATT_ACCSuccess);
             }
         }
 

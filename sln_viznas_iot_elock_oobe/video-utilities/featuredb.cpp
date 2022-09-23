@@ -305,6 +305,7 @@ int FeatureDB::get_name(uint16_t id, std::string &name)
             {
                 index = i;
                 name = std::string(item_t.name);
+                LOGD("%s name %s ,LINE %d\r\n", logtag, name.c_str(), __LINE__);
                 break;
             }
         }
@@ -1106,6 +1107,7 @@ int FeatureDB::update_feature(uint16_t id, const std::string name, float *featur
     ret = del_feature(id, name);
     if (ret == -1)
     {
+        LOGD("%s %s del_feature failed \r\n", logtag, __func__);
         return ret;
     }
     ret = add_feature(id, name, feature);
@@ -1198,6 +1200,7 @@ std::vector<uint16_t> FeatureDB::get_ids()
 int FeatureDB::get_name(uint16_t id, std::string &name)
 {
 //    FeatureItem item_t;
+    LOGD("%s %s ,  id %d,  LINE %d\r\n", logtag, __func__, id, __LINE__);
     FeatureItem *item_t = (FeatureItem*)pvPortMalloc(sizeof(FeatureItem));
     int index = FEATUREDATA_MAX_COUNT;
 
@@ -1210,10 +1213,12 @@ int FeatureDB::get_name(uint16_t id, std::string &name)
 #else
             Flash_FacerecFsReadItemHeader(i,item_t);
 #endif
+            LOGD("%s i=%d 看看可用的ID %d \r\n", logtag,i, item_t->id);
             if (id == item_t->id)
             {
                 index = i;
                 name = std::string(item_t->name);
+                LOGD("%s name %s ,LINE %d\r\n", logtag, name.c_str(), __LINE__);
                 break;
             }
         }
@@ -1222,7 +1227,9 @@ int FeatureDB::get_name(uint16_t id, std::string &name)
 
     if (index == FEATUREDATA_MAX_COUNT)
     {
+        LOGD("%s  id %d, clear  name %s ,LINE %d\r\n", logtag, id,  name.c_str(), __LINE__);
         name.clear();
+
         return -1;
     }
     else

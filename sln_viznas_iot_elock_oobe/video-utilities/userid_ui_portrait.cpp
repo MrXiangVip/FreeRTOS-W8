@@ -711,6 +711,33 @@ static void UIInfo_UpdateFaceInfo2(uint16_t *pBufferAddr, QUIInfoMsg* infoMsg)
             draw_icon(pIcon, 0, 0, APP_AS_WIDTH, APP_AS_HEIGHT,0xFFFF, pBufferAddr);
         }
         break;
+//      xshx add 20220922   考勤成功 显示工号
+        case 1 << kEvents_API_Layer_Rec_ATTSuccess:
+        {
+            UserExtendClass  *pUserExtendType = UserExtendManager::getInstance()->getCurrentUser();
+            sprintf(tstring, "%s", pUserExtendType->work_no);
+            draw_text(tstring, APP_AS_WIDTH /2-30, APP_AS_HEIGHT/2, RGB565_GREEN,  0x0, OPENSANS16, pBufferAddr);
+        }
+        break;
+//      xshx add  end 20220922  门禁成功 显示欢迎回家
+        case 1 << kEvents_API_Layer_Rec_ACCSuccess:
+        {
+            uint16_t *pIcon = NULL;
+            pIcon = (uint16_t *)welcome_v4;
+            draw_icon(pIcon, 0, 0, APP_AS_WIDTH, APP_AS_HEIGHT,0xFFFF, pBufferAddr);
+        }
+//      xshx add  end 20220922  门禁 和考勤都成功 显示欢迎回家, 同时显示工号
+        case 1 << kEvents_API_Layer_Rec_ATT_ACCSuccess:
+        {
+            uint16_t *pIcon = NULL;
+            pIcon = (uint16_t *)welcome_v4;
+            draw_icon(pIcon, 0, 0, APP_AS_WIDTH, APP_AS_HEIGHT,0xFFFF, pBufferAddr);
+
+            UserExtendClass  *pUserExtendType = UserExtendManager::getInstance()->getCurrentUser();
+            sprintf(tstring, "%s", pUserExtendType->work_no);
+            draw_text(tstring, APP_AS_WIDTH /2-30, APP_AS_HEIGHT/2+30,RGB565_GREEN , 0x0088 , OPENSANS16, pBufferAddr);
+        }
+        break;
 
         case 1 << kEvents_API_Layer_RecFailed:
         {

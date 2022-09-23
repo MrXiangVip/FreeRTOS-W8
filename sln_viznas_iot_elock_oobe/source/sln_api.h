@@ -31,10 +31,13 @@ typedef enum _vizn_events
     kEvents_API_Layer_DeregCanceled,
     kEvents_API_Layer_DeregFailed,
     kEvents_API_Layer_RecSuccess,
+    kEvents_API_Layer_Rec_ATTSuccess,// attendance 考勤成功  xshx add 20220922
+    kEvents_API_Layer_Rec_ACCSuccess,// access 门禁成功  xshx add 20220922
+    kEvents_API_Layer_Rec_ATT_ACCSuccess,// 考勤成功 门禁成功  xshx add 20220922
     kEvents_API_Layer_RecCanceled,
     kEvents_API_Layer_RecFailed,
-    kEvents_API_Layer_RecUnkown,//陌生人
-    kEvents_API_Layer_RecForbiden,//被禁止 xshx add 20220826
+    kEvents_API_Layer_RecUnkown,    //陌生人
+    kEvents_API_Layer_RecForbiden,  //被禁止 xshx add 20220826
     kEvents_API_Layer_RegNoMemory
 } vizn_events_t;
 

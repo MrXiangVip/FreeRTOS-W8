@@ -447,7 +447,7 @@ static void EvtHandler(ImageFrame_t *frames[], OASISLTEvt_t evt, OASISLTCbPara_t
                 face_info.name      = std::string(name);
                 //UsbShell_DbgPrintf(VERBOSE_MODE_L2, "[OASIS]:face id:%d name:%s\r\n", id, gui_info.name);
                 LOGD("[OASIS]:faceID:%d name:%s\r\n", id, gui_info.name);
-
+                UserExtendManager::getInstance()->setCurrentUser( gui_info.name );
 //              识别成功后 检查下权限  xshx add 20220825
                 int ret = UserExtendManager::getInstance()->checkUUIDUserModePermission( (char *)name.c_str() );
                 if( ret > R60_REC_ATTFAIL_ACCFAIL_FACE ){

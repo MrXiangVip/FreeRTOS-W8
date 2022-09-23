@@ -166,6 +166,8 @@ int MqttFeatureMgr::downloadFeature(char *data) {
         LOGD("---JSON j_data is %d %s\r\n", strlen(dataStr), dataStr);
         result = verifyFeature(uuid, (unsigned char*)dataStr, sign, length, mode, workno);
         MqttCmdMgr::getInstance()->atCmdResponse(result, msg_idStr);
+    } else {
+        MqttCmdMgr::getInstance()->atCmdResponse(1, msg_idStr, "Parameter u or d is missing");
     }
 
     if (mqtt != NULL) {

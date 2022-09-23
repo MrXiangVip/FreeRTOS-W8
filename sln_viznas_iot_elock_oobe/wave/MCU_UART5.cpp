@@ -343,11 +343,7 @@ static void vReceiveOasisTask(void *pvParameters) {
                     if( boot_mode == BOOT_MODE_RECOGNIZE ) {
                         if (faceInfo->recognize_result == R60_REC_ATTSUCC_ACCFAIL_FACE || faceInfo->recognize_result==R60_REC_ATTSUCC_ACCSUCC_FACE ) {// 考勤成功
                             LOGD("UUID %s ,考勤模式通过  %d\r\n", faceInfo->name.c_str(), faceInfo->recognize_result );
-                            char name[64] = {0};
-                            memcpy(name, (void *) faceInfo->name.c_str(), faceInfo->name.size());
 
-//                          更新当前用户  的用户名
-                            UserExtendManager::getInstance()->setCurrentUser( name );
 //                          获取当前用户, 如果是1 考勤模式,则上传记录 2. 门禁模式, 则在开门成功后上传记录
                             UserExtendClass *pUserExtendClass = UserExtendManager::getInstance()->getCurrentUser( );
                             LOGD("创建考勤记录 \r\n");
@@ -378,17 +374,14 @@ static void vReceiveOasisTask(void *pvParameters) {
                             Oasis_SetOasisFileName(record->image_path);
                             Oasis_WriteJpeg();
                             int ID = DBManager::getInstance()->getLastRecordID();
-                            LOGD("识别成功, 更新记录数据库状态.请求MQTT上传本次开门的记录 \r\n");
+                            LOGD("识别成功, 更新记录数据库状态.请求MQTT上传本次考勤记录 \r\n");
                             cmdRequestMqttUpload(ID);
                             recognize_times = 0;
                         }
                         if( (faceInfo->recognize_result == R60_REC_ATTFAIL_ACCSUCC_FACE) || (faceInfo->recognize_result == R60_REC_ATTSUCC_ACCSUCC_FACE)){
                                 // 发送开门请求
                             LOGD("UUID %s ,门禁模式通过 %d, 发送开门请求 \r\n", faceInfo->name.c_str(), faceInfo->recognize_result);
-                            char name[64] = {0};
-                            memcpy(name, (void *) faceInfo->name.c_str(), faceInfo->name.size());
-//                          更新当前用户  的用户名
-                            UserExtendManager::getInstance()->setCurrentUser(name);
+
                             cmdOpenDoorReq();
                             recognize_times = 0;
 
