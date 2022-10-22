@@ -164,11 +164,11 @@ int MqttManager::handleMqttMsgData(char *jsonMsg) {
         result = AT_RSP_SUCCESS;
         MqttCmdMgr::getInstance()->atCmdResponse(result, idStr);
 
-    } else if (strcmp("um", typeStr) == 0) {
-        // xshx TODO:
-//        result = DBManager::getInstance()->setUserMode(dataStr);
-        result = AT_RSP_SUCCESS;
-        MqttCmdMgr::getInstance()->atCmdResponse(result, idStr);
+//    } else if (strcmp("um", typeStr) == 0) {
+//        // xshx TODO:
+////        result = DBManager::getInstance()->setUserMode(dataStr);
+//        result = AT_RSP_SUCCESS;
+//        MqttCmdMgr::getInstance()->atCmdResponse(result, idStr);
     } else if (strcmp("fr", typeStr) == 0) {
         // Feature request
         MqttCmdMgr::getInstance()->requestFeature(dataStr);
