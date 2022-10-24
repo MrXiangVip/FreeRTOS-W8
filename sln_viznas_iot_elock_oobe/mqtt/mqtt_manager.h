@@ -22,6 +22,7 @@ public:
     int handleMqttMsgData(char *jsonMsg);
     // 透传指令解析
     int handlePassThroughPayload(char *payload, char *idStr);
+    int sendMsgToMCU(char *cmd, int cmdLen, char *idStr);
     int timeSync(char *ts);
 };
 

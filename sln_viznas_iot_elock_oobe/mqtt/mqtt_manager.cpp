@@ -168,7 +168,22 @@ int MqttManager::handleMqttMsgData(char *jsonMsg) {
         LOGD("dataStr: %s \r\n", dataStr);
 //      接收锁模式, 转成能发给mcu 的指令
         int lockMode = atoi( dataStr );
-        sendLockModeToMCU( lockMode );
+//        sendLockModeToMCU( lockMode );
+        LOGD("发送门锁模式 %d 给MCU \r\n", lockMode);
+        char payload_bin[16];
+        memset(payload_bin, '\0', sizeof(payload_bin));
+        payload_bin[0] = 0x23;
+        payload_bin[1] = CMD_LOCK_MODE;
+        payload_bin[2] = 0x01;
+        payload_bin[3] = lockMode;
+        unsigned short cal_crc16 = CRC16_X25(reinterpret_cast<unsigned char*>(payload_bin), 4);
+        payload_bin[4] = (char)cal_crc16;
+        payload_bin[5] = (char)(cal_crc16 >> 8);
+
+        char payload_str[15];
+        HexToStr(payload_str, reinterpret_cast<unsigned char*>(&payload_bin), 6);
+        //LOGD("sendStatusToMCU %s", payload_str);
+        int result = sendMsgToMCU(payload_bin, 6, idStr);
     } else if (strcmp("fr", typeStr) == 0) {
         // Feature request
         MqttCmdMgr::getInstance()->requestFeature(dataStr);
@@ -181,6 +196,52 @@ int MqttManager::handleMqttMsgData(char *jsonMsg) {
         mqtt = NULL;
     }
     return result;
+}
+
+int MqttManager::sendMsgToMCU(char *cmd, int cmdLen, char *idStr) {
+    // TODO:
+    unsigned char x7_cmd = cmd[0];
+    unsigned char x7_cmd_code = cmd[1];
+    int timeout = 5;
+    if (x7_cmd == 0x23 && x7_cmd_code == 0x83) {
+        // 远程开门
+        timeout = 25;
+    } else if (x7_cmd == 0x23 && x7_cmd_code == 0x8a) {
+        // 时间同步
+        int len = (int) (char) cmd[2];
+        if (len != 10) {
+            return AT_RSP_ERROR;
+        }
+        char tsStr[11];
+        memset(tsStr, '\0', 11);
+        strncpy(tsStr, &cmd[3], 10);
+        // 时间同步
+        LOGD("--- timestamp is %s len is %d\n", tsStr, strlen(tsStr));
+        if (tsStr != NULL && strlen(tsStr) > 0) {
+            int result = timeSync(tsStr);
+            MqttCmdMgr::getInstance()->atCmdResponse(result, idStr, "Error: Resource Busy");
+            return result;
+        } else {
+            MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_ERROR, idStr, "Error: Time Sync");
+            return AT_RSP_ERROR;
+        }
+    }
+    MqttInstruction instruction(x7_cmd, x7_cmd_code, timeout, idStr);
+    int ret = MqttInstructionPool::getInstance()->insertMqttInstruction(instruction);
+    if (ret == -1) {
+        MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_BUSY, idStr, "Error: Resource Busy");
+        return AT_RSP_BUSY;
+    }
+    if (x7_cmd == 0x24) {
+        //MessageSend(1235, cmd, ret1);
+        // TODO:
+        SendMsgToSelf((unsigned char *)cmd, cmdLen);
+    } else {
+        //MessageSend(1234, cmd, ret1);
+        // TODO:
+        SendMsgToMCU((unsigned char *)cmd, cmdLen);
+    }
+    return AT_RSP_SUCCESS;
 }
 
 // 透传指令解析
@@ -196,49 +257,7 @@ int MqttManager::handlePassThroughPayload(char *payload, char *idStr) {
         HexToStr(payload_str, reinterpret_cast<unsigned char*>(&payload_bin), payload_bin_len);
         LOGD("decode payload_bin<len:%d %s> ret1 is %d\r\n", payload_bin_len, payload_str, ret1);
 
-        // TODO:
-        unsigned char x7_cmd = payload_bin[0];
-        unsigned char x7_cmd_code = payload_bin[1];
-        int timeout = 5;
-        if (x7_cmd == 0x23 && x7_cmd_code == 0x83) {
-            // 远程开门
-            timeout = 25;
-        } else if (x7_cmd == 0x23 && x7_cmd_code == 0x8a) {
-            // 时间同步
-            int len = (int) (char) payload_bin[2];
-            if (len != 10) {
-                return AT_RSP_ERROR;
-            }
-            char tsStr[11];
-            memset(tsStr, '\0', 11);
-            strncpy(tsStr, &payload_bin[3], 10);
-            // 时间同步
-            LOGD("--- timestamp is %s len is %d\n", tsStr, strlen(tsStr));
-            if (tsStr != NULL && strlen(tsStr) > 0) {
-                int result = timeSync(tsStr);
-                MqttCmdMgr::getInstance()->atCmdResponse(result, idStr, "Error: Resource Busy");
-                return result;
-            } else {
-                MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_ERROR, idStr, "Error: Time Sync");
-                return AT_RSP_ERROR;
-            }
-        }
-        MqttInstruction instruction(x7_cmd, x7_cmd_code, timeout, idStr);
-        int ret = MqttInstructionPool::getInstance()->insertMqttInstruction(instruction);
-        if (ret == -1) {
-            MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_BUSY, idStr, "Error: Resource Busy");
-            return AT_RSP_BUSY;
-        }
-        if (x7_cmd == 0x24) {
-            //MessageSend(1235, payload_bin, ret1);
-            // TODO:
-            SendMsgToSelf((unsigned char *)payload_bin, payload_bin_len);
-        } else {
-            //MessageSend(1234, payload_bin, ret1);
-            // TODO:
-            SendMsgToMCU((unsigned char *)payload_bin, payload_bin_len);
-        }
-        return AT_RSP_SUCCESS;
+        return sendMsgToMCU(payload_bin, payload_bin_len, idStr);
     } else {
         return AT_RSP_ERROR;
     }
