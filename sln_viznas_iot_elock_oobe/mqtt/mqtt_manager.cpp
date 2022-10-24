@@ -3,7 +3,7 @@
 //
 
 #include <stdio.h>
-
+#include <stdlib.h>
 #include "aw_wstime.h"
 #include "mqtt_manager.h"
 #include "mqtt-common.h"
@@ -163,12 +163,12 @@ int MqttManager::handleMqttMsgData(char *jsonMsg) {
         UserExtendManager::getInstance()->addDurationUUIDStr(dataStr);
         result = AT_RSP_SUCCESS;
         MqttCmdMgr::getInstance()->atCmdResponse(result, idStr);
-
-//    } else if (strcmp("um", typeStr) == 0) {
-//        // xshx TODO:
-////        result = DBManager::getInstance()->setUserMode(dataStr);
-//        result = AT_RSP_SUCCESS;
-//        MqttCmdMgr::getInstance()->atCmdResponse(result, idStr);
+    } else if (strcmp("am", typeStr) == 0) {
+        // TODO: 接收 锁模式(正常,常闭,常开)
+        LOGD("dataStr: %s \r\n", dataStr);
+//      接收锁模式, 转成能发给mcu 的指令
+        int lockMode = atoi( dataStr );
+        sendLockModeToMCU( lockMode );
     } else if (strcmp("fr", typeStr) == 0) {
         // Feature request
         MqttCmdMgr::getInstance()->requestFeature(dataStr);

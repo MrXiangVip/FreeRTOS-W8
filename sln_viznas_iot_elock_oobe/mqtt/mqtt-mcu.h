@@ -9,6 +9,9 @@ extern "C" {
 #endif
 int syncTimeToMCU(char *tsStr);
 int sendStatusToMCU(int biz, int ret);
+//发送门锁模式给mcu
+int sendLockModeToMCU(int lockMode);
+
 // WIFI已初始化 0x00
 int notifyWifiInitialized(int code);
 // WIFI已连接 0x01

@@ -103,3 +103,23 @@ int sendStatusToMCU(int biz, int ret) {
 	int result = SendMsgToMCU((uint8_t *)payload_bin, 7);
 	return result;
 }
+
+//xshx add 20221024
+int sendLockModeToMCU(int lockMode ) {
+    LOGD("发送门锁模式 %d 给MCU \r\n", lockMode);
+    char payload_bin[16];
+    memset(payload_bin, '\0', sizeof(payload_bin));
+    payload_bin[0] = 0x23;
+    payload_bin[1] = CMD_LOCK_MODE;
+    payload_bin[2] = 0x01;
+    payload_bin[3] = lockMode;
+    unsigned short cal_crc16 = CRC16_X25(reinterpret_cast<unsigned char*>(payload_bin), 4);
+    payload_bin[4] = (char)cal_crc16;
+    payload_bin[5] = (char)(cal_crc16 >> 8);
+
+    char payload_str[15];
+    HexToStr(payload_str, reinterpret_cast<unsigned char*>(&payload_bin), 6);
+    //LOGD("sendStatusToMCU %s", payload_str);
+    int result = SendMsgToMCU((uint8_t *)payload_bin, strlen(payload_bin));
+    return result;
+}

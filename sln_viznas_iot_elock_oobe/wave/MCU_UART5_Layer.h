@@ -86,7 +86,8 @@ extern "C" {
 
 #define CMD_REQ_POWER_DOWN              0x40        //mcu 请求下电
 
-#define CMD_BOOT_MODE                   0x82  //上报开机模式 (与其它命令有区别 06.21)
+//#define CMD_BOOT_MODE                   0x82  //上报开机模式 (与其它命令有区别 06.21)
+#define CMD_LOCK_MODE                   0x82    //上报门锁模式 00.门锁正常开闭   ,01 门锁常开  ,02 门锁常闭
 #define CMD_WIFI_OPEN_DOOR				0x83	// 远程wifi开门
 #define CMD_WIFI_TIME_SYNC				0x8A	// 通过wifi设置系统时间
 #define CMD_MECHANICAL_LOCK				0x93	//机械开锁
@@ -221,6 +222,8 @@ extern int cmdMqttParamSetProc(unsigned char nMessageLen, const unsigned char *p
 extern int cmdWifiTimeSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessage);
 //
 extern int cmdWifiOrderTimeSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessage);
+//下发锁模式后回复给MQTT
+int cmdLockModeRsp(unsigned char nMessageLen, const unsigned char *pszMessage);
 //
 extern int cmdWifiOpenDoorRsp(unsigned char nMessageLen, const unsigned char *pszMessage);
 //

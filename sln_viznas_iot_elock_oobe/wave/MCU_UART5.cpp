@@ -216,6 +216,11 @@ int ProcMessageByHead(
             cmdWifiOrderTimeSyncRsp(nMessageLen, pszMessage);
             break;
         }
+//        接收锁模式指令回复
+        case CMD_LOCK_MODE: {
+            cmdLockModeRsp(nMessageLen, pszMessage);
+            break;
+        }
         case CMD_WIFI_OPEN_DOOR: {
             cmdWifiOpenDoorRsp(nMessageLen, pszMessage);
             break;

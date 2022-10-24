@@ -486,7 +486,8 @@ int cmdSysInitOKSyncRsp(unsigned char nMessageLen, const unsigned char *pszMessa
             //Display_Update((uint32_t)wave_logo_v3);
         }
     } else if (boot_mode == BOOT_MODE_REMOTE) {
-        cmdRemoteRequestRsp(HEAD_MARK, CMD_BOOT_MODE, 1);
+//        cmdRemoteRequestRsp(HEAD_MARK, CMD_BOOT_MODE, 1);
+        cmdRemoteRequestRsp(HEAD_MARK, CMD_WIFI_OPEN_DOOR, 1);
     } else if (boot_mode == BOOT_MODE_PREVIEW) {
         if (oasis_task_start == false) {
             oasis_task_start = true;
@@ -1001,6 +1002,20 @@ int cmdReqPoweDown(unsigned char nMessageLen, const unsigned char *pszMessage) {
 
     SendMsgToMCU((uint8_t *) szBuffer, iBufferSize + CRC16_LEN);
 
+    return 0;
+}
+
+// 主控接收指令: 锁模式响应
+int cmdLockModeRsp(unsigned char nMessageLen, const unsigned char *pszMessage) {
+    LOGD("锁模式下发,回复MQTT \r\n");
+
+    uint8_t ret = SUCCESS;
+
+    ret = StrGetUInt8(pszMessage);
+
+    // 转发响应给 Mqtt 模块
+    cmdCommRsp2Mqtt(CMD_LOCK_MODE, ret);
+    //usleep(200);
     return 0;
 }
 
