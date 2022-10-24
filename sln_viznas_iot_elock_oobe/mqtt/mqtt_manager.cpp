@@ -23,6 +23,8 @@
 #include "MCU_UART5_Layer.h"
 #include "DBManager.h"
 #include "sln_api.h"
+#include "util_crc16.h"
+
 // 分析最原始的MQTT AT消息
 int MqttManager::analyzeMqttRecvLine(char *msg) {
     static int ana_timeout_count = 0;
@@ -133,6 +135,7 @@ int MqttManager::handleMqttMsgData(char *jsonMsg) {
     cmd_data = cJSON_GetObjectItem(mqtt, "cd");
     dataStr = cJSON_GetStringValue(cmd_data);
     if (idStr == NULL || typeStr == NULL || dataStr == NULL) {
+
         // TODO: invalid command
         MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_NOT_SUPPORT, (idStr == NULL || strlen(idStr) == 0 ? MqttCmdMgr::getInstance()->genMsgId() : idStr), "Paramater Missing");
         return -1;

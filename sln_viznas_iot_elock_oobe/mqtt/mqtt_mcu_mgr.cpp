@@ -80,6 +80,7 @@ int MqttMcuMgr::mcuToMqtt(char *mcuData, int len) {
             int id = (int) (mcuData[3]);
             reportRealTimeRecord(id);
         } else {
+            sendMcuRspToMqtt(mcuData[3], msgId);
         }
     }
     return 0;
