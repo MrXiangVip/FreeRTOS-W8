@@ -10,6 +10,7 @@
 #include <FreeRTOS.h>
 #include <event_groups.h>
 #include <semphr.h>
+#include "fsl_log.h"
 
 /* Component ID definition, used by tools. */
 #ifndef FSL_COMPONENT_ID
@@ -424,6 +425,7 @@ int LPUART_RTOS_Receive(lpuart_rtos_handle_t *handle, uint8_t *buffer, uint32_t 
     if (NULL == handle->base)
     {
         /* Invalid handle. */
+        LOGD("handle base null \r\n");
         return kStatus_Fail;
     }
     if (0u == length)
@@ -443,6 +445,7 @@ int LPUART_RTOS_Receive(lpuart_rtos_handle_t *handle, uint8_t *buffer, uint32_t 
     if (pdFALSE == xSemaphoreTake(handle->rxSemaphore, portMAX_DELAY))
     {
         /* We could not take the semaphore, exit with 0 data received */
+        LOGD("xSemaphoreTake  Error\r\n");
         return kStatus_Fail;
     }
 
@@ -454,6 +457,7 @@ int LPUART_RTOS_Receive(lpuart_rtos_handle_t *handle, uint8_t *buffer, uint32_t 
     if (status != kStatus_Success)
     {
         (void)xSemaphoreGive(handle->rxSemaphore);
+        LOGD("xSemaphoreGive NonBlocking Error\r\n");
         return kStatus_Fail;
     }
 
@@ -501,6 +505,7 @@ int LPUART_RTOS_Receive(lpuart_rtos_handle_t *handle, uint8_t *buffer, uint32_t 
     if (pdFALSE == xSemaphoreGive(handle->rxSemaphore))
     {
         /* We could not post the semaphore, exit with error */
+        LOGD("xSemaphoreGive  Error\r\n");
         retval = kStatus_Fail;
     }
     return retval;
