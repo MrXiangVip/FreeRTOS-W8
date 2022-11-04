@@ -111,6 +111,7 @@ static void test_task(void *pvParameters)
     MqttTestMgr *mqttTestMgr = MqttTestMgr::getInstance();
     for (;;) {
         vTaskDelay(pdMS_TO_TICKS(1000));
+        MqttInstructionPool::getInstance()->tick();
         if (g_test_argc > 0) {
 //            for (int i = 0; i < g_test_argc; i++) {
 //                LOGD("test argv %d is %s\r\n", i, g_test_argv[i]);
