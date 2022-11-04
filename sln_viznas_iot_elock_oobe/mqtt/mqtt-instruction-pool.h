@@ -22,7 +22,7 @@ public:
     int insertOrUpdateMqttInstruction(MqttInstruction mqtt_instruction);
     int removeMqttInstruction(int cmd_index);
     int removeMqttInstruction(char instruction_dest, char cmd_code);
-    int tick();
+    void tick();
     char* getMsgId(char type_code, char cmd_code);
 };
 

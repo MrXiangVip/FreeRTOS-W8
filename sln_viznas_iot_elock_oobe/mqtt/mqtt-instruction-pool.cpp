@@ -77,7 +77,7 @@ char* MqttInstructionPool::getMsgId(char type_code, char cmd_code) {
     return "";
 }
 
-int MqttInstructionPool::tick() {
+void MqttInstructionPool::tick() {
     map<int, MqttInstruction>::iterator it;
     int i = 0;
     for(it = m_mqtt_instructions.begin(); it != m_mqtt_instructions.end();)// ++it)
@@ -88,23 +88,11 @@ int MqttInstructionPool::tick() {
         int timeout = mqttInstruction.getTimeout();
         it->second = mqttInstruction;
         if (timeout <= 0) {
-            char pub_msg[256];
-            memset(pub_msg, '\0', 256);
-			int server_data_index = MqttInstruction::getCmdIndex(0x25, 0xFF);
-			if (it->first == server_data_index) {
-				// 服务器端没有多余数据，超时处理
-				sprintf(pub_msg, "%s%s", "IN:", "sf:nodata");
-			} else {
-                sprintf(pub_msg, "%s{\\\"msgId\\\":\\\"%s\\\"\\,\\\"result\\\":%d}", "IN:", mqttInstruction.getMsgId(), 2);
-			}
-#ifdef HOST4
-			LOGD("send pub_msg %s to 1883", pub_msg);
-#else
             MqttCmdMgr::getInstance()->atCmdResponse(AT_RSP_TIMEOUT, mqttInstruction.getMsgId());
 			LOGD("key %d timeout\n", mqttInstruction.getCmdIndex());
-#endif
             m_mqtt_instructions.erase(it++);
         } else {
+            LOGD("++id\n");
             ++it;
         }
     }
